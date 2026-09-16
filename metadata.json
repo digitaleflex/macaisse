@@ -1,0 +1,6 @@
+{
+  "name": "Ma Caisse",
+  "description": "Application de caisse enregistreuse et gestion de commerce moderne (Point de Vente POS, Stock, Crédits, Dépenses et Bilan financier)",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,153 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    /* ==========================================================================
+       DESIGN TOKENS - SYSTÈME DE DESIGN PRO 'MA CAISSE'
+       Palette harmonisée, contraste accessible WCAG AA & esthétique retail/fintech
+       ========================================================================== */
+
+    /* Palette Fondations - Brand Dark */
+    --brand-navy-950: #080e18;
+    --brand-navy-900: #0f172a;
+    --brand-navy-800: #1e293b;
+    --brand-navy-700: #334155;
+
+    /* Accents d'action (Emerald Pro & Lime Retail) */
+    --brand-accent: #10b981;
+    --brand-accent-hover: #059669;
+    --brand-accent-subtle: #ecfdf5;
+    --brand-accent-border: #a7f3d0;
+    
+    --brand-lime: #84cc16;
+    --brand-lime-vibrant: #a3e635;
+    --brand-lime-subtle: #f7fee7;
+
+    /* Surfaces & Conteneurs (Échelle neutre sophistiquée et chaleureuse) */
+    --surface-canvas: #f8fafc;
+    --surface-card: #ffffff;
+    --surface-subtle: #f1f5f9;
+    --surface-hover: #e2e8f0;
+    --surface-active: #cbd5e1;
+
+    /* Bordures & Délimitations */
+    --border-base: #e2e8f0;
+    --border-subtle: #f1f5f9;
+    --border-focus: #0f172a;
+
+    /* Hiérarchie Typographique & Contrastes */
+    --text-primary: #0f172a;
+    --text-secondary: #475569;
+    --text-muted: #94a3b8;
+    --text-inverse: #ffffff;
+
+    /* États & Statuts Métier */
+    --status-success: #059669;
+    --status-success-bg: #ecfdf5;
+    --status-success-border: #a7f3d0;
+
+    --status-danger: #e11d48;
+    --status-danger-bg: #fff1f2;
+    --status-danger-border: #fecdd3;
+
+    --status-warning: #d97706;
+    --status-warning-bg: #fffbeb;
+    --status-warning-border: #fde68a;
+
+    --status-info: #0284c7;
+    --status-info-bg: #f0f9ff;
+    --status-info-border: #bae6fd;
+
+    /* Élévations Mathématiques Douces */
+    --shadow-card: 0 1px 3px 0 rgb(15 23 42 / 0.04), 0 1px 2px -1px rgb(15 23 42 / 0.04);
+    --shadow-card-hover: 0 4px 12px -2px rgb(15 23 42 / 0.08);
+    --shadow-elevated: 0 10px 25px -4px rgb(15 23 42 / 0.10), 0 4px 6px -4px rgb(15 23 42 / 0.05);
+    --shadow-modal: 0 20px 40px -10px rgb(15 23 42 / 0.25);
+  }
+
+  html {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    color: var(--text-primary);
+    background-color: var(--surface-canvas);
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  h1, h2, h3, h4, h5, h6, .font-display {
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    letter-spacing: -0.015em;
+  }
+}
+
+/* Chiffres & Montants Financiers Alignés */
+.font-num {
+  font-family: 'Plus Jakarta Sans', 'Inter', monospace;
+  font-feature-settings: 'tnum' on, 'lnum' on, 'zero' on;
+  letter-spacing: -0.02em;
+}
+
+/* Classes utilitaires du Design System */
+.bg-canvas { background-color: var(--surface-canvas); }
+.bg-card { background-color: var(--surface-card); }
+.bg-subtle { background-color: var(--surface-subtle); }
+.border-base { border-color: var(--border-base); }
+.border-subtle { border-color: var(--border-subtle); }
+.text-primary-token { color: var(--text-primary); }
+.text-secondary-token { color: var(--text-secondary); }
+.text-muted-token { color: var(--text-muted); }
+
+/* Cartes interactives POS */
+.pos-card {
+  background-color: var(--surface-card);
+  border: 1px solid var(--border-base);
+  border-radius: 14px;
+  box-shadow: var(--shadow-card);
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.pos-card:hover {
+  box-shadow: var(--shadow-card-hover);
+  border-color: #cbd5e1;
+}
+
+/* Bouton héro nouvelle vente avec micro-gradient prestigieux */
+.hero-pos-btn {
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 4px 14px -2px rgba(15, 23, 42, 0.25);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.hero-pos-btn:hover {
+  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+  box-shadow: 0 6px 20px -3px rgba(15, 23, 42, 0.35);
+  transform: translateY(-1px);
+}
+.hero-pos-btn:active {
+  transform: translateY(0) scale(0.99);
+}
+
+/* Défilement fluide sans barre visuelle */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Icônes Material Symbols */
+.material-symbols-outlined {
+  font-variation-settings:
+    'FILL' 0,
+    'wght' 400,
+    'GRAD' 0,
+    'opsz' 24;
+  vertical-align: middle;
+}
+
+.material-symbols-filled {
+  font-variation-settings:
+    'FILL' 1,
+    'wght' 600,
+    'GRAD' 0,
+    'opsz' 24;
+  vertical-align: middle;
+}
