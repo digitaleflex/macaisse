@@ -1,0 +1,1 @@
+export { DepensesModal } from './DepensesModal';
