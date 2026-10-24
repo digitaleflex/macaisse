@@ -1,153 +1,152 @@
-@import "tailwindcss";
+@import 'tailwindcss';
+
+/* ==========================================================================
+   MA CAISSE — DESIGN TOKENS (Tailwind v4 `@theme`)
+   Source unique du design system : couleurs, typographies, ombres, rayons et
+   animations. Les composants consomment ces tokens via les utilitaires
+   Tailwind générés (`bg-ink-900`, `text-brand-600`, `shadow-card`, …).
+   ========================================================================== */
+
+@theme {
+  --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-display: 'Plus Jakarta Sans', 'Inter', ui-sans-serif, system-ui, sans-serif;
+
+  /* Encre — surfaces sombres (sidebar, CTA, reçus) */
+  --color-ink-950: #060a13;
+  --color-ink-900: #0b1220;
+  --color-ink-800: #131c2e;
+  --color-ink-700: #1e293d;
+  --color-ink-600: #334058;
+
+  /* Marque — vert émeraude profond */
+  --color-brand-50: #ecfdf5;
+  --color-brand-100: #d1fae5;
+  --color-brand-200: #a7f3d0;
+  --color-brand-300: #6ee7b7;
+  --color-brand-400: #34d399;
+  --color-brand-500: #10b981;
+  --color-brand-600: #059669;
+  --color-brand-700: #047857;
+  --color-brand-800: #065f46;
+
+  /* Signature — citron vif (accents sur fond sombre) */
+  --color-zest-300: #dcfb8a;
+  --color-zest-400: #c5f441;
+  --color-zest-500: #a8d820;
+
+  /* Surfaces neutres */
+  --color-canvas: #f4f5f8;
+  --color-surface: #ffffff;
+  --color-line: #e5e8ee;
+  --color-line-strong: #d3d8e2;
+
+  /* Élévations */
+  --shadow-card: 0 1px 2px 0 rgb(11 18 32 / 0.04), 0 1px 3px 0 rgb(11 18 32 / 0.03);
+  --shadow-raised: 0 8px 24px -8px rgb(11 18 32 / 0.12), 0 2px 6px -2px rgb(11 18 32 / 0.06);
+  --shadow-overlay: 0 24px 60px -12px rgb(11 18 32 / 0.35);
+  --shadow-glow: 0 10px 30px -8px rgb(197 244 65 / 0.55);
+
+  --radius-card: 1.25rem;
+
+  /* Animations */
+  --animate-fade-in: fade-in 180ms ease-out both;
+  --animate-slide-up: slide-up 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-pop: pop 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-shimmer: shimmer 1.4s linear infinite;
+
+  @keyframes fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes slide-up {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes pop {
+    from { opacity: 0; transform: scale(0.96); }
+    to { opacity: 1; transform: scale(1); }
+  }
+  @keyframes shimmer {
+    from { background-position: -200% 0; }
+    to { background-position: 200% 0; }
+  }
+}
 
 @layer base {
-  :root {
-    /* ==========================================================================
-       DESIGN TOKENS - SYSTÈME DE DESIGN PRO 'MA CAISSE'
-       Palette harmonisée, contraste accessible WCAG AA & esthétique retail/fintech
-       ========================================================================== */
-
-    /* Palette Fondations - Brand Dark */
-    --brand-navy-950: #080e18;
-    --brand-navy-900: #0f172a;
-    --brand-navy-800: #1e293b;
-    --brand-navy-700: #334155;
-
-    /* Accents d'action (Emerald Pro & Lime Retail) */
-    --brand-accent: #10b981;
-    --brand-accent-hover: #059669;
-    --brand-accent-subtle: #ecfdf5;
-    --brand-accent-border: #a7f3d0;
-    
-    --brand-lime: #84cc16;
-    --brand-lime-vibrant: #a3e635;
-    --brand-lime-subtle: #f7fee7;
-
-    /* Surfaces & Conteneurs (Échelle neutre sophistiquée et chaleureuse) */
-    --surface-canvas: #f8fafc;
-    --surface-card: #ffffff;
-    --surface-subtle: #f1f5f9;
-    --surface-hover: #e2e8f0;
-    --surface-active: #cbd5e1;
-
-    /* Bordures & Délimitations */
-    --border-base: #e2e8f0;
-    --border-subtle: #f1f5f9;
-    --border-focus: #0f172a;
-
-    /* Hiérarchie Typographique & Contrastes */
-    --text-primary: #0f172a;
-    --text-secondary: #475569;
-    --text-muted: #94a3b8;
-    --text-inverse: #ffffff;
-
-    /* États & Statuts Métier */
-    --status-success: #059669;
-    --status-success-bg: #ecfdf5;
-    --status-success-border: #a7f3d0;
-
-    --status-danger: #e11d48;
-    --status-danger-bg: #fff1f2;
-    --status-danger-border: #fecdd3;
-
-    --status-warning: #d97706;
-    --status-warning-bg: #fffbeb;
-    --status-warning-border: #fde68a;
-
-    --status-info: #0284c7;
-    --status-info-bg: #f0f9ff;
-    --status-info-border: #bae6fd;
-
-    /* Élévations Mathématiques Douces */
-    --shadow-card: 0 1px 3px 0 rgb(15 23 42 / 0.04), 0 1px 2px -1px rgb(15 23 42 / 0.04);
-    --shadow-card-hover: 0 4px 12px -2px rgb(15 23 42 / 0.08);
-    --shadow-elevated: 0 10px 25px -4px rgb(15 23 42 / 0.10), 0 4px 6px -4px rgb(15 23 42 / 0.05);
-    --shadow-modal: 0 20px 40px -10px rgb(15 23 42 / 0.25);
-  }
-
   html {
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
-    color: var(--text-primary);
-    background-color: var(--surface-canvas);
+    font-family: var(--font-sans);
+    color: var(--color-ink-900);
+    background-color: var(--color-canvas);
     -webkit-tap-highlight-color: transparent;
+    text-rendering: optimizeLegibility;
   }
 
-  h1, h2, h3, h4, h5, h6, .font-display {
-    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
-    letter-spacing: -0.015em;
+  body {
+    background-color: var(--color-canvas);
+    font-feature-settings: 'cv11', 'ss01';
+  }
+
+  h1, h2, h3, h4, .font-display {
+    font-family: var(--font-display);
+    letter-spacing: -0.02em;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-brand-500);
+    outline-offset: 2px;
+  }
+
+  input[type='number']::-webkit-inner-spin-button,
+  input[type='number']::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  input[type='number'] {
+    -moz-appearance: textfield;
   }
 }
 
-/* Chiffres & Montants Financiers Alignés */
-.font-num {
-  font-family: 'Plus Jakarta Sans', 'Inter', monospace;
-  font-feature-settings: 'tnum' on, 'lnum' on, 'zero' on;
-  letter-spacing: -0.02em;
-}
+@layer utilities {
+  /* Montants : chiffres tabulaires alignés */
+  .font-num {
+    font-family: var(--font-display);
+    font-feature-settings: 'tnum' on, 'lnum' on;
+    letter-spacing: -0.02em;
+  }
 
-/* Classes utilitaires du Design System */
-.bg-canvas { background-color: var(--surface-canvas); }
-.bg-card { background-color: var(--surface-card); }
-.bg-subtle { background-color: var(--surface-subtle); }
-.border-base { border-color: var(--border-base); }
-.border-subtle { border-color: var(--border-subtle); }
-.text-primary-token { color: var(--text-primary); }
-.text-secondary-token { color: var(--text-secondary); }
-.text-muted-token { color: var(--text-muted); }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
 
-/* Cartes interactives POS */
-.pos-card {
-  background-color: var(--surface-card);
-  border: 1px solid var(--border-base);
-  border-radius: 14px;
-  box-shadow: var(--shadow-card);
-  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
-}
-.pos-card:hover {
-  box-shadow: var(--shadow-card-hover);
-  border-color: #cbd5e1;
-}
+  .bg-grid-ink {
+    background-image:
+      radial-gradient(circle at 1px 1px, rgb(255 255 255 / 0.07) 1px, transparent 0);
+    background-size: 18px 18px;
+  }
 
-/* Bouton héro nouvelle vente avec micro-gradient prestigieux */
-.hero-pos-btn {
-  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 4px 14px -2px rgba(15, 23, 42, 0.25);
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-}
-.hero-pos-btn:hover {
-  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-  box-shadow: 0 6px 20px -3px rgba(15, 23, 42, 0.35);
-  transform: translateY(-1px);
-}
-.hero-pos-btn:active {
-  transform: translateY(0) scale(0.99);
-}
-
-/* Défilement fluide sans barre visuelle */
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
-}
-.no-scrollbar {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
 }
 
 /* Icônes Material Symbols */
 .material-symbols-outlined {
-  font-variation-settings:
-    'FILL' 0,
-    'wght' 400,
-    'GRAD' 0,
-    'opsz' 24;
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  line-height: 1;
   vertical-align: middle;
+  user-select: none;
+}
+.material-symbols-outlined.is-filled {
+  font-variation-settings: 'FILL' 1, 'wght' 500, 'GRAD' 0, 'opsz' 24;
 }
 
-.material-symbols-filled {
-  font-variation-settings:
-    'FILL' 1,
-    'wght' 600,
-    'GRAD' 0,
-    'opsz' 24;
-  vertical-align: middle;
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 1ms !important;
+    transition-duration: 1ms !important;
+  }
 }

@@ -1,7 +1,7 @@
-import { Button, Select } from '@/ui';
-import type { SelectOption } from '@/ui';
+import { t } from '@/content';
 import { formatFCFA } from '@/domain/money';
 import type { ExportFilterType } from '@/lib/export';
+import { Icon, Select, cn } from '@/ui';
 
 export type ExportFormat = 'CSV' | 'PDF';
 
@@ -15,108 +15,85 @@ export interface ExportOptionsProps {
   totalExpenses: number;
 }
 
-const FILTER_OPTIONS: SelectOption[] = [
-  { value: 'all', label: 'Journal complet (Ventes & Dépenses)' },
-  { value: 'sales', label: 'Ventes & Recettes uniquement' },
-  { value: 'expenses', label: 'Dépenses & Charges uniquement' },
-];
+const SCOPE_OPTIONS = (['all', 'sales', 'expenses'] as const).map((value) => ({ value, label: t.exportModal.scopes[value] }));
 
 function isExportFilterType(value: string): value is ExportFilterType {
   return value === 'all' || value === 'sales' || value === 'expenses';
 }
 
-/** Sélection du format et du périmètre + aperçu de synthèse de l'export. */
-export function ExportOptions({
-  format,
-  onFormatChange,
-  filterType,
-  onFilterTypeChange,
-  totalRecords,
-  totalSales,
-  totalExpenses,
-}: ExportOptionsProps) {
-  const soldeNet = totalSales - totalExpenses;
-  const showSales = filterType === 'all' || filterType === 'sales';
-  const showExpenses = filterType === 'all' || filterType === 'expenses';
+const FORMATS: { id: ExportFormat; label: string; icon: string }[] = [
+  { id: 'PDF', label: t.exportModal.pdf, icon: 'picture_as_pdf' },
+  { id: 'CSV', label: t.exportModal.csv, icon: 'table_view' },
+];
+
+/** Sélection du format et du périmètre + aperçu de synthèse. */
+export function ExportOptions(props: ExportOptionsProps) {
+  const { format, filterType } = props;
+  const net = props.totalSales - props.totalExpenses;
+  const showSales = filterType !== 'expenses';
+  const showExpenses = filterType !== 'sales';
 
   return (
     <>
       <div>
-        <span className="text-xs font-bold text-slate-900 uppercase tracking-wider block mb-1.5">
-          1. Format d&apos;exportation
-        </span>
+        <div className="text-[13px] font-medium text-slate-700 mb-2">{t.exportModal.format}</div>
         <div className="grid grid-cols-2 gap-2">
-          <Button
-            variant={format === 'PDF' ? 'secondary' : 'ghost'}
-            size="sm"
-            fullWidth
-            onClick={() => onFormatChange('PDF')}
-          >
-            <span className="material-symbols-outlined text-[16px]">picture_as_pdf</span>
-            <span>Rapport PDF</span>
-          </Button>
-          <Button
-            variant={format === 'CSV' ? 'secondary' : 'ghost'}
-            size="sm"
-            fullWidth
-            onClick={() => onFormatChange('CSV')}
-          >
-            <span className="material-symbols-outlined text-[16px]">table_view</span>
-            <span>Tableur CSV</span>
-          </Button>
+          {FORMATS.map((option) => {
+            const active = format === option.id;
+            return (
+              <button
+                key={option.id}
+                type="button"
+                aria-pressed={active}
+                onClick={() => props.onFormatChange(option.id)}
+                className={cn(
+                  'h-14 rounded-2xl border flex items-center justify-center gap-2 text-sm font-semibold cursor-pointer transition-all',
+                  active ? 'bg-ink-900 border-ink-900 text-white' : 'bg-white border-line text-slate-700 hover:border-line-strong'
+                )}
+              >
+                <Icon name={option.icon} size={20} className={active ? 'text-zest-400' : 'text-slate-500'} />
+                {option.label}
+              </button>
+            );
+          })}
         </div>
       </div>
 
       <Select
-        label="2. Périmètre des données"
+        label={t.exportModal.scope}
         name="export-scope"
         value={filterType}
         onChange={(event) => {
-          if (isExportFilterType(event.target.value)) onFilterTypeChange(event.target.value);
+          if (isExportFilterType(event.target.value)) props.onFilterTypeChange(event.target.value);
         }}
-        options={FILTER_OPTIONS}
+        options={SCOPE_OPTIONS}
       />
 
-      <div className="bg-slate-50 p-3 rounded-xl border border-slate-200/80 space-y-2">
-        <div className="flex items-center justify-between text-[11px] font-semibold text-slate-500">
-          <span>Écritures à inclure :</span>
-          <span className="text-slate-900 font-bold font-num">{totalRecords} opérations</span>
+      <div className="rounded-2xl border border-line p-4 space-y-3">
+        <div className="flex justify-between text-sm">
+          <span className="text-slate-500">{t.exportModal.entries}</span>
+          <span className="font-num font-bold text-ink-900">{t.exportModal.operations(props.totalRecords)}</span>
         </div>
-
-        <div className="grid grid-cols-3 gap-2 pt-1 border-t border-slate-200/60">
+        <div className="grid grid-cols-3 gap-3 pt-3 border-t border-line">
           {showSales && (
-            <div className="flex flex-col">
-              <span className="text-[9px] text-slate-500 uppercase font-semibold">
-                Recettes (Ventes)
-              </span>
-              <span className="font-bold text-xs text-emerald-700 font-num">
-                +{formatFCFA(totalSales, { withSuffix: false })} F
-              </span>
+            <div>
+              <div className="text-[11px] text-slate-500">{t.exportModal.income}</div>
+              <div className="font-num font-bold text-sm text-brand-600">+{formatFCFA(props.totalSales)}</div>
             </div>
           )}
-
           {showExpenses && (
-            <div className="flex flex-col">
-              <span className="text-[9px] text-slate-500 uppercase font-semibold">
-                Charges (Dépenses)
-              </span>
-              <span className="font-bold text-xs text-rose-700 font-num">
-                -{formatFCFA(totalExpenses, { withSuffix: false })} F
-              </span>
+            <div>
+              <div className="text-[11px] text-slate-500">{t.exportModal.charges}</div>
+              <div className="font-num font-bold text-sm text-rose-600">−{formatFCFA(props.totalExpenses)}</div>
             </div>
           )}
-
           {filterType === 'all' && (
-            <div className="flex flex-col items-end">
-              <span className="text-[9px] text-slate-500 uppercase font-semibold">Solde Net</span>
-              <span
-                className={`font-bold text-xs font-num ${
-                  soldeNet >= 0 ? 'text-slate-900' : 'text-rose-700'
-                }`}
-              >
-                {soldeNet >= 0 ? '+' : ''}
-                {formatFCFA(soldeNet, { withSuffix: false })} F
-              </span>
+            <div className="text-right">
+              <div className="text-[11px] text-slate-500">{t.exportModal.balance}</div>
+              <div className={cn('font-num font-bold text-sm', net >= 0 ? 'text-ink-900' : 'text-rose-600')}>
+                {net >= 0 ? '+' : ''}
+                {formatFCFA(net)}
+              </div>
             </div>
           )}
         </div>

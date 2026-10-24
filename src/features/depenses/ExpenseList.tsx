@@ -1,80 +1,45 @@
 import type { Expense } from '@/types';
-import { Button, EmptyState } from '@/ui';
+import { t } from '@/content';
+import { EXPENSE_CATEGORY_ICON } from '@/config/reference';
+import { parseDate } from '@/domain/dates';
 import { formatFCFA } from '@/domain/money';
+import { Badge, EmptyState, Icon, IconButton } from '@/ui';
 
 export interface ExpenseListProps {
   expenses: Expense[];
   onDelete: (id: string) => void;
 }
 
-const CATEGORY_ICON: Record<string, string> = {
-  'Achat Stock': 'shopping_cart',
-  Stock: 'shopping_cart',
-  Transport: 'local_shipping',
-  Factures: 'electric_bolt',
-};
-
-function iconForCategory(category: string): string {
-  return CATEGORY_ICON[category] ?? 'payments';
+function formatDay(iso: string): string {
+  const date = parseDate(iso);
+  return date ? date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) : iso;
 }
 
-/** Liste des dépenses avec suppression ; état vide géré par `EmptyState`. */
+/** Liste des dépenses avec suppression. */
 export function ExpenseList({ expenses, onDelete }: ExpenseListProps) {
   if (expenses.length === 0) {
-    return (
-      <EmptyState
-        icon="receipt_long"
-        title="Aucune dépense"
-        description="Ajoutez une sortie de caisse pour suivre vos charges opérationnelles."
-      />
-    );
+    return <EmptyState icon="receipt_long" title={t.expenses.emptyTitle} description={t.expenses.emptyText} compact />;
   }
-
   return (
-    <div className="divide-y divide-slate-100 bg-white rounded-xl border border-slate-200/80 overflow-hidden shadow-2xs">
+    <ul className="divide-y divide-line rounded-2xl border border-line overflow-hidden">
       {expenses.map((expense) => (
-        <div
-          key={expense.id}
-          className="p-3 flex items-center justify-between gap-2 hover:bg-slate-50/60 transition-colors"
-        >
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-9 h-9 rounded-xl bg-rose-50 flex items-center justify-center text-rose-600 border border-rose-100 shrink-0">
-              <span className="material-symbols-outlined text-[18px]">
-                {iconForCategory(expense.category)}
-              </span>
-            </div>
-            <div className="flex flex-col min-w-0">
-              <span className="text-xs font-semibold text-slate-900 truncate">{expense.title}</span>
-              <div className="flex items-center gap-1 text-[10px] text-slate-500">
-                <span>{expense.category}</span>
-                <span>•</span>
-                <span>{expense.paymentMethod}</span>
-                <span>•</span>
-                <span>{expense.date}</span>
-              </div>
+        <li key={expense.id} className="flex items-center gap-3 px-4 py-3 bg-white hover:bg-slate-50/70 transition-colors">
+          <span className="size-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
+            <Icon name={EXPENSE_CATEGORY_ICON[expense.category] ?? 'payments'} size={20} />
+          </span>
+          <div className="flex-1 min-w-0">
+            <div className="text-sm font-semibold text-ink-900 truncate">{expense.title}</div>
+            <div className="text-xs text-slate-500 truncate">
+              {expense.category} · {expense.paymentMethod} · {formatDay(expense.date)}
             </div>
           </div>
-
-          <div className="flex items-center gap-2 shrink-0">
-            <div className="text-right">
-              <span className="font-display font-bold text-xs text-rose-700 font-num">
-                -{formatFCFA(expense.amount)}
-              </span>
-              {expense.hasReceipt === true && (
-                <span className="text-[9px] text-emerald-700 block font-semibold">Reçu OK</span>
-              )}
-            </div>
-            <Button
-              variant="danger"
-              size="sm"
-              aria-label={`Supprimer la dépense ${expense.title}`}
-              onClick={() => onDelete(expense.id)}
-            >
-              <span className="material-symbols-outlined text-[16px]">delete</span>
-            </Button>
+          <div className="text-right shrink-0">
+            <div className="font-num font-bold text-sm text-rose-600">−{formatFCFA(expense.amount)}</div>
+            {expense.hasReceipt === true && <Badge tone="success">{t.expenses.receiptOk}</Badge>}
           </div>
-        </div>
+          <IconButton icon="delete" label={t.expenses.remove(expense.title)} variant="danger-soft" size="sm" onClick={() => onDelete(expense.id)} />
+        </li>
       ))}
-    </div>
+    </ul>
   );
 }

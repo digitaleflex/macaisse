@@ -6,7 +6,8 @@ import { persist } from 'zustand/middleware';
 import type { Expense } from '@/types';
 import { createId } from '@/domain/ids';
 import { parseDate, toIsoDate } from '@/domain/dates';
-import { SEED_EXPENSES } from '@/data/seed';
+import { SEED_EXPENSES } from '@/mocks';
+import { syncRemote } from '@/services';
 import {
   coerceId,
   coerceNumber,
@@ -31,13 +32,16 @@ export const useExpensesStore = create<ExpensesState>()(
     (set) => ({
       expenses: SEED_EXPENSES.map((expense) => ({ ...expense })),
 
-      addExpense: (input) =>
-        set((state) => ({
-          expenses: [{ ...input, id: createId('expense') }, ...state.expenses],
-        })),
+      addExpense: (input) => {
+        const expense: Expense = { ...input, id: createId('expense') };
+        set((state) => ({ expenses: [expense, ...state.expenses] }));
+        syncRemote((api) => api.expenses.create(expense), 'Dépense non synchronisée.');
+      },
 
-      removeExpense: (id) =>
-        set((state) => ({ expenses: state.expenses.filter((expense) => expense.id !== id) })),
+      removeExpense: (id) => {
+        set((state) => ({ expenses: state.expenses.filter((expense) => expense.id !== id) }));
+        syncRemote((api) => api.expenses.remove(id), 'Suppression non synchronisée.');
+      },
 
       setExpenses: (expenses) => set({ expenses }),
     }),

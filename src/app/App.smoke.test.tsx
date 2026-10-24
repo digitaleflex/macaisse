@@ -2,6 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, cleanup, render, screen } from '@testing-library/react';
 import type { SaleTransaction, TabType } from '@/types';
 import App from '@/app/App';
+import { t } from '@/content';
+import { SEED_SESSION } from '@/mocks';
 import { useUiStore } from '@/store/useUiStore';
 
 /**
@@ -20,12 +22,12 @@ const SALE: SaleTransaction = {
   itemsCount: 2,
 };
 
-const TAB_MARKERS: { tab: TabType; text: RegExp }[] = [
-  { tab: 'accueil', text: /Bonjour, Mamadou/ },
-  { tab: 'ventes', text: /Articles Fréquents/ },
-  { tab: 'stock', text: /Inventaire tournant/ },
-  { tab: 'credits', text: /Suivi des dettes et recouvrement/ },
-  { tab: 'bilan', text: /Synthèse comptable/ },
+const TAB_MARKERS: { tab: TabType; text: string }[] = [
+  { tab: 'accueil', text: t.dashboard.greeting(SEED_SESSION.user.firstName) },
+  { tab: 'ventes', text: t.pos.catalogTitle },
+  { tab: 'stock', text: t.stock.audit.title },
+  { tab: 'credits', text: t.credits.listTitle },
+  { tab: 'bilan', text: t.bilan.exports.title },
 ];
 
 describe('App — smoke de rendu', () => {
@@ -43,20 +45,20 @@ describe('App — smoke de rendu', () => {
 
   it('monte les 5 onglets et ouvre/ferme le reçu sans boucle de rendu', () => {
     render(<App />);
-    expect(screen.getByText(/Bonjour, Mamadou/)).toBeTruthy();
+    expect(screen.getByText(t.dashboard.greeting(SEED_SESSION.user.firstName))).toBeTruthy();
 
     for (const { tab, text } of TAB_MARKERS) {
       act(() => {
         useUiStore.getState().setTab(tab);
       });
-      expect(screen.getByText(text)).toBeTruthy();
+      expect(screen.getAllByText(text).length).toBeGreaterThan(0);
     }
 
     act(() => {
       useUiStore.getState().openReceipt(SALE, []);
     });
     expect(screen.getByRole('dialog')).toBeTruthy();
-    expect(screen.getByText(/Ticket de Caisse Numérique/)).toBeTruthy();
+    expect(screen.getByText(t.receipt.title)).toBeTruthy();
 
     act(() => {
       useUiStore.getState().closeReceipt();

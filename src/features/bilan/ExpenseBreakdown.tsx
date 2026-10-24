@@ -1,62 +1,52 @@
 import type { BreakdownSlice } from '@/types';
+import { t } from '@/content';
+import { EXPENSE_CATEGORY_ICON } from '@/config/reference';
 import { formatFCFA } from '@/domain/money';
-import { EmptyState } from '@/ui';
+import { Button, Card, EmptyState, Icon, ProgressBar } from '@/ui';
 
-/**
- * ExpenseBreakdown — postes de dépenses agrégés par catégorie.
- * Composant présentationnel : reçoit une `BreakdownSlice[]` calculée par
- * `@/domain/finances.expenseBreakdown` et un callback vers le détail complet.
- */
+/** Postes de dépenses agrégés par catégorie, avec part relative. */
 export interface ExpenseBreakdownProps {
-  /** Tranches de dépenses par poste (montant décroissant). */
   data: BreakdownSlice[];
-  /** Ouvre la modale de détail des dépenses. */
   onOpenDetails: () => void;
 }
 
 export function ExpenseBreakdown({ data, onOpenDetails }: ExpenseBreakdownProps) {
   const total = data.reduce((sum, slice) => sum + slice.amount, 0);
-
   return (
-    <div className="bg-white p-4 rounded-2xl shadow-2xs border border-slate-200/80 flex flex-col gap-2.5">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-1.5">
-          <span className="material-symbols-outlined text-rose-600 text-[18px]">receipt_long</span>
-          <span className="text-xs font-bold text-slate-900 uppercase tracking-wider">
-            Postes de Dépenses
-          </span>
-        </div>
-        <button
-          type="button"
-          onClick={onOpenDetails}
-          className="text-xs text-slate-700 hover:text-slate-900 font-bold flex items-center gap-0.5 cursor-pointer"
-        >
-          <span>Détail complet</span>
-          <span className="material-symbols-outlined text-[16px]">chevron_right</span>
-        </button>
-      </div>
-
+    <Card
+      title={t.bilan.expenseBreakdown.title}
+      description={t.bilan.expenseBreakdown.subtitle}
+      action={
+        <Button variant="ghost" size="sm" iconRight="chevron_right" onClick={onOpenDetails}>
+          {t.bilan.expenseBreakdown.details}
+        </Button>
+      }
+      className="h-full"
+    >
       {data.length === 0 ? (
-        <EmptyState
-          icon="receipt_long"
-          title="Aucune dépense"
-          description="Aucune dépense enregistrée sur la période."
-        />
+        <EmptyState icon="receipt_long" title={t.bilan.expenseBreakdown.emptyTitle} description={t.bilan.expenseBreakdown.emptyText} compact />
       ) : (
-        <div className="flex flex-col gap-2 pt-1">
+        <ul className="flex flex-col gap-4">
           {data.map((slice) => {
-            const share = total > 0 ? (slice.amount / total) * 100 : 0;
+            const share = total > 0 ? slice.amount / total : 0;
             return (
-              <div key={slice.key} className="flex justify-between items-center text-xs">
-                <span className="text-slate-500 truncate">{slice.label}</span>
-                <span className="font-bold text-slate-900 font-num shrink-0">
-                  {formatFCFA(slice.amount)} ({share.toFixed(0)}%)
+              <li key={slice.key} className="flex items-center gap-3">
+                <span className="size-9 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
+                  <Icon name={EXPENSE_CATEGORY_ICON[slice.label] ?? 'payments'} size={18} />
                 </span>
-              </div>
+                <div className="flex-1 min-w-0 space-y-1.5">
+                  <div className="flex justify-between gap-2 text-sm">
+                    <span className="text-ink-900 font-medium truncate">{slice.label}</span>
+                    <span className="font-num font-semibold text-ink-900 shrink-0">{formatFCFA(slice.amount)}</span>
+                  </div>
+                  <ProgressBar value={share} tone="danger" label={slice.label} />
+                </div>
+                <span className="w-10 text-right text-xs font-semibold text-slate-500 font-num">{Math.round(share * 100)} %</span>
+              </li>
             );
           })}
-        </div>
+        </ul>
       )}
-    </div>
+    </Card>
   );
 }

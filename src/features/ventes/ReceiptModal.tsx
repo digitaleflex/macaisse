@@ -1,211 +1,134 @@
-import { Modal } from '@/ui';
-import { useUiStore } from '@/store/useUiStore';
-import { APP_LOGO } from '@/data/seed';
+import { t } from '@/content';
 import { formatFCFA } from '@/domain/money';
-import { formatTime, parseDate, toIsoDate } from '@/domain/dates';
+import { formatTime, parseDate } from '@/domain/dates';
+import { useCurrentSession } from '@/store/useSessionStore';
+import { useUiStore } from '@/store/useUiStore';
+import { BrandMark, Button, Modal } from '@/ui';
 
 /**
- * Reçu (ticket de caisse numérique) d'une vente validée. L'en-tête sombre est
- * fourni par la primitive `<Modal headerVariant="dark">`.
- *
- * Modale GLOBALE pilotée par `useUiStore.receipt` (montée une seule fois dans
- * `App.tsx`) : les vues ne détiennent plus d'état de reçu local. `receipt`
- * pouvant porter un snapshot de lignes vide (vente rechargée depuis l'historique,
- * qui ne conserve pas le détail), la modale retombe alors sur `itemsCount`.
- *
- * Toutes les valeurs propres à la transaction (date, heure, code-barres,
- * montants, nombre d'articles) sont DÉRIVÉES de la `SaleTransaction` reçue —
- * aucun littéral de date/document n'est inventé.
- *
- * L'impression et le partage WhatsApp sont des actions SIMULÉES (aucun matériel
- * ni passerelle n'existe dans cette SPA) : les boutons restent présents mais
- * affichent un toast honnête — aucun succès n'est feint. L'identité du commerce,
- * le caissier et la TVA ne sont pas modélisés par l'application : ils sont
- * signalés comme valeurs de démonstration dans le ticket (voir pied de page).
+ * Reçu (ticket de caisse numérique) piloté par `useUiStore.receipt`. Les valeurs
+ * de transaction sont dérivées de la `SaleTransaction` ; l'identité du commerce
+ * et le caissier viennent de la session (`services/`). Impression et partage
+ * WhatsApp sont simulés (toast explicite).
  */
 
-const BARCODE_WIDTHS = [3, 1, 2, 4, 1, 3, 2, 1, 4, 2, 3, 1, 2, 3, 1, 4, 2, 1, 3, 2];
+const BARCODE_WIDTHS = [3, 1, 2, 4, 1, 3, 2, 1, 4, 2, 3, 1, 2, 3, 1, 4, 2, 1, 3, 2, 1, 3, 2, 4];
+
+function Row({ label, value, strong = false }: { label: string; value: string; strong?: boolean }) {
+  return (
+    <div className="flex justify-between gap-3">
+      <span className="text-slate-500">{label}</span>
+      <span className={strong ? 'font-bold text-ink-900 text-right' : 'text-ink-900 text-right'}>{value}</span>
+    </div>
+  );
+}
 
 export function ReceiptModal() {
   const receipt = useUiStore((state) => state.receipt);
   const closeReceipt = useUiStore((state) => state.closeReceipt);
   const showToast = useUiStore((state) => state.showToast);
+  const { user, business } = useCurrentSession();
 
-  // Aucun reçu mémorisé ⇒ la modale ne rend rien (équivalent de `!open`).
   if (!receipt) return null;
-  const { sale, items: cartItems } = receipt;
+  const { sale, items } = receipt;
 
-  // Valeurs réelles issues de la transaction. `sale.date` peut être une date ISO
-  // (« 2026-10-18 ») ou un libellé relatif historique (« Aujourd'hui ») : on
-  // formate la date ISO, sinon on affiche la valeur telle que stockée — jamais
-  // de constante inventée.
   const parsedDate = parseDate(sale.date);
-  const dateLabel = parsedDate !== null ? toIsoDate(parsedDate) : sale.date;
-  const timeLabel = sale.time !== '' ? sale.time : parsedDate !== null ? formatTime(parsedDate) : '';
+  const dateLabel = parsedDate
+    ? parsedDate.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })
+    : sale.date;
+  const timeLabel = sale.time !== '' ? sale.time : parsedDate ? formatTime(parsedDate) : '';
   const barcodeToken = sale.saleNumber.replace('#', '');
-  const barcodeYear = parsedDate !== null ? toIsoDate(parsedDate).slice(0, 4) : null;
-  const barcodeText =
-    barcodeYear !== null ? `*POS-${barcodeToken}-${barcodeYear}*` : `*POS-${barcodeToken}*`;
-
-  const handlePrint = () => {
-    showToast(
-      `Impression simulée : le ticket ${sale.saleNumber} n'a été envoyé à aucune imprimante (démo).`
-    );
-  };
-
-  const handleShareWhatsApp = () => {
-    showToast(`Partage WhatsApp simulé : le ticket ${sale.saleNumber} n'a pas été envoyé (démo).`);
-  };
+  const barcodeText = parsedDate ? `*POS-${barcodeToken}-${parsedDate.getFullYear()}*` : `*POS-${barcodeToken}*`;
 
   return (
     <Modal
       open
       onClose={closeReceipt}
-      title="Ticket de Caisse Numérique"
-      subtitle={sale.saleNumber}
+      title={t.receipt.title}
+      subtitle={t.receipt.subtitle(sale.saleNumber)}
       icon="receipt"
       headerVariant="dark"
       size="sm"
+      bodyClassName="bg-slate-100"
       footer={
         <div className="grid grid-cols-2 gap-2 w-full">
-          <button
-            type="button"
-            onClick={handlePrint}
-            className="h-11 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold flex items-center justify-center gap-1.5 active:scale-95 transition-transform cursor-pointer"
-          >
-            <span className="material-symbols-outlined text-[18px]">print</span>
-            <span>Imprimer Ticket</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={handleShareWhatsApp}
-            className="h-11 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold flex items-center justify-center gap-1.5 active:scale-95 transition-transform cursor-pointer shadow-xs"
-          >
-            <span className="material-symbols-outlined text-[18px]">share</span>
-            <span>WhatsApp</span>
-          </button>
+          <Button variant="secondary" icon="print" onClick={() => showToast(t.receipt.printToast(sale.saleNumber))}>
+            {t.receipt.print}
+          </Button>
+          <Button variant="brand" icon="share" onClick={() => showToast(t.receipt.shareToast(sale.saleNumber))}>
+            {t.receipt.share}
+          </Button>
         </div>
       }
     >
-      {/* Papier thermique simulé */}
-      <div className="bg-white text-slate-900 flex flex-col font-mono text-xs">
-        {/* Cachet commerçant */}
-        <div className="text-center pb-3 border-b border-dashed border-slate-300 flex flex-col items-center">
-          <div className="w-10 h-10 rounded-lg bg-slate-900 flex items-center justify-center p-1.5 mb-1.5 shadow-sm">
-            <img
-              src={APP_LOGO}
-              alt="Logo"
-              className="w-full h-full object-contain"
-              referrerPolicy="no-referrer"
-            />
-          </div>
-          <h2 className="font-display font-bold text-sm tracking-tight text-slate-900">
-            BOUTIQUE ÉTOILE
-          </h2>
-          <p className="text-[10px] text-slate-500 mt-0.5">Alimentation Générale &amp; Dépôt</p>
-          <p className="text-[10px] text-slate-500">Avenue Lamine Guèye, Dakar</p>
-          <p className="text-[10px] text-slate-500">Tél: +221 33 821 44 00 • NINEA: 0048912</p>
+      <article className="bg-white rounded-2xl shadow-card px-5 py-6 text-[13px] relative">
+        <header className="text-center pb-4 border-b border-dashed border-line-strong flex flex-col items-center">
+          <BrandMark className="size-10 mb-2" />
+          <h3 className="font-display font-extrabold text-base text-ink-900 uppercase tracking-wide">{business.name}</h3>
+          <p className="text-xs text-slate-500 mt-0.5">{business.activity}</p>
+          <p className="text-xs text-slate-500">
+            {business.address}, {business.city}
+          </p>
+          <p className="text-xs text-slate-500">
+            {t.receipt.phone(business.phone)} · {t.receipt.taxId(business.taxId)}
+          </p>
+        </header>
+
+        <div className="py-3 border-b border-dashed border-line-strong space-y-1">
+          <Row label={t.receipt.ticket} value={sale.saleNumber} strong />
+          <Row label={t.receipt.dateTime} value={timeLabel ? `${dateLabel} · ${timeLabel}` : dateLabel} />
+          <Row label={t.receipt.cashier} value={`${user.firstName} ${user.lastName[0]}. (${business.registerLabel})`} />
+          {sale.clientName && <Row label={t.receipt.client} value={sale.clientName} strong />}
         </div>
 
-        {/* Métadonnées du ticket */}
-        <div className="py-2.5 border-b border-dashed border-slate-300 flex flex-col gap-1 text-[11px]">
-          <div className="flex justify-between">
-            <span className="text-slate-500">Ticket :</span>
-            <span className="font-bold text-slate-900 font-num">{sale.saleNumber}</span>
+        <div className="py-3 border-b border-dashed border-line-strong space-y-2">
+          <div className="flex justify-between text-[11px] uppercase font-semibold tracking-wider text-slate-400">
+            <span>{t.receipt.item}</span>
+            <span>{t.receipt.total}</span>
           </div>
-          <div className="flex justify-between">
-            <span className="text-slate-500">Date &amp; Heure :</span>
-            <span className="font-medium text-slate-900">
-              {dateLabel}
-              {timeLabel !== '' ? ` - ${timeLabel}` : ''}
-            </span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-slate-500">Caissier :</span>
-            <span className="font-medium text-slate-900">Mamadou K. (Caisse #01)</span>
-          </div>
-          {sale.clientName && (
-            <div className="flex justify-between">
-              <span className="text-slate-500">Client :</span>
-              <span className="font-bold text-slate-900">{sale.clientName}</span>
-            </div>
-          )}
-        </div>
-
-        {/* Lignes d'articles */}
-        <div className="py-3 border-b border-dashed border-slate-300 flex flex-col gap-2">
-          <div className="flex justify-between text-[10px] uppercase font-bold text-slate-500 pb-1 border-b border-dashed border-slate-200">
-            <span>Désignation</span>
-            <span>Total</span>
-          </div>
-
-          {cartItems.length > 0 ? (
-            cartItems.map((line) => (
-              <div key={line.productId} className="flex justify-between items-start text-xs">
-                <div className="flex flex-col min-w-0 pr-2">
-                  <span className="font-bold truncate text-slate-900">{line.name}</span>
-                  <span className="text-[10px] text-slate-500">
-                    {line.quantity} x {formatFCFA(line.price, { withSuffix: false })} F
-                  </span>
+          {items.length > 0 ? (
+            items.map((line) => (
+              <div key={line.productId} className="flex justify-between items-start gap-3">
+                <div className="min-w-0">
+                  <div className="font-semibold text-ink-900 truncate">{line.name}</div>
+                  <div className="text-xs text-slate-500 font-num">
+                    {line.quantity} × {formatFCFA(line.price)}
+                  </div>
                 </div>
-                <span className="font-bold font-num text-right shrink-0">
-                  {formatFCFA(line.price * line.quantity, { withSuffix: false })} F
-                </span>
+                <span className="font-num font-semibold shrink-0">{formatFCFA(line.price * line.quantity)}</span>
               </div>
             ))
           ) : (
-            <div className="flex justify-between items-center text-xs">
-              <span>Articles divers ({sale.itemsCount} art.)</span>
-              <span className="font-bold font-num">
-                {formatFCFA(sale.amount, { withSuffix: false })} F
-              </span>
+            <div className="flex justify-between">
+              <span>{t.receipt.miscItems(sale.itemsCount)}</span>
+              <span className="font-num font-semibold">{formatFCFA(sale.amount)}</span>
             </div>
           )}
         </div>
 
-        {/* Calcul du total */}
-        <div className="py-3 border-b border-dashed border-slate-300 flex flex-col gap-1 text-xs">
-          <div className="flex justify-between">
-            <span className="text-slate-500">Sous-total HT :</span>
-            <span className="font-num">{formatFCFA(sale.amount)}</span>
+        <div className="py-3 border-b border-dashed border-line-strong space-y-1">
+          <Row label={t.receipt.subtotal} value={formatFCFA(sale.amount)} />
+          <Row label={t.receipt.vat} value={formatFCFA(0)} />
+          <div className="flex justify-between items-baseline pt-2">
+            <span className="font-display font-bold text-ink-900 uppercase">{t.receipt.netTotal}</span>
+            <span className="font-num font-extrabold text-xl text-ink-900">{formatFCFA(sale.amount)}</span>
           </div>
-          <div className="flex justify-between">
-            <span className="text-slate-500">TVA (Régime Forfaitaire) :</span>
-            <span className="font-num">0 FCFA</span>
-          </div>
-          <div className="flex justify-between text-sm font-bold text-slate-900 pt-1 mt-1 border-t border-dashed border-slate-200">
-            <span>TOTAL NET :</span>
-            <span className="font-num text-base font-extrabold">{formatFCFA(sale.amount)}</span>
-          </div>
-          <div className="flex justify-between text-[11px] pt-1">
-            <span className="text-slate-500">Règlement :</span>
-            <span className="font-semibold text-emerald-700">{sale.paymentMethod}</span>
-          </div>
+          <Row label={t.receipt.payment} value={sale.paymentMethod} />
+          {sale.remainingAmount !== undefined && (
+            <Row label={t.receipt.remaining} value={formatFCFA(sale.remainingAmount)} strong />
+          )}
         </div>
 
-        {/* Code-barres & pied de page */}
-        <div className="pt-4 flex flex-col items-center text-center">
-          <div className="flex items-center justify-center gap-0.5 h-10 w-44 bg-transparent mb-1">
+        <footer className="pt-4 flex flex-col items-center text-center">
+          <div className="flex items-stretch justify-center gap-[2px] h-10" aria-hidden="true">
             {BARCODE_WIDTHS.map((width, index) => (
-              <div
-                key={index}
-                className="h-full bg-slate-900"
-                style={{ width: `${width * 1.8}px` }}
-              />
+              <span key={index} className="bg-ink-900" style={{ width: `${width * 1.5}px` }} />
             ))}
           </div>
-          <span className="text-[10px] tracking-widest text-slate-500 font-num">
-            {barcodeText}
-          </span>
-          <p className="text-[10px] text-slate-500 mt-2 font-sans font-medium">
-            Merci pour votre confiance et à très bientôt !
-          </p>
-          <p className="text-[10px] text-slate-400 mt-1 font-sans">
-            Démo : identité du commerce, caissier et TVA ne sont pas configurés par l&apos;application.
-          </p>
-        </div>
-      </div>
+          <span className="text-[10px] tracking-[0.25em] text-slate-500 font-num mt-1">{barcodeText}</span>
+          <p className="text-xs text-slate-500 mt-3">{t.receipt.thanks}</p>
+        </footer>
+      </article>
     </Modal>
   );
 }

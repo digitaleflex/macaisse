@@ -1,10 +1,7 @@
-/**
- * Barrel du shell applicatif (« app/ ») : layout, navigation et routage d'onglet.
- * Seul point d'entrée consommé par `src/main.tsx`.
- */
-
+/** Barrel du shell applicatif (« app/ »). */
 export { default as App } from './App';
-export { Header } from './Header';
+export { Sidebar } from './Sidebar';
+export { Topbar } from './Topbar';
 export { BottomNav } from './BottomNav';
-export { TABS, tabTitle } from './routes';
+export { TABS, tabDefinition, tabTitle } from './routes';
 export type { TabDefinition } from './routes';

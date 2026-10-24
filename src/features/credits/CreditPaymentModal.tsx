@@ -1,23 +1,14 @@
-/**
- * CreditPaymentModal — encaissement d'un règlement de crédit.
- *
- * Construit avec les primitives `Modal`, `Input` et `Button` (en-tête clair).
- * L'appel au store (`payCredit` / `markSettled`) est fait par le parent via
- * `onSubmit` : les erreurs françaises remontées par `@/domain/credits` y sont
- * interceptées et affichées par toast.
- */
-
 import { useState } from 'react';
 import type { ClientCredit } from '@/types';
+import { t } from '@/content';
+import { QUICK_CREDIT_PAYMENTS } from '@/config/reference';
 import { formatFCFA } from '@/domain/money';
-import { Modal } from '@/ui/Modal';
-import { Input } from '@/ui/Input';
-import { Button } from '@/ui/Button';
+import { Button, Icon, Input, Modal, Switch, cn } from '@/ui';
 
+/** Encaissement d'un règlement de crédit (appel au store fait par le parent). */
 export type PaymentChannel = 'especes' | 'wave' | 'orange_money';
 
 export interface CreditPaymentModalProps {
-  /** Crédit à encaisser ; `null` ferme la modale. */
   credit: ClientCredit | null;
   open: boolean;
   onClose: () => void;
@@ -25,170 +16,105 @@ export interface CreditPaymentModalProps {
 }
 
 const DEFAULT_PAY_AMOUNT = 20000;
-const QUICK_AMOUNTS = [10000, 20000, 30000];
+const CHANNELS: { id: PaymentChannel; icon: string }[] = [
+  { id: 'especes', icon: 'payments' },
+  { id: 'wave', icon: 'waves' },
+  { id: 'orange_money', icon: 'phone_iphone' },
+];
 
-const channelButtonClass = (active: boolean): string =>
-  `flex flex-col items-center justify-center p-2 rounded-xl border cursor-pointer transition-colors ${
-    active
-      ? 'bg-slate-900 text-white border-slate-900 shadow-2xs'
-      : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-  }`;
-
-export function CreditPaymentModal({
-  credit,
-  open,
-  onClose,
-  onSubmit,
-}: CreditPaymentModalProps) {
-  // Le parent remonte ce composant par `key` à chaque crédit : l'état est
-  // réinitialisé à l'ouverture, sans `useEffect` (pas de setState dans un effet).
+export function CreditPaymentModal({ credit, open, onClose, onSubmit }: CreditPaymentModalProps) {
   const [amount, setAmount] = useState<number>(() =>
     credit ? Math.min(DEFAULT_PAY_AMOUNT, credit.remainingAmount) : DEFAULT_PAY_AMOUNT
   );
   const [channel, setChannel] = useState<PaymentChannel>('especes');
-  const [sendReceipt, setSendReceipt] = useState(true);
+  const [sendReceipt, setSendReceipt] = useState(false);
 
   if (!credit) return null;
+  const newBalance = Math.max(0, credit.remainingAmount - amount);
 
   return (
     <Modal
       open={open}
       onClose={onClose}
-      title={
-        <span className="flex flex-col">
-          <span>Encaisser un règlement de crédit</span>
-          <span className="text-[11px] font-normal text-slate-500">{credit.clientName}</span>
-        </span>
+      title={t.credits.payment.title}
+      subtitle={credit.clientName}
+      icon="payments"
+      footer={
+        <Button variant="primary" size="lg" fullWidth icon="check_circle" onClick={() => onSubmit(credit, amount)}>
+          {t.credits.payment.submit} · {formatFCFA(amount)}
+        </Button>
       }
     >
-      {/* Debt summary card */}
-      <div className="p-3 rounded-2xl bg-slate-50 flex items-center justify-between border border-slate-100">
+      <div className="rounded-2xl bg-ink-900 text-white p-5 bg-grid-ink flex items-center justify-between gap-3">
         <div>
-          <span className="text-[10px] text-slate-500 uppercase font-semibold">
-            Montant restant dû
-          </span>
-          <div className="flex items-baseline gap-1 mt-0.5">
-            <span className="font-display font-bold text-base text-slate-900 font-num">
-              {formatFCFA(credit.remainingAmount, { withSuffix: false })}
-            </span>
-            <span className="text-[10px] text-slate-500 font-bold">FCFA</span>
-          </div>
+          <div className="text-xs text-slate-400">{t.credits.payment.remaining}</div>
+          <div className="font-num font-extrabold text-2xl mt-0.5">{formatFCFA(credit.remainingAmount)}</div>
         </div>
-        <Button variant="secondary" size="sm" onClick={() => setAmount(credit.remainingAmount)}>
-          Tout solder
+        <Button variant="accent" size="sm" onClick={() => setAmount(credit.remainingAmount)}>
+          {t.credits.payment.settleAll}
         </Button>
       </div>
 
-      {/* Amount input */}
-      <div className="mt-3 flex flex-col gap-1">
+      <div className="space-y-2">
         <Input
-          label="Montant perçu (FCFA)"
+          label={t.credits.payment.amount}
+          name="credit-payment-amount"
           type="number"
+          inputMode="numeric"
+          suffix={t.common.currency}
           value={amount}
-          onChange={(event) =>
-            setAmount(Math.min(credit.remainingAmount, Number(event.target.value) || 0))
+          onChange={(event) => setAmount(Math.min(credit.remainingAmount, Number(event.target.value) || 0))}
+          hint={
+            <span>
+              {t.credits.payment.newBalance} : <strong className="text-brand-600 font-num">{formatFCFA(newBalance)}</strong>
+            </span>
           }
         />
-        <div className="flex items-center justify-between text-[11px] text-slate-500 px-1 mt-0.5">
-          <span>Nouveau solde après règlement :</span>
-          <span className="font-bold text-emerald-700 font-num">
-            {formatFCFA(Math.max(0, credit.remainingAmount - amount), { withSuffix: false })} FCFA
-          </span>
-        </div>
-      </div>
-
-      {/* Quick Presets */}
-      <div className="mt-2.5 flex items-center gap-2">
-        {QUICK_AMOUNTS.map((preset) => (
-          <button
-            key={preset}
-            type="button"
-            onClick={() => setAmount(Math.min(credit.remainingAmount, preset))}
-            className="flex-1 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold border border-slate-200/80 cursor-pointer transition-colors"
-          >
-            {formatFCFA(preset, { withSuffix: false })}
-          </button>
-        ))}
-      </div>
-
-      {/* Payment Channel Selector */}
-      <div className="mt-3 flex flex-col gap-1.5">
-        <span className="text-xs font-bold text-slate-900">Canal de réception</span>
         <div className="grid grid-cols-3 gap-2">
-          <button
-            type="button"
-            onClick={() => setChannel('especes')}
-            className={channelButtonClass(channel === 'especes')}
-          >
-            <span
-              className={`material-symbols-outlined text-[20px] ${
-                channel === 'especes' ? 'text-emerald-400' : 'text-slate-600'
-              }`}
+          {QUICK_CREDIT_PAYMENTS.map((preset) => (
+            <button
+              key={preset}
+              type="button"
+              onClick={() => setAmount(Math.min(credit.remainingAmount, preset))}
+              className="h-9 rounded-xl bg-white border border-line hover:border-line-strong text-xs font-bold font-num cursor-pointer"
             >
-              payments
-            </span>
-            <span className="text-[11px] font-semibold mt-0.5">Espèces</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setChannel('wave')}
-            className={channelButtonClass(channel === 'wave')}
-          >
-            <span
-              className={`material-symbols-outlined text-[20px] ${
-                channel === 'wave' ? 'text-sky-400' : 'text-sky-600'
-              }`}
-            >
-              smartphone
-            </span>
-            <span className="text-[11px] font-semibold mt-0.5">Wave</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setChannel('orange_money')}
-            className={channelButtonClass(channel === 'orange_money')}
-          >
-            <span
-              className={`material-symbols-outlined text-[20px] ${
-                channel === 'orange_money' ? 'text-orange-400' : 'text-orange-600'
-              }`}
-            >
-              account_balance
-            </span>
-            <span className="text-[11px] font-semibold mt-0.5">Orange M.</span>
-          </button>
+              {formatFCFA(preset, { withSuffix: false })}
+            </button>
+          ))}
         </div>
       </div>
 
-      {/* Receipt toggle (fonctionnalité non disponible — aucune preuve n'est envoyée) */}
-      <div className="mt-3 p-2.5 rounded-2xl bg-slate-50 flex items-center justify-between border border-slate-100">
-        <div className="flex items-center gap-2">
-          <span className="material-symbols-outlined text-emerald-600 text-[20px]">
-            send_to_mobile
-          </span>
-          <div className="flex flex-col">
-            <span className="text-xs font-bold text-slate-900">Reçu instantané WhatsApp</span>
-            <span className="text-[10px] text-slate-500">
-              Envoi automatique non disponible — aucune preuve n'est transmise
-            </span>
-          </div>
+      <div>
+        <div className="text-[13px] font-medium text-slate-700 mb-2">{t.credits.payment.channel}</div>
+        <div className="grid grid-cols-3 gap-2">
+          {CHANNELS.map((entry) => {
+            const active = channel === entry.id;
+            return (
+              <button
+                key={entry.id}
+                type="button"
+                aria-pressed={active}
+                onClick={() => setChannel(entry.id)}
+                className={cn(
+                  'h-16 rounded-2xl border flex flex-col items-center justify-center gap-1 transition-all cursor-pointer',
+                  active ? 'bg-ink-900 border-ink-900 text-white' : 'bg-white border-line text-slate-700 hover:border-line-strong'
+                )}
+              >
+                <Icon name={entry.icon} size={20} className={active ? 'text-zest-400' : 'text-slate-500'} />
+                <span className="text-xs font-semibold">{t.credits.payment.channels[entry.id]}</span>
+              </button>
+            );
+          })}
         </div>
-        <input
-          type="checkbox"
-          checked={sendReceipt}
-          onChange={(event) => setSendReceipt(event.target.checked)}
-          className="w-4 h-4 accent-emerald-600 cursor-pointer"
-        />
       </div>
 
-      {/* Confirm CTA */}
-      <div className="mt-4">
-        <Button variant="secondary" size="md" fullWidth onClick={() => onSubmit(credit, amount)}>
-          <span className="material-symbols-outlined text-[18px] text-emerald-400">check_circle</span>
-          <span>Valider l'encaissement</span>
-        </Button>
+      <div className="flex items-center gap-3 p-3.5 rounded-2xl bg-slate-50 border border-line">
+        <Icon name="send_to_mobile" size={22} className="text-brand-600" />
+        <div className="flex-1 min-w-0">
+          <div className="text-sm font-semibold text-ink-900">{t.credits.payment.receipt}</div>
+          <div className="text-xs text-slate-500">{t.credits.payment.receiptHint}</div>
+        </div>
+        <Switch checked={sendReceipt} onChange={setSendReceipt} label={t.credits.payment.receipt} />
       </div>
     </Modal>
   );

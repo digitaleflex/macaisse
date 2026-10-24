@@ -1,10 +1,10 @@
 import { useState, type FormEvent } from 'react';
-import { Button, Input, Select } from '@/ui';
-import type { SelectOption } from '@/ui';
+import { t } from '@/content';
+import { EXPENSE_CATEGORIES, type ExpenseCategory } from '@/config/reference';
 import { parseMontant } from '@/domain/money';
+import { Button, Input, Select, Switch } from '@/ui';
 
-/** Catégories proposées à la saisie d'une sortie de caisse. */
-export type ExpenseCategory = 'Achat Stock' | 'Transport' | 'Factures' | 'Salaires' | 'Divers';
+export type { ExpenseCategory };
 
 export interface ExpenseFormValues {
   title: string;
@@ -18,21 +18,14 @@ export interface ExpenseFormProps {
   onCancel: () => void;
 }
 
-const CATEGORY_OPTIONS: SelectOption[] = [
-  { value: 'Achat Stock', label: 'Achat Stock' },
-  { value: 'Transport', label: 'Transport' },
-  { value: 'Factures', label: 'Factures' },
-  { value: 'Salaires', label: 'Salaires' },
-  { value: 'Divers', label: 'Divers' },
-];
-
+const CATEGORY_OPTIONS = EXPENSE_CATEGORIES.map((category) => ({ value: category, label: category }));
 const DEFAULT_AMOUNT = 5000;
 
 function isExpenseCategory(value: string): value is ExpenseCategory {
-  return CATEGORY_OPTIONS.some((option) => option.value === value);
+  return (EXPENSE_CATEGORIES as readonly string[]).includes(value);
 }
 
-/** Formulaire d'ajout d'une dépense (contrôlé localement, remonte des valeurs typées). */
+/** Formulaire d'ajout d'une dépense (état local, remonte des valeurs typées). */
 export function ExpenseForm({ onSubmit, onCancel }: ExpenseFormProps) {
   const [title, setTitle] = useState('');
   const [amount, setAmount] = useState<number>(DEFAULT_AMOUNT);
@@ -41,47 +34,35 @@ export function ExpenseForm({ onSubmit, onCancel }: ExpenseFormProps) {
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const trimmedTitle = title.trim();
-    if (trimmedTitle.length === 0 || amount <= 0) return;
-    onSubmit({ title: trimmedTitle, amount, category, hasReceipt });
+    const trimmed = title.trim();
+    if (trimmed.length === 0 || amount <= 0) return;
+    onSubmit({ title: trimmed, amount, category, hasReceipt });
   };
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="bg-white p-3.5 rounded-xl border border-slate-300 shadow-sm flex flex-col gap-2.5"
-    >
-      <div className="flex items-center justify-between pb-1 border-b border-slate-100">
-        <span className="text-xs font-bold text-slate-900">Nouvelle sortie de caisse</span>
-        <button
-          type="button"
-          onClick={onCancel}
-          className="text-slate-500 text-xs hover:text-slate-900 cursor-pointer"
-        >
-          Annuler
-        </button>
-      </div>
-
+    <form onSubmit={handleSubmit} className="rounded-2xl border border-line bg-slate-50/70 p-4 flex flex-col gap-3 animate-fade-in">
+      <div className="text-sm font-semibold text-ink-900">{t.expenses.form.title}</div>
       <Input
-        label="Motif de la dépense"
+        label={t.expenses.form.label}
         name="expense-title"
+        required
         value={title}
         onChange={(event) => setTitle(event.target.value)}
-        placeholder="Ex: Taxi livraison gros, Facture Eau..."
-        required
+        placeholder={t.expenses.form.labelPlaceholder}
       />
-
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-2 gap-3">
         <Input
-          label="Montant (FCFA)"
+          label={t.expenses.form.amount}
           name="expense-amount"
           type="number"
+          inputMode="numeric"
+          required
+          suffix={t.common.currency}
           value={amount}
           onChange={(event) => setAmount(parseMontant(event.target.value))}
-          required
         />
         <Select
-          label="Catégorie"
+          label={t.expenses.form.category}
           name="expense-category"
           value={category}
           onChange={(event) => {
@@ -90,25 +71,19 @@ export function ExpenseForm({ onSubmit, onCancel }: ExpenseFormProps) {
           options={CATEGORY_OPTIONS}
         />
       </div>
-
-      <div className="flex items-center justify-between pt-1">
-        <label
-          htmlFor="expense-receipt"
-          className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer"
-        >
-          <input
-            id="expense-receipt"
-            type="checkbox"
-            checked={hasReceipt}
-            onChange={(event) => setHasReceipt(event.target.checked)}
-            className="accent-slate-900"
-          />
-          <span>Justificatif / Reçu joint</span>
+      <div className="flex items-center justify-between gap-3 pt-1">
+        <label className="flex items-center gap-2.5 text-sm text-slate-600">
+          <Switch checked={hasReceipt} onChange={setHasReceipt} label={t.expenses.form.receipt} />
+          {t.expenses.form.receipt}
         </label>
-
-        <Button type="submit" variant="secondary" size="sm">
-          Enregistrer
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="ghost" size="sm" onClick={onCancel}>
+            {t.common.cancel}
+          </Button>
+          <Button type="submit" variant="primary" size="sm" icon="check">
+            {t.expenses.form.submit}
+          </Button>
+        </div>
       </div>
     </form>
   );

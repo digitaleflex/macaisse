@@ -1,64 +1,40 @@
-import { useEffect, useRef, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { createPortal } from 'react-dom';
+import { t } from '@/content';
+import { cn } from './cn';
+import { Icon } from './Icon';
+import { useOverlay } from './useOverlay';
 
 /**
- * Modal — primitive visuelle partagée (aucune connaissance métier).
- *
- * Backdrop & panel repris À L'IDENTIQUE de `ExportModal.tsx` :
- *   - backdrop : `fixed inset-0 z-50 flex items-end sm:items-center justify-center
- *     bg-[#0b1c30]/70 backdrop-blur-xs p-3 animate-fadeIn`
- *   - panel    : `w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden
- *     flex flex-col border border-slate-200/80 max-h-[92vh]`
- *
- * En-têtes (`headerVariant`) :
- *   - 'light' (défaut) → en-tête clair de la majorité des modales
- *     (Profil, Abonnement, Dépenses…) : `bg-slate-50 border-b border-slate-100`,
- *     titre seul + bouton de fermeture clair.
- *   - 'dark' → en-tête de `ExportModal.tsx` / `ReceiptModal.tsx` :
- *     `bg-slate-900 text-white`, structure icône (carré `bg-emerald-500`) +
- *     titre + sous-titre, bouton de fermeture translucide lisible sur fond sombre.
- *     À réserver à l'export comptable et au reçu (ticket de caisse) ; `light`
- *     par défaut partout ailleurs.
- *
- * Durcissement par rapport aux modales historiques :
- *   - `role="dialog"` + `aria-modal="true"` ;
- *   - fermeture par la touche Échap ;
- *   - verrouillage du scroll du <body> tant que la modale est ouverte ;
- *   - focus déplacé dans le dialogue à l'ouverture, restauré à la fermeture ;
- *   - rendu via `createPortal` dans `document.body` ;
- *   - `open === false` ⇒ ne rend rien (remplace les `if (!isOpen) return null`).
- *   - `size` : sm = max-w-sm, md = max-w-md (défaut), lg = max-w-lg.
- *   - `closeOnBackdrop` : vrai par défaut.
+ * Modal — feuille basse sur mobile, boîte centrée à partir de `sm`.
+ * `role="dialog"`, Échap, scroll verrouillé, focus géré, rendu en portail.
+ * `headerVariant="dark"` : en-tête encre (reçu, export).
  */
 
-export type ModalSize = 'sm' | 'md' | 'lg';
-
-/**
- * `dark` est réservé aux modales Export et Reçu (ticket de caisse) ;
- * `light` (défaut) est utilisé par toutes les autres modales.
- */
+export type ModalSize = 'sm' | 'md' | 'lg' | 'xl';
 export type ModalHeaderVariant = 'light' | 'dark';
 
 export interface ModalProps {
   open: boolean;
   onClose: () => void;
   title?: ReactNode;
-  /** Sous-titre affiché uniquement en en-tête `dark` (export / reçu). */
   subtitle?: ReactNode;
-  /** Icône affichée uniquement en en-tête `dark` — nom Material Symbol ou nœud React. */
-  icon?: ReactNode;
+  icon?: string;
   footer?: ReactNode;
   size?: ModalSize;
-  /** `dark` (export / reçu) ou `light` (défaut, toutes les autres modales). */
   headerVariant?: ModalHeaderVariant;
   closeOnBackdrop?: boolean;
+  bodyClassName?: string;
+  /** Corps sans marge interne (contenu pleine largeur). */
+  flush?: boolean;
   children: ReactNode;
 }
 
 const SIZE_CLASS: Record<ModalSize, string> = {
-  sm: 'max-w-sm',
-  md: 'max-w-md',
-  lg: 'max-w-lg',
+  sm: 'sm:max-w-sm',
+  md: 'sm:max-w-md',
+  lg: 'sm:max-w-lg',
+  xl: 'sm:max-w-2xl',
 };
 
 export function Modal({
@@ -71,104 +47,22 @@ export function Modal({
   size = 'md',
   headerVariant = 'light',
   closeOnBackdrop = true,
+  bodyClassName,
+  flush = false,
   children,
 }: ModalProps) {
-  const panelRef = useRef<HTMLDivElement>(null);
-  const previouslyFocused = useRef<HTMLElement | null>(null);
+  const panelRef = useOverlay(open, onClose);
 
-  // Échap pour fermer.
-  useEffect(() => {
-    if (!open) return;
-    const handleKeyDown = (event: KeyboardEvent): void => {
-      if (event.key === 'Escape') {
-        onClose();
-      }
-    };
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [open, onClose]);
+  if (!open || typeof document === 'undefined') return null;
 
-  // Verrouillage du scroll du document.
-  useEffect(() => {
-    if (!open) return;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = previousOverflow;
-    };
-  }, [open]);
-
-  // Déplacement puis restauration du focus.
-  useEffect(() => {
-    if (!open) return;
-    previouslyFocused.current = document.activeElement as HTMLElement | null;
-    const raf = requestAnimationFrame(() => panelRef.current?.focus());
-    return () => {
-      cancelAnimationFrame(raf);
-      previouslyFocused.current?.focus?.();
-    };
-  }, [open]);
-
-  if (!open) return null;
-  if (typeof document === 'undefined') return null;
-
-  const hasHeader = title !== undefined && title !== null;
-  const hasSubtitle = subtitle !== undefined && subtitle !== null;
-  const hasIcon = icon !== undefined && icon !== null;
+  const dark = headerVariant === 'dark';
   const ariaLabel = typeof title === 'string' ? title : undefined;
-
-  const lightHeader = (
-    <div className="p-4 flex items-center justify-between border-b border-slate-100 bg-slate-50">
-      <h2 className="font-display font-bold text-sm text-slate-900">{title}</h2>
-      <button
-        type="button"
-        onClick={onClose}
-        aria-label="Fermer"
-        className="w-8 h-8 rounded-full bg-white flex items-center justify-center text-slate-500 hover:text-slate-900 shadow-2xs border border-slate-200 cursor-pointer"
-      >
-        <span className="material-symbols-outlined text-[18px]">close</span>
-      </button>
-    </div>
-  );
-
-  // En-tête repris à l'identique de `ExportModal.tsx` (icône + titre + sous-titre).
-  const darkHeader = (
-    <div className="p-4 bg-slate-900 text-white flex items-center justify-between">
-      <div className="flex items-center gap-2.5">
-        {hasIcon && (
-          <div className="w-8 h-8 rounded-lg bg-emerald-500 text-white flex items-center justify-center">
-            {typeof icon === 'string' ? (
-              <span className="material-symbols-outlined text-[20px]">{icon}</span>
-            ) : (
-              icon
-            )}
-          </div>
-        )}
-        <div>
-          <h2 className="font-display font-bold text-sm text-white">{title}</h2>
-          {hasSubtitle && <p className="text-[10px] text-slate-300">{subtitle}</p>}
-        </div>
-      </div>
-      <button
-        type="button"
-        onClick={onClose}
-        aria-label="Fermer"
-        className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors cursor-pointer"
-      >
-        <span className="material-symbols-outlined text-[18px]">close</span>
-      </button>
-    </div>
-  );
-
-  const header = hasHeader ? (headerVariant === 'dark' ? darkHeader : lightHeader) : null;
 
   return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-[#0b1c30]/70 backdrop-blur-xs p-3 animate-fadeIn"
+      className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center sm:p-6 bg-ink-950/55 backdrop-blur-[2px] animate-fade-in"
       onMouseDown={(event) => {
-        if (closeOnBackdrop && event.target === event.currentTarget) {
-          onClose();
-        }
+        if (closeOnBackdrop && event.target === event.currentTarget) onClose();
       }}
     >
       <div
@@ -177,14 +71,62 @@ export function Modal({
         aria-modal="true"
         aria-label={ariaLabel}
         tabIndex={-1}
-        className={`w-full ${SIZE_CLASS[size]} bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col border border-slate-200/80 max-h-[92vh] outline-none`}
+        className={cn(
+          'w-full bg-white shadow-overlay flex flex-col outline-none overflow-hidden',
+          'rounded-t-3xl sm:rounded-3xl max-h-[92dvh] animate-slide-up sm:animate-pop',
+          SIZE_CLASS[size]
+        )}
       >
-        {header}
+        <div className="sm:hidden flex justify-center pt-2.5 -mb-1 relative z-10">
+          <span className={cn('h-1 w-10 rounded-full', dark ? 'bg-white/25' : 'bg-slate-200')} />
+        </div>
+        {title !== undefined && (
+          <header
+            className={cn(
+              'flex items-center justify-between gap-3 px-5 sm:px-6 py-4',
+              dark ? 'bg-ink-900 text-white bg-grid-ink' : 'border-b border-line'
+            )}
+          >
+            <div className="flex items-center gap-3 min-w-0">
+              {icon && (
+                <span
+                  className={cn(
+                    'size-10 rounded-xl flex items-center justify-center shrink-0',
+                    dark ? 'bg-zest-400 text-ink-950' : 'bg-slate-100 text-ink-900'
+                  )}
+                >
+                  <Icon name={icon} size={20} />
+                </span>
+              )}
+              <div className="min-w-0">
+                <h2 className={cn('font-display font-bold text-base leading-tight', dark ? 'text-white' : 'text-ink-900')}>
+                  {title}
+                </h2>
+                {subtitle && (
+                  <p className={cn('text-xs mt-0.5 truncate', dark ? 'text-slate-400' : 'text-slate-500')}>{subtitle}</p>
+                )}
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label={t.common.close}
+              className={cn(
+                'size-9 rounded-xl flex items-center justify-center shrink-0 transition-colors cursor-pointer',
+                dark ? 'bg-white/10 text-white hover:bg-white/20' : 'text-slate-500 hover:text-ink-900 hover:bg-slate-100'
+              )}
+            >
+              <Icon name="close" size={20} />
+            </button>
+          </header>
+        )}
 
-        <div className="p-4 space-y-4 overflow-y-auto flex-1">{children}</div>
+        <div className={cn(flush ? 'flex flex-col min-h-0' : 'px-5 sm:px-6 py-5 space-y-5', 'overflow-y-auto flex-1', bodyClassName)}>{children}</div>
 
         {footer !== undefined && footer !== null && (
-          <div className="p-3 bg-slate-50 border-t border-slate-200/80 flex gap-2">{footer}</div>
+          <footer className="px-5 sm:px-6 py-4 border-t border-line bg-slate-50/70 flex gap-2 pb-[max(1rem,env(safe-area-inset-bottom))]">
+            {footer}
+          </footer>
         )}
       </div>
     </div>,

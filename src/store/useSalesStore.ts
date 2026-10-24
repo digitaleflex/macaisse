@@ -8,7 +8,8 @@ import { nextSaleNumber } from '@/domain/ids';
 import { isSameDay, parseDate } from '@/domain/dates';
 import { completeSale as buildSale } from '@/domain/sales';
 import { dailyRevenueSeries } from '@/domain/finances';
-import { SEED_SALES } from '@/data/seed';
+import { SEED_SALES } from '@/mocks';
+import { syncRemote } from '@/services';
 import { useCartStore } from './useCartStore';
 import { useProductsStore } from './useProductsStore';
 import {
@@ -68,6 +69,7 @@ export const useSalesStore = create<SalesState>()(
         useProductsStore.getState().setProducts(updatedProducts);
         useCartStore.getState().clear();
         set((state) => ({ sales: [sale, ...state.sales], sequence }));
+        syncRemote((api) => api.sales.create({ sale, lines }), 'Vente non synchronisée.');
 
         return sale;
       },

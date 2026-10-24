@@ -1,8 +1,8 @@
 export { VentesView } from './VentesView';
 export { ProductCard } from './ProductCard';
-export type { ProductCardProps } from './ProductCard';
-export { CartPanel } from './CartPanel';
-export type { CartPanelProps } from './CartPanel';
+export { CartPanel, MobileCartBar } from './CartPanel';
 export { PaymentPad } from './PaymentPad';
-export type { PaymentPadProps, PaymentPayload } from './PaymentPad';
 export { ReceiptModal } from './ReceiptModal';
+export type { ProductCardProps } from './ProductCard';
+export type { CartPanelProps } from './CartPanel';
+export type { PaymentPadProps, PaymentPayload } from './PaymentPad';

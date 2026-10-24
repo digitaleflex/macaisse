@@ -1,29 +1,31 @@
 import type { TabType } from '@/types';
+import { t } from '@/content';
+import { TAB_ICON, TAB_ORDER } from '@/config/reference';
 
 /** Définition d'un onglet de navigation : identifiant, libellés et icône. */
 export interface TabDefinition {
   id: TabType;
-  /** Libellé court de la barre de navigation inférieure. */
+  /** Libellé court (navigation). */
   label: string;
-  /** Libellé long affiché sous le logo dans l'en-tête. */
+  /** Titre de page (en-tête). */
   title: string;
+  /** Sous-titre de page. */
+  description: string;
   /** Nom d'icône Material Symbols. */
   icon: string;
 }
 
-/**
- * Source unique de vérité de la navigation, consommée par `app/Header.tsx` et
- * `app/BottomNav.tsx` : les libellés et icônes ne sont donc définis qu'ici.
- */
-export const TABS: readonly TabDefinition[] = [
-  { id: 'accueil', label: 'Accueil', title: 'Accueil', icon: 'dashboard' },
-  { id: 'ventes', label: 'Ventes', title: 'Ventes POS', icon: 'point_of_sale' },
-  { id: 'stock', label: 'Stock', title: 'Stock & Réserves', icon: 'inventory_2' },
-  { id: 'credits', label: 'Crédits', title: 'Crédits Clients', icon: 'account_balance_wallet' },
-  { id: 'bilan', label: 'Bilan', title: 'Bilan Financier', icon: 'insights' },
-];
+/** Source unique de la navigation, dérivée du contenu (`@/content`) et du référentiel. */
+export const TABS: readonly TabDefinition[] = TAB_ORDER.map((id) => ({
+  id,
+  icon: TAB_ICON[id],
+  ...t.nav[id],
+}));
 
-/** Libellé long d'un onglet, avec repli sûr « Caisse ». */
+export function tabDefinition(tab: TabType): TabDefinition {
+  return TABS.find((entry) => entry.id === tab) ?? TABS[0];
+}
+
 export function tabTitle(tab: TabType): string {
-  return TABS.find((entry) => entry.id === tab)?.title ?? 'Caisse';
+  return tabDefinition(tab).title;
 }

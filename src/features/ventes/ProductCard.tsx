@@ -1,92 +1,66 @@
-import type { Product, StockStatus } from '@/types';
+import type { Product } from '@/types';
+import { t } from '@/content';
 import { formatFCFA } from '@/domain/money';
 import { computeStockStatus } from '@/domain/stock';
-
-/**
- * Carte produit du catalogue POS : image, nom, prix, pastille de stock et
- * compteur d'articles déjà présents au panier. Un clic (carte ou bouton « + »)
- * remonte au parent via `onAdd` ; aucune règle métier ici.
- */
+import { Icon, cn } from '@/ui';
+import { ProductThumb } from '@/features/shared/ProductThumb';
 
 export interface ProductCardProps {
   product: Product;
-  /** Quantité déjà au panier pour ce produit (badge sur l'image). */
   quantityInCart: number;
   onAdd: (product: Product) => void;
 }
 
-const STOCK_PILL_CLASS: Record<StockStatus, string> = {
-  rupture: 'bg-rose-50/95 text-rose-700 border-rose-200',
-  faible: 'bg-amber-50/95 text-amber-700 border-amber-200',
-  disponible: 'bg-white/95 text-emerald-800 border-emerald-200/80',
-};
-
+/** Carte produit du catalogue POS — un clic ajoute au panier. */
 export function ProductCard({ product, quantityInCart, onAdd }: ProductCardProps) {
   const status = product.status ?? computeStockStatus(product.stock, product.minStockAlert);
-  const stockLabel =
-    status === 'rupture'
-      ? 'Rupture'
-      : status === 'faible'
-        ? `Stock faible (${product.stock})`
-        : `En stock (${product.stock})`;
+  const soldOut = status === 'rupture';
+  const stockLabel = soldOut
+    ? t.pos.soldOut
+    : status === 'faible'
+      ? t.pos.lowStock(product.stock)
+      : t.pos.inStock(product.stock);
 
   return (
-    <div
+    <button
+      type="button"
       onClick={() => onAdd(product)}
-      role="button"
-      tabIndex={0}
-      className="product-card flex flex-col justify-between bg-white p-2.5 rounded-2xl shadow-2xs border border-slate-200/80 active:scale-[0.98] transition-all cursor-pointer relative overflow-hidden group hover:border-slate-300 hover:shadow-xs"
+      aria-label={t.pos.add(product.name)}
+      className={cn(
+        'product-card group relative flex flex-col text-left bg-surface rounded-2xl border shadow-card overflow-hidden transition-all cursor-pointer',
+        'hover:shadow-raised hover:-translate-y-0.5 active:scale-[0.98]',
+        quantityInCart > 0 ? 'border-ink-900 ring-1 ring-ink-900' : 'border-line hover:border-line-strong',
+        soldOut && 'opacity-60'
+      )}
     >
-      <div className="flex flex-col">
-        <div className="w-full h-28 rounded-xl overflow-hidden relative mb-2 bg-slate-100">
-          <img
-            src={product.imageUrl}
-            alt={product.imageAlt ?? product.name}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-            referrerPolicy="no-referrer"
-          />
-
-          {/* Pastille de stock */}
-          <span
-            className={`absolute top-1.5 left-1.5 px-2 py-0.5 rounded-md text-[10px] font-semibold backdrop-blur-xs shadow-2xs border ${STOCK_PILL_CLASS[status]}`}
-          >
-            {stockLabel}
-          </span>
-
-          {/* Compteur au panier */}
-          {quantityInCart > 0 && (
-            <span className="absolute bottom-1.5 right-1.5 w-6 h-6 rounded-full bg-slate-900 text-emerald-400 text-xs font-display font-bold flex items-center justify-center shadow-md ring-2 ring-white">
-              {quantityInCart}
-            </span>
+      <div className="relative aspect-[4/3] bg-slate-100 overflow-hidden">
+        <ProductThumb product={product} className="size-full group-hover:scale-105 transition-transform duration-300" />
+        <span
+          className={cn(
+            'absolute top-2 left-2 px-2 py-0.5 rounded-md text-[11px] font-semibold backdrop-blur-sm',
+            soldOut ? 'bg-rose-600 text-white' : status === 'faible' ? 'bg-amber-400 text-ink-950' : 'bg-white/90 text-ink-900'
           )}
-        </div>
-
-        <span className="font-display font-bold text-xs text-slate-900 leading-tight line-clamp-2">
-          {product.name}
-        </span>
-        <span className="text-[10px] text-slate-500 mt-0.5">{product.category}</span>
-      </div>
-
-      <div className="flex items-center justify-between mt-3 pt-1.5 border-t border-slate-100">
-        <div className="flex flex-col">
-          <span className="font-display font-bold text-sm text-slate-900 font-num">
-            {formatFCFA(product.price, { withSuffix: false })}
-          </span>
-          <span className="text-[10px] text-slate-400 leading-none">FCFA</span>
-        </div>
-
-        <button
-          type="button"
-          aria-label={`Ajouter ${product.name} au panier`}
-          onClick={(event) => {
-            event.stopPropagation();
-            onAdd(product);
-          }}
-          className="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-900 hover:text-emerald-400 text-slate-800 flex items-center justify-center transition-colors active:scale-90 cursor-pointer"
         >
-          <span className="material-symbols-outlined text-[18px]">add</span>
-        </button>
+          {stockLabel}
+        </span>
+        {quantityInCart > 0 && (
+          <span className="absolute top-2 right-2 min-w-7 h-7 px-1.5 rounded-full bg-ink-900 text-zest-400 text-sm font-bold flex items-center justify-center shadow-raised font-num animate-pop">
+            {quantityInCart}
+          </span>
+        )}
       </div>
-    </div>
+      <div className="p-3 flex flex-col gap-2 flex-1">
+        <span className="text-[13px] font-semibold text-ink-900 leading-snug line-clamp-2 min-h-[2.4em]">{product.name}</span>
+        <div className="flex items-end justify-between gap-2 mt-auto">
+          <span className="font-num font-bold text-[15px] text-ink-900">
+            {formatFCFA(product.price, { withSuffix: false })}
+            <span className="text-[11px] font-semibold text-slate-400 ml-1">{t.common.currencyShort}</span>
+          </span>
+          <span className="size-8 rounded-lg bg-slate-100 text-ink-900 flex items-center justify-center group-hover:bg-ink-900 group-hover:text-zest-400 transition-colors">
+            <Icon name="add" size={20} />
+          </span>
+        </div>
+      </div>
+    </button>
   );
 }

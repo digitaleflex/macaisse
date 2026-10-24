@@ -11,6 +11,17 @@ export default defineConfig(() => {
         '@': path.resolve(__dirname, './src'),
       },
     },
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            react: ['react', 'react-dom', 'zustand'],
+            charts: ['recharts'],
+            pdf: ['jspdf', 'jspdf-autotable'],
+          },
+        },
+      },
+    },
     server: {
       // Le HMR est désactivé dans AI Studio via la variable d'environnement DISABLE_HMR.
       // Ne pas modifier : la surveillance des fichiers est coupée pour éviter les

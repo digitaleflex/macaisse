@@ -1,91 +1,40 @@
-import { selectPreferences, useUiStore } from '@/store/useUiStore';
+import { t } from '@/content';
+import { selectPreferences, useUiStore, type UiPreferences } from '@/store/useUiStore';
+import { Icon, Switch } from '@/ui';
 
-/**
- * PosSettings — configuration du point de vente (ProfilModal).
- * Les quatre interrupteurs sont adossés à `useUiStore.preferences` via
- * `updatePreferences` : ils persistent réellement (localStorage).
- */
-
-interface ToggleRow {
-  icon: string;
-  iconClass: string;
-  label: string;
-  hint: string;
-  hintClass: string;
-  checked: boolean;
-  onToggle: (checked: boolean) => void;
-}
+/** Préférences du point de vente — persistées via `useUiStore.preferences`. */
+const ROWS: { key: keyof UiPreferences; icon: string; content: { label: string; hint: string } }[] = [
+  { key: 'deductionAutoStock', icon: 'inventory_2', content: t.profile.settings.autoStock },
+  { key: 'alertesSmsRupture', icon: 'sms', content: t.profile.settings.smsAlerts },
+  { key: 'imprimanteBluetooth', icon: 'print', content: t.profile.settings.printer },
+  { key: 'bipSonoreScan', icon: 'volume_up', content: t.profile.settings.beep },
+];
 
 export function PosSettings() {
   const preferences = useUiStore(selectPreferences);
   const updatePreferences = useUiStore((state) => state.updatePreferences);
 
-  const rows: ToggleRow[] = [
-    {
-      icon: 'inventory_2',
-      iconClass: 'text-slate-700',
-      label: 'Déduction auto du stock',
-      hint: 'Diminue les quantités dès encaissement',
-      hintClass: 'text-slate-500',
-      checked: preferences.deductionAutoStock,
-      onToggle: (checked) => updatePreferences({ deductionAutoStock: checked }),
-    },
-    {
-      icon: 'notifications_active',
-      iconClass: 'text-rose-600',
-      label: 'Alertes SMS Rupture',
-      hint: 'Avertir quand le stock est bas',
-      hintClass: 'text-slate-500',
-      checked: preferences.alertesSmsRupture,
-      onToggle: (checked) => updatePreferences({ alertesSmsRupture: checked }),
-    },
-    {
-      icon: 'print',
-      iconClass: 'text-slate-900',
-      label: 'Imprimante thermique Bluetooth',
-      hint: 'Connectée (POS-5801)',
-      hintClass: 'text-emerald-700 font-semibold',
-      checked: preferences.imprimanteBluetooth,
-      onToggle: (checked) => updatePreferences({ imprimanteBluetooth: checked }),
-    },
-    {
-      icon: 'volume_up',
-      iconClass: 'text-slate-500',
-      label: 'Bip sonore scan',
-      hint: 'Confirmation audio au scan',
-      hintClass: 'text-slate-500',
-      checked: preferences.bipSonoreScan,
-      onToggle: (checked) => updatePreferences({ bipSonoreScan: checked }),
-    },
-  ];
-
   return (
-    <div className="space-y-2">
-      <span className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold block px-1">
-        Configuration du Point de Vente
-      </span>
-
-      <div className="bg-white rounded-xl border border-slate-200/80 divide-y divide-slate-100 shadow-2xs">
-        {rows.map((row) => (
-          <div key={row.label} className="p-3 flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <span className={`material-symbols-outlined ${row.iconClass} text-[20px]`}>
-                {row.icon}
-              </span>
-              <div className="flex flex-col">
-                <span className="text-xs font-bold text-slate-900">{row.label}</span>
-                <span className={`text-[10px] ${row.hintClass}`}>{row.hint}</span>
-              </div>
+    <section className="space-y-2">
+      <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 px-1">{t.profile.posSettings}</h3>
+      <ul className="rounded-2xl border border-line divide-y divide-line">
+        {ROWS.map((row) => (
+          <li key={row.key} className="flex items-center gap-3 px-4 py-3">
+            <span className="size-9 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center shrink-0">
+              <Icon name={row.icon} size={19} />
+            </span>
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-semibold text-ink-900">{row.content.label}</div>
+              <div className="text-xs text-slate-500">{row.content.hint}</div>
             </div>
-            <input
-              type="checkbox"
-              checked={row.checked}
-              onChange={(event) => row.onToggle(event.target.checked)}
-              className="w-4 h-4 accent-slate-900 cursor-pointer"
+            <Switch
+              checked={preferences[row.key]}
+              onChange={(checked) => updatePreferences({ [row.key]: checked })}
+              label={row.content.label}
             />
-          </div>
+          </li>
         ))}
-      </div>
-    </div>
+      </ul>
+    </section>
   );
 }

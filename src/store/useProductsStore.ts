@@ -6,7 +6,8 @@ import { persist } from 'zustand/middleware';
 import type { Product, ProductInput } from '@/types';
 import { createId } from '@/domain/ids';
 import { computeStockStatus, isLowStock, retailValue, stockValue } from '@/domain/stock';
-import { SEED_PRODUCTS } from '@/data/seed';
+import { SEED_PRODUCTS } from '@/mocks';
+import { syncRemote } from '@/services';
 import {
   coerceId,
   coerceNumber,
@@ -52,22 +53,27 @@ export const useProductsStore = create<ProductsState>()(
     (set, get) => ({
       products: SEED_PRODUCTS.map(sanitizeProduct),
 
-      addProduct: (input) =>
-        set((state) => ({
-          products: [{ ...input, id: createId('product') }, ...state.products],
-        })),
+      addProduct: (input) => {
+        const product = sanitizeProduct({ ...input, id: createId('product') });
+        set((state) => ({ products: [product, ...state.products] }));
+        syncRemote((api) => api.products.create(product), 'Produit non synchronisé.');
+      },
 
-      updateProduct: (id, patch) =>
+      updateProduct: (id, patch) => {
         set((state) => ({
           products: state.products.map((product) =>
-            product.id === id ? sanitizeProduct({ ...product, ...patch }) : product
+            product.id === id ? sanitizeProduct({ ...product, ...patch, id }) : product
           ),
-        })),
+        }));
+        syncRemote((api) => api.products.update(id, patch), 'Modification non synchronisée.');
+      },
 
-      removeProduct: (id) =>
+      removeProduct: (id) => {
         set((state) => ({
           products: state.products.filter((product) => product.id !== id),
-        })),
+        }));
+        syncRemote((api) => api.products.remove(id), 'Suppression non synchronisée.');
+      },
 
       restock: (id, quantity) => {
         if (!Number.isFinite(quantity) || quantity <= 0) {
@@ -81,6 +87,7 @@ export const useProductsStore = create<ProductsState>()(
             product.id === id ? sanitizeProduct({ ...product, stock: product.stock + quantity }) : product
           ),
         }));
+        syncRemote((api) => api.products.restock(id, quantity), 'Réapprovisionnement non synchronisé.');
       },
 
       decrementStock: (updates) => {

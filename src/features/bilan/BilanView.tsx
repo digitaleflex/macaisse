@@ -1,13 +1,8 @@
 import { useMemo, useState } from 'react';
 import type { SeriesPoint } from '@/types';
+import { t } from '@/content';
 import { addDays, parseDate } from '@/domain/dates';
-import {
-  cashFlowSeries,
-  channelSplit,
-  computeKpis,
-  dailyRevenueSeries,
-  expenseBreakdown,
-} from '@/domain/finances';
+import { cashFlowSeries, channelSplit, computeKpis, dailyRevenueSeries, expenseBreakdown } from '@/domain/finances';
 import { formatFCFA } from '@/domain/money';
 import { retailValue } from '@/domain/stock';
 import { exportToCSV, exportToPDF } from '@/lib/export';
@@ -15,49 +10,43 @@ import { expensesInRange, useExpensesStore } from '@/store/useExpensesStore';
 import { useCreditsStore } from '@/store/useCreditsStore';
 import { useProductsStore } from '@/store/useProductsStore';
 import { useSalesStore } from '@/store/useSalesStore';
+import { useCurrentSession } from '@/store/useSessionStore';
 import { useUiStore } from '@/store/useUiStore';
+import { Badge, Button, Card, Icon, PageHeader, SegmentedControl, cn } from '@/ui';
 import { CashFlowChart } from './CashFlowChart';
 import { ChannelSplit } from './ChannelSplit';
 import { ExpenseBreakdown } from './ExpenseBreakdown';
 import { RevenueChart } from './RevenueChart';
 
 /**
- * BilanView — rapport financier. Aucune donnée métier en props : séries, KPI et
- * répartitions sont dérivés des stores via `@/domain/finances`, et l'export
- * passe par `@/lib/export`.
+ * Bilan financier : KPI, séries et répartitions dérivés des stores via
+ * `@/domain/finances` ; export via `@/lib/export`.
  */
-type Period = 'today' | '7d' | '30d';
+type Period = '7d' | '14d' | '30d';
 
-const PERIOD_DAYS: Record<Period, number> = { today: 1, '7d': 7, '30d': 30 };
-const PERIOD_LABEL: Record<Period, string> = {
-  today: "Aujourd'hui",
-  '7d': '7 jours',
-  '30d': '30 jours',
-};
-const PERIOD_TABS: { id: Period; label: string }[] = [
-  { id: 'today', label: "Aujourd'hui" },
-  { id: '7d', label: '7 jours' },
-  { id: '30d', label: '30 jours' },
+const PERIOD_DAYS: Record<Period, number> = { '7d': 7, '14d': 14, '30d': 30 };
+const PERIOD_OPTIONS: { value: Period; label: string }[] = [
+  { value: '7d', label: t.periods['7d'] },
+  { value: '14d', label: t.periods['14d'] },
+  { value: '30d', label: t.periods['30d'] },
 ];
 
-function withDayLabels(points: SeriesPoint[]): SeriesPoint[] {
+function withDayLabels(points: SeriesPoint[], days: number): SeriesPoint[] {
   return points.map((point) => {
     const date = parseDate(point.date);
-    return {
-      ...point,
-      label: date ? date.toLocaleDateString('fr-FR', { weekday: 'short' }) : point.date,
-    };
+    const label = date
+      ? days <= 7
+        ? date.toLocaleDateString('fr-FR', { weekday: 'short' })
+        : date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
+      : point.date;
+    return { ...point, label };
   });
 }
 
-function growthRate(current: number, previous: number): number | null {
-  if (previous <= 0) return null;
-  return ((current - previous) / previous) * 100;
-}
-
 export function BilanView() {
-  const [period, setPeriod] = useState<Period>('30d');
+  const [period, setPeriod] = useState<Period>('14d');
   const now = useMemo(() => new Date(), []);
+  const { business } = useCurrentSession();
 
   const sales = useSalesStore((state) => state.sales);
   const expenses = useExpensesStore((state) => state.expenses);
@@ -69,26 +58,16 @@ export function BilanView() {
   const days = PERIOD_DAYS[period];
   const from = useMemo(() => addDays(now, -(days - 1)), [now, days]);
 
-  const revenueSeries = useMemo(
-    () => withDayLabels(dailyRevenueSeries(sales, days, now)),
-    [sales, days, now],
-  );
-  const cashFlow = useMemo(
-    () => withDayLabels(cashFlowSeries(sales, expenses, days, now)),
-    [sales, expenses, days, now],
-  );
-  const expenseSlices = useMemo(
-    () => expenseBreakdown(expenses, from, now),
-    [expenses, from, now],
-  );
+  const revenueSeries = useMemo(() => withDayLabels(dailyRevenueSeries(sales, days, now), days), [sales, days, now]);
+  const cashFlow = useMemo(() => withDayLabels(cashFlowSeries(sales, expenses, days, now), days), [sales, expenses, days, now]);
+  const expenseSlices = useMemo(() => expenseBreakdown(expenses, from, now), [expenses, from, now]);
   const channels = useMemo(() => channelSplit(sales), [sales]);
 
   const stats = useMemo(() => {
     const series = dailyRevenueSeries(sales, days * 2, now);
     const revenue = series.slice(days).reduce((sum, point) => sum + point.value, 0);
     const previous = series.slice(0, days).reduce((sum, point) => sum + point.value, 0);
-    const rangeExpenses = expensesInRange(expenses, from, now);
-    const expenseTotal = rangeExpenses.reduce((sum, expense) => sum + expense.amount, 0);
+    const expenseTotal = expensesInRange(expenses, from, now).reduce((sum, expense) => sum + expense.amount, 0);
     const margin = computeKpis({ sales, expenses, credits, products }, now).margin;
     const retail = retailValue(products);
     return {
@@ -100,237 +79,115 @@ export function BilanView() {
     };
   }, [sales, expenses, credits, products, days, from, now]);
 
-  const growth = growthRate(stats.revenue, stats.previous);
+  const growth = stats.previous > 0 ? ((stats.revenue - stats.previous) / stats.previous) * 100 : null;
+  const periodLabel = PERIOD_OPTIONS.find((option) => option.value === period)?.label ?? '';
 
   const handleExportCSV = () => {
     exportToCSV('all', sales, expenses);
-    showToast('Fichier CSV comptable complet téléchargé.', 'success');
+    showToast(t.bilan.exports.csvDone, 'success');
   };
-
   const handleExportPDF = () => {
-    exportToPDF('all', sales, expenses);
-    showToast('Rapport PDF comptable officiel téléchargé.', 'success');
+    exportToPDF('all', sales, expenses, business);
+    showToast(t.bilan.exports.pdfDone, 'success');
   };
 
   return (
-    <div className="flex flex-col w-full px-4 space-y-4 pb-28 pt-2">
-      {/* En-tête */}
-      <div className="flex items-center justify-between pt-1">
-        <div>
-          <div className="flex items-center gap-1.5">
-            <h1 className="font-display text-lg font-bold text-slate-900">Bilan Financier</h1>
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/80">
-              Temps réel
-            </span>
-          </div>
-          <p className="text-[11px] text-slate-500">
-            Synthèse comptable &amp; performance commerciale
-          </p>
-        </div>
+    <div className="flex flex-col gap-6">
+      <PageHeader
+        title={t.nav.bilan.title}
+        description={t.nav.bilan.description}
+        actions={
+          <>
+            <SegmentedControl label={t.nav.bilan.title} value={period} onChange={setPeriod} options={PERIOD_OPTIONS} />
+            <Button variant="secondary" icon="download" onClick={() => openModal('export')}>
+              {t.bilan.exportButton}
+            </Button>
+          </>
+        }
+      />
 
-        <button
-          type="button"
-          onClick={() => openModal('export')}
-          className="w-9 h-9 rounded-xl bg-white hover:bg-slate-50 flex items-center justify-center text-slate-700 shadow-2xs border border-slate-200/80 active:scale-95 transition-all cursor-pointer"
-          title="Exporter le rapport comptable (CSV / PDF)"
-        >
-          <span className="material-symbols-outlined text-[18px]">download</span>
-        </button>
-      </div>
-
-      {/* Filtre de période */}
-      <div className="flex p-1 bg-slate-100 rounded-xl w-full gap-1 border border-slate-200/80">
-        {PERIOD_TABS.map((tab) => (
-          <button
-            key={tab.id}
-            type="button"
-            onClick={() => setPeriod(tab.id)}
-            className={`flex-1 py-1.5 rounded-lg text-center text-xs font-semibold transition-all ${
-              period === tab.id
-                ? 'bg-white text-slate-900 shadow-2xs'
-                : 'text-slate-500 hover:text-slate-900'
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
-      {/* KPI principal */}
-      <div className="relative overflow-hidden bg-white p-4 rounded-2xl shadow-2xs border border-slate-200/80">
-        <div className="flex items-start justify-between">
-          <div className="flex flex-col">
-            <span className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">
-              Bénéfice Net Réalisé ({PERIOD_LABEL[period]})
-            </span>
-            <div className="flex items-baseline gap-1.5 mt-1">
-              <span className="font-display font-bold text-3xl text-slate-900 tracking-tight font-num">
-                {stats.net >= 0 ? '+' : ''}
-                {formatFCFA(stats.net)}
-              </span>
+      <section className="relative overflow-hidden rounded-card bg-ink-900 text-white p-6 sm:p-7 bg-grid-ink shadow-raised">
+        <div className="absolute -left-10 -top-24 size-72 rounded-full bg-brand-500/20 blur-3xl pointer-events-none" />
+        <div className="relative grid lg:grid-cols-[1.4fr_1fr_1fr_1fr] gap-6 lg:gap-0 lg:divide-x lg:divide-white/10">
+          <div className="lg:pr-6">
+            <div className="text-sm text-slate-400">{t.bilan.netTitle(periodLabel)}</div>
+            <div className="font-num font-extrabold text-4xl mt-2 tracking-tight">
+              {stats.net >= 0 ? '+' : ''}
+              {formatFCFA(stats.net)}
             </div>
-            <div
-              className={`flex items-center gap-1 text-xs font-bold mt-1 ${
-                growth === null || growth >= 0 ? 'text-emerald-700' : 'text-rose-600'
-              }`}
+            <div className="mt-3">
+              {growth === null ? (
+                <Badge tone="zest">{t.common.insufficientHistory}</Badge>
+              ) : (
+                <Badge tone={growth >= 0 ? 'zest' : 'danger'} icon={growth >= 0 ? 'trending_up' : 'trending_down'}>
+                  {t.bilan.growth(`${growth >= 0 ? '+' : ''}${growth.toFixed(1)} %`)}
+                </Badge>
+              )}
+            </div>
+          </div>
+          {[
+            { label: t.bilan.revenue, value: formatFCFA(stats.revenue), icon: 'payments', tone: 'text-white' },
+            { label: t.bilan.expenses, value: formatFCFA(stats.expenses), icon: 'receipt_long', tone: 'text-rose-300' },
+            { label: t.bilan.margin, value: `${stats.marginRate.toFixed(1)} %`, icon: 'percent', tone: 'text-zest-400' },
+          ].map((item) => (
+            <div key={item.label} className="lg:px-6 flex lg:flex-col items-center lg:items-start justify-between gap-2">
+              <div className="flex items-center gap-2 text-sm text-slate-400">
+                <Icon name={item.icon} size={18} />
+                {item.label}
+              </div>
+              <div className={cn('font-num font-bold text-lg sm:text-xl lg:mt-2 whitespace-nowrap', item.tone)}>{item.value}</div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-5">
+        <div className="lg:col-span-2">
+          <RevenueChart data={revenueSeries} />
+        </div>
+        <ChannelSplit data={channels} />
+        <div className="lg:col-span-2">
+          <CashFlowChart data={cashFlow} />
+        </div>
+        <ExpenseBreakdown data={expenseSlices} onOpenDetails={() => openModal('depenses')} />
+      </div>
+
+      <Card
+        title={t.bilan.exports.title}
+        description={t.bilan.exports.subtitle}
+        icon="cloud_download"
+        action={
+          <Button variant="ghost" size="sm" icon="tune" onClick={() => openModal('export')}>
+            <span className="hidden sm:inline">{t.bilan.exports.customize}</span>
+          </Button>
+        }
+      >
+        <div className="grid sm:grid-cols-2 gap-3">
+          {[
+            { title: t.bilan.exports.pdfTitle, text: t.bilan.exports.pdfText, badge: t.bilan.exports.pdfBadge, icon: 'picture_as_pdf', tone: 'bg-rose-50 text-rose-600', onClick: handleExportPDF },
+            { title: t.bilan.exports.csvTitle, text: t.bilan.exports.csvText, badge: t.bilan.exports.csvBadge, icon: 'table_view', tone: 'bg-brand-50 text-brand-600', onClick: handleExportCSV },
+          ].map((item) => (
+            <button
+              key={item.title}
+              type="button"
+              onClick={item.onClick}
+              className="group flex items-center gap-4 p-4 rounded-2xl border border-line hover:border-line-strong hover:shadow-raised transition-all text-left cursor-pointer"
             >
-              <span className="material-symbols-outlined text-[16px]">
-                {growth === null || growth >= 0 ? 'trending_up' : 'trending_down'}
+              <span className={cn('size-12 rounded-2xl flex items-center justify-center shrink-0', item.tone)}>
+                <Icon name={item.icon} size={24} />
               </span>
-              <span>
-                {growth === null
-                  ? 'Historique insuffisant'
-                  : `${growth >= 0 ? '+' : ''}${growth.toFixed(1)}% vs période précédente`}
+              <span className="flex-1 min-w-0">
+                <span className="flex items-center gap-2">
+                  <span className="text-sm font-semibold text-ink-900">{item.title}</span>
+                  <Badge>{item.badge}</Badge>
+                </span>
+                <span className="block text-xs text-slate-500 mt-1">{item.text}</span>
               </span>
-            </div>
-          </div>
-          <div className="w-10 h-10 rounded-xl bg-slate-900 flex items-center justify-center text-white">
-            <span className="material-symbols-outlined text-[20px] text-emerald-400">insights</span>
-          </div>
+              <Icon name="download" size={20} className="text-slate-400 group-hover:text-ink-900 transition-colors" />
+            </button>
+          ))}
         </div>
-
-        <div className="grid grid-cols-3 gap-2 mt-4 pt-3 border-t border-slate-100">
-          <div className="flex flex-col">
-            <span className="text-[10px] text-slate-500 font-medium">Chiffre d'Affaires</span>
-            <span className="font-display font-bold text-xs text-slate-900 mt-0.5 font-num">
-              {formatFCFA(stats.revenue)}
-            </span>
-          </div>
-          <div className="flex flex-col">
-            <span className="text-[10px] text-slate-500 font-medium">Dépenses Op.</span>
-            <span className="font-display font-bold text-xs text-rose-700 mt-0.5 font-num">
-              {formatFCFA(stats.expenses)}
-            </span>
-          </div>
-          <div className="flex flex-col items-end">
-            <span className="text-[10px] text-slate-500 font-medium">Marge potentielle</span>
-            <span className="font-display font-bold text-xs text-emerald-700 mt-0.5 font-num">
-              {stats.marginRate.toFixed(1)}%
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* Revenus quotidiens (recharts) */}
-      <RevenueChart data={revenueSeries} />
-
-      {/* Flux de trésorerie net */}
-      <CashFlowChart data={cashFlow} />
-
-      {/* Répartition par canal */}
-      <ChannelSplit data={channels} />
-
-      {/* Postes de dépenses */}
-      <ExpenseBreakdown data={expenseSlices} onOpenDetails={() => openModal('depenses')} />
-
-      {/* Traçabilité & export comptable */}
-      <div className="bg-white p-4 rounded-2xl shadow-2xs border border-slate-200/80 flex flex-col gap-3">
-        <div className="flex items-start justify-between">
-          <div className="flex flex-col">
-            <div className="flex items-center gap-1.5">
-              <span className="material-symbols-outlined text-[18px] text-emerald-600">
-                cloud_download
-              </span>
-              <h2 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
-                Traçabilité &amp; Export Comptable
-              </h2>
-            </div>
-            <p className="text-[11px] text-slate-500 mt-0.5">
-              Générez vos journaux de ventes et de dépenses pour votre comptable externe ou
-              archivage fiscal.
-            </p>
-          </div>
-          <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-            CSV &amp; PDF
-          </span>
-        </div>
-
-        <div className="grid grid-cols-2 gap-2 pt-1">
-          <div
-            onClick={handleExportCSV}
-            role="button"
-            tabIndex={0}
-            className="p-3 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200/80 transition-all cursor-pointer group flex flex-col justify-between"
-          >
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <span className="material-symbols-outlined text-[20px] text-emerald-600 group-hover:scale-110 transition-transform">
-                  table_view
-                </span>
-                <span className="text-[9px] font-semibold bg-white text-emerald-700 px-1.5 py-0.5 rounded border border-emerald-200">
-                  Excel UTF-8
-                </span>
-              </div>
-              <h3 className="font-bold text-xs text-slate-900">Export CSV Complet</h3>
-              <p className="text-[10px] text-slate-500 mt-0.5">
-                Ventes &amp; dépenses avec séparateur compatible Excel et Google Sheets.
-              </p>
-            </div>
-            <div className="mt-2.5 pt-2 border-t border-slate-200/60 flex items-center justify-between text-[11px] font-semibold text-emerald-700">
-              <span>Télécharger CSV</span>
-              <span className="material-symbols-outlined text-[14px]">download</span>
-            </div>
-          </div>
-
-          <div
-            onClick={handleExportPDF}
-            role="button"
-            tabIndex={0}
-            className="p-3 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200/80 transition-all cursor-pointer group flex flex-col justify-between"
-          >
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <span className="material-symbols-outlined text-[20px] text-rose-600 group-hover:scale-110 transition-transform">
-                  picture_as_pdf
-                </span>
-                <span className="text-[9px] font-semibold bg-white text-rose-700 px-1.5 py-0.5 rounded border border-rose-200">
-                  Officiel A4
-                </span>
-              </div>
-              <h3 className="font-bold text-xs text-slate-900">Rapport PDF Certifié</h3>
-              <p className="text-[10px] text-slate-500 mt-0.5">
-                Document A4 paginé avec en-tête magasin, totaux et cadre de visa.
-              </p>
-            </div>
-            <div className="mt-2.5 pt-2 border-t border-slate-200/60 flex items-center justify-between text-[11px] font-semibold text-rose-700">
-              <span>Générer PDF</span>
-              <span className="material-symbols-outlined text-[14px]">download</span>
-            </div>
-          </div>
-        </div>
-
-        <button
-          type="button"
-          onClick={() => openModal('export')}
-          className="w-full py-2 bg-white hover:bg-slate-50 border border-dashed border-slate-300 rounded-xl text-xs font-semibold text-slate-700 flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-        >
-          <span className="material-symbols-outlined text-[16px]">tune</span>
-          <span>Personnaliser le périmètre de l'export (Ventes seules / Dépenses seules)</span>
-        </button>
-      </div>
-
-      {/* CTA export */}
-      <div className="flex gap-2">
-        <button
-          type="button"
-          onClick={handleExportPDF}
-          className="flex-1 h-11 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-semibold text-xs flex items-center justify-center gap-2 active:scale-95 transition-all shadow-xs cursor-pointer"
-        >
-          <span className="material-symbols-outlined text-[18px] text-rose-400">
-            picture_as_pdf
-          </span>
-          <span>Rapport PDF Officiel</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={handleExportCSV}
-          className="flex-1 h-11 bg-white hover:bg-slate-50 text-slate-900 rounded-xl font-semibold text-xs flex items-center justify-center gap-2 active:scale-95 transition-all shadow-2xs border border-slate-200/80 cursor-pointer"
-        >
-          <span className="material-symbols-outlined text-[18px] text-emerald-600">table_view</span>
-          <span>Fichier Tableur CSV</span>
-        </button>
-      </div>
+      </Card>
     </div>
   );
 }

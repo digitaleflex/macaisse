@@ -1,55 +1,49 @@
-/**
- * PlanCard — carte du forfait actif (AbonnementModal).
- * Présentation pure ; le contenu provient de `plan`.
- */
-
-export interface SubscriptionPlan {
-  name: string;
-  /** Montant déjà formaté (ex. « 15 000 »). */
-  priceLabel: string;
-  /** Périodicité affichée (ex. « FCFA / mois »). */
-  period: string;
-  /** Ligne d'échéance (démonstration). */
-  nextBilling: string;
-  features: string[];
-}
+import type { BillingCycle, Subscription } from '@/types';
+import { t } from '@/content';
+import { parseDate } from '@/domain/dates';
+import { formatFCFA } from '@/domain/money';
+import { Badge, Icon } from '@/ui';
 
 export interface PlanCardProps {
-  plan: SubscriptionPlan;
+  subscription: Subscription;
+  cycle: BillingCycle;
 }
 
-export function PlanCard({ plan }: PlanCardProps) {
+/** Carte du forfait actif — contenu issu de la session (`services/`). */
+export function PlanCard({ subscription, cycle }: PlanCardProps) {
+  const { plan } = subscription;
+  const price = cycle === 'monthly' ? plan.monthlyPrice : plan.yearlyPrice;
+  const renewal = parseDate(subscription.renewalDate);
+  const renewalLabel = renewal ? renewal.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : subscription.renewalDate;
+
   return (
-    <div className="p-4 rounded-xl bg-slate-900 text-white shadow-md relative overflow-hidden border border-slate-800">
-      <div className="flex items-center justify-between">
-        <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-300 bg-emerald-500/20 px-2 py-0.5 rounded-full border border-emerald-400/30">
-          Plan Actif
-        </span>
-        <span className="text-xs text-emerald-400 font-semibold flex items-center gap-1">
-          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-          Renouvellement auto
-        </span>
-      </div>
-
-      <div className="mt-2.5">
-        <h3 className="font-display font-bold text-xl text-white">{plan.name}</h3>
-        <div className="flex items-baseline gap-1 mt-1">
-          <span className="font-display font-bold text-2xl text-emerald-400 font-num">
-            {plan.priceLabel}
+    <div className="relative overflow-hidden rounded-2xl bg-ink-900 text-white p-5 bg-grid-ink">
+      <div className="absolute -right-12 -top-12 size-44 rounded-full bg-zest-400/20 blur-3xl pointer-events-none" />
+      <div className="relative flex items-center justify-between">
+        <Badge tone="zest">{t.subscription.activePlan}</Badge>
+        {subscription.autoRenew && (
+          <span className="flex items-center gap-1.5 text-xs text-zest-400 font-semibold">
+            <span className="size-2 rounded-full bg-zest-400 animate-pulse" />
+            {t.subscription.autoRenew}
           </span>
-          <span className="text-xs text-slate-300">{plan.period}</span>
+        )}
+      </div>
+      <div className="relative mt-4">
+        <h3 className="font-display font-extrabold text-2xl">{plan.name}</h3>
+        <div className="mt-1 flex items-baseline gap-1">
+          <span className="font-num font-extrabold text-3xl text-zest-400">{formatFCFA(price)}</span>
+          <span className="text-sm text-slate-400">{cycle === 'monthly' ? t.subscription.perMonth : t.subscription.perYear}</span>
         </div>
-        <p className="text-xs text-slate-300 mt-1">{plan.nextBilling}</p>
+        <p className="text-xs text-slate-400 mt-1">{t.subscription.nextBilling(renewalLabel, subscription.paymentMethod)}</p>
       </div>
-
-      <div className="mt-3 pt-3 border-t border-slate-800 grid grid-cols-2 gap-2 text-[11px] text-slate-300">
+      <ul className="relative mt-4 pt-4 border-t border-white/10 grid sm:grid-cols-2 gap-2 text-sm text-slate-300">
         {plan.features.map((feature) => (
-          <div key={feature} className="flex items-center gap-1.5">
-            <span className="material-symbols-outlined text-[16px] text-emerald-400">check</span>
-            <span>{feature}</span>
-          </div>
+          <li key={feature} className="flex items-center gap-2">
+            <Icon name="check_circle" size={17} filled className="text-zest-400" />
+            {feature}
+          </li>
         ))}
-      </div>
+      </ul>
     </div>
   );
 }

@@ -1,33 +1,24 @@
 import type { Expense, SaleTransaction } from '@/types';
+import { t } from '@/content';
 
 /** Périmètre de données exportable (journal complet, ventes seules ou dépenses seules). */
 export type ExportFilterType = 'all' | 'sales' | 'expenses';
 
-/**
- * Écriture comptable normalisée, commune aux exports CSV et PDF.
- */
+/** Écriture comptable normalisée, commune aux exports CSV et PDF. */
 export interface AccountingEntry {
   date: string;
   time: string;
-  type: 'Vente' | 'Dépense';
+  type: string;
   ref: string;
   description: string;
   categoryOrClient: string;
   paymentMethod: string;
-  creditAmount: number; // Entrée (Vente)
-  debitAmount: number; // Sortie (Dépense)
+  creditAmount: number; // Entrée (vente)
+  debitAmount: number; // Sortie (dépense)
   status: string;
 }
 
-/**
- * Normalise et combine les ventes et dépenses en écritures comptables.
- *
- * Fonction pure (aucun accès DOM/réseau) réutilisable par la feature Export
- * (CSV/PDF) et le Bilan, et testable unitairement. Cette normalisation vit
- * désormais dans `src/lib/export/accounting.ts` ; elle remplace l'ancien
- * `getAccountingEntries` qui résidait dans `utils/exportUtils.ts` (fichier
- * supprimé lors de la migration d'architecture).
- */
+/** Normalise et combine ventes et dépenses en écritures comptables (fonction pure). */
 export function buildAccountingRows(
   sales: readonly SaleTransaction[],
   expenses: readonly Expense[],
@@ -40,10 +31,10 @@ export function buildAccountingRows(
       entries.push({
         date: s.date,
         time: s.time || '--:--',
-        type: 'Vente',
+        type: t.documents.entrySale,
         ref: s.saleNumber,
-        description: `Encaissement vente (${s.itemsCount} art.)`,
-        categoryOrClient: s.clientName ? `Client: ${s.clientName}` : 'Comptoir boutique',
+        description: t.documents.saleDescription(s.itemsCount),
+        categoryOrClient: s.clientName ? t.documents.saleClient(s.clientName) : t.documents.counter,
         paymentMethod: s.paymentMethod,
         creditAmount: s.amount,
         debitAmount: 0,
@@ -57,14 +48,14 @@ export function buildAccountingRows(
       entries.push({
         date: e.date,
         time: e.time || '--:--',
-        type: 'Dépense',
+        type: t.documents.entryExpense,
         ref: `#DEP-${e.id.toString().padStart(4, '0')}`,
         description: e.title,
         categoryOrClient: e.category,
         paymentMethod: e.paymentMethod,
         creditAmount: 0,
         debitAmount: e.amount,
-        status: e.status || 'Validé',
+        status: e.status || t.documents.defaultStatus,
       });
     });
   }

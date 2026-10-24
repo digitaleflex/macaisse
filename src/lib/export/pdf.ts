@@ -1,6 +1,7 @@
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import type { Expense, SaleTransaction } from '@/types';
+import type { BusinessProfile, Expense, SaleTransaction } from '@/types';
+import { t } from '@/content';
 import { buildAccountingRows, type ExportFilterType } from './accounting';
 
 /**
@@ -13,7 +14,9 @@ export function exportToPDF(
   filterType: ExportFilterType,
   sales: readonly SaleTransaction[],
   expenses: readonly Expense[],
+  business: BusinessProfile,
 ): void {
+  const d = t.documents;
   const doc = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',
@@ -38,21 +41,16 @@ export function exportToPDF(
   doc.setTextColor(255, 255, 255);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(16);
-  doc.text('BOUTIQUE ÉTOILE', 14, 12);
+  doc.text(business.name.toUpperCase(), 14, 12);
 
   doc.setFontSize(8);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(218, 226, 253);
-  doc.text('Alimentation Générale & Dépôt • Avenue Lamine Guèye, Dakar', 14, 18);
-  doc.text('NINEA: 0048912 • Tél: +221 33 821 44 00 • Contact: caisse@etoile.sn', 14, 23);
+  doc.text(`${business.activity} • ${business.address}, ${business.city}`, 14, 18);
+  doc.text(d.pdfContact(business.taxId, business.phone, business.email), 14, 23);
 
   // Titre du Document
-  const docTitle =
-    filterType === 'sales'
-      ? 'JOURNAL DES VENTES & RECETTES'
-      : filterType === 'expenses'
-        ? 'GRAND-LIVRE DES DÉPENSES & CHARGES'
-        : 'JOURNAL GÉNÉRAL & SUIVI DE TRÉSORERIE';
+  const docTitle = d.pdfTitle[filterType];
 
   doc.setFontSize(11);
   doc.setFont('helvetica', 'bold');
@@ -62,8 +60,8 @@ export function exportToPDF(
   doc.setFontSize(8);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(255, 255, 255);
-  doc.text(`Édité le: ${todayFormatted}`, 210 - 14, 19, { align: 'right' });
-  doc.text(`Devise: FCFA (XOF)`, 210 - 14, 24, { align: 'right' });
+  doc.text(d.pdfIssued(todayFormatted), 210 - 14, 19, { align: 'right' });
+  doc.text(d.pdfCurrency, 210 - 14, 24, { align: 'right' });
 
   // Encadré de synthèse financière
   const startY = 35;
@@ -77,7 +75,7 @@ export function exportToPDF(
   doc.setFontSize(7.5);
   doc.setTextColor(22, 101, 52);
   doc.setFont('helvetica', 'bold');
-  doc.text('TOTAL ENCAISSEMENTS', 18, startY + 6);
+  doc.text(d.pdfTotalIn, 18, startY + 6);
   doc.setFontSize(11);
   doc.text(`+${totalSales.toLocaleString('fr-FR')} F`, 18, startY + 13);
 
@@ -89,7 +87,7 @@ export function exportToPDF(
 
   doc.setFontSize(7.5);
   doc.setTextColor(153, 27, 27);
-  doc.text('TOTAL DÉCAISSEMENTS', 80, startY + 6);
+  doc.text(d.pdfTotalOut, 80, startY + 6);
   doc.setFontSize(11);
   doc.text(`-${totalExpenses.toLocaleString('fr-FR')} F`, 80, startY + 13);
 
@@ -101,7 +99,7 @@ export function exportToPDF(
 
   doc.setFontSize(7.5);
   doc.setTextColor(11, 28, 48);
-  doc.text("RÉSULTAT NET D'EXPLOITATION", 142, startY + 6);
+  doc.text(d.pdfNet, 142, startY + 6);
   doc.setFontSize(11);
   doc.text(
     `${soldeNet >= 0 ? '+' : ''}${soldeNet.toLocaleString('fr-FR')} FCFA`,
@@ -110,9 +108,7 @@ export function exportToPDF(
   );
 
   // Tableau détaillé des écritures
-  const tableHead = [
-    ['Date/H', 'Type', 'Réf.', 'Libellé / Tiers', 'Règlement', 'Entrée (F)', 'Sortie (F)', 'Statut'],
-  ];
+  const tableHead = [[...d.pdfHead]];
 
   const tableBody = entries.map((e) => [
     `${e.date}\n${e.time}`,
@@ -127,14 +123,14 @@ export function exportToPDF(
 
   // Ajouter ligne de totalisation au tableau
   tableBody.push([
-    'TOTAL',
+    d.pdfTotalRow,
     '',
-    `${entries.length} écriture(s)`,
+    d.pdfEntries(entries.length),
     '',
     '',
     `${totalSales.toLocaleString('fr-FR')}`,
     `${totalExpenses.toLocaleString('fr-FR')}`,
-    `Net: ${soldeNet.toLocaleString('fr-FR')}`,
+    d.pdfNetShort(soldeNet.toLocaleString('fr-FR')),
   ]);
 
   autoTable(doc, {
@@ -189,15 +185,11 @@ export function exportToPDF(
     doc.setFontSize(7.5);
     doc.setFont('helvetica', 'italic');
     doc.setTextColor(86, 94, 116);
-    doc.text(
-      'Document généré automatiquement par le Terminal de Caisse POS - Certifié conforme pour la tenue comptable externe.',
-      14,
-      finalY,
-    );
+    doc.text(d.pdfFooterNote, 14, finalY);
 
     // Bloc Signature / Visa
     doc.setFont('helvetica', 'normal');
-    doc.text("Visa de la Gérance & Cachet de l'Établissement :", 140, finalY);
+    doc.text(d.pdfVisa, 140, finalY);
     doc.setDrawColor(200, 210, 230);
     doc.rect(140, finalY + 2, 56, 16);
   }
@@ -209,7 +201,7 @@ export function exportToPDF(
     doc.setFontSize(7);
     doc.setTextColor(130, 140, 160);
     doc.text(
-      `Page ${i} sur ${pageCount} • Boutique Étoile - Dakar • Système Ma Caisse`,
+      d.pdfPage(i, pageCount, business.name),
       105,
       292,
       { align: 'center' },
@@ -217,6 +209,6 @@ export function exportToPDF(
   }
 
   const todayStr = new Date().toISOString().slice(0, 10);
-  const filename = `Rapport_Comptable_Boutique_Etoile_${todayStr}.pdf`;
+  const filename = d.pdfFile(business.name.replace(/\s+/g, '_'), todayStr);
   doc.save(filename);
 }

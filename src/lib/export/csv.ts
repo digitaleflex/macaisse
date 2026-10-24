@@ -1,4 +1,5 @@
 import type { Expense, SaleTransaction } from '@/types';
+import { t } from '@/content';
 import { buildAccountingRows, type ExportFilterType } from './accounting';
 
 /**
@@ -40,18 +41,7 @@ export function exportToCSV(
 ): string {
   const entries = buildAccountingRows(sales, expenses, filterType);
 
-  const headers = [
-    'Date',
-    'Heure',
-    'Type',
-    'Référence',
-    'Description',
-    'Tiers / Catégorie',
-    'Mode Règlement',
-    'Entrée Vente (FCFA)',
-    'Sortie Dépense (FCFA)',
-    'Statut',
-  ];
+  const headers = t.documents.csvHeaders;
 
   const rows: unknown[][] = entries.map((e) => [
     e.date,
@@ -73,7 +63,7 @@ export function exportToCSV(
 
   rows.push([]);
   rows.push([
-    'TOTAL GÉNÉRAL',
+    t.documents.csvTotal,
     '',
     '',
     '',
@@ -82,7 +72,7 @@ export function exportToCSV(
     '',
     totalCredits,
     totalDebits,
-    `Solde Net: ${soldeNet} FCFA`,
+    t.documents.csvNet(String(soldeNet)),
   ]);
 
   const csvContent = buildCsv(headers, rows);
@@ -92,12 +82,7 @@ export function exportToCSV(
   const link = document.createElement('a');
 
   const todayStr = new Date().toISOString().slice(0, 10);
-  const prefix =
-    filterType === 'sales'
-      ? 'journal_ventes'
-      : filterType === 'expenses'
-        ? 'journal_depenses'
-        : 'journal_comptable_complet';
+  const prefix = t.documents.filePrefix[filterType];
 
   link.href = url;
   link.setAttribute('download', `${prefix}_${todayStr}.csv`);

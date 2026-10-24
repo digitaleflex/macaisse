@@ -1,74 +1,63 @@
+import { Bar, BarChart, Cell, ReferenceLine, ResponsiveContainer, Tooltip, XAxis } from 'recharts';
 import type { SeriesPoint } from '@/types';
+import { t } from '@/content';
 import { formatFCFA } from '@/domain/money';
-import { EmptyState } from '@/ui';
+import { Card, EmptyState } from '@/ui';
 
-/**
- * CashFlowChart — flux de trésorerie net quotidien (recettes − dépenses).
- * Composant présentationnel pur (aucun store) : reçoit une `SeriesPoint[]` déjà
- * calculée par `@/domain/finances.cashFlowSeries`.
- */
+/** Solde net quotidien (recettes − dépenses), barres positives / négatives. */
 export interface CashFlowChartProps {
-  /** Série du solde net journalier (la plus ancienne en premier). */
   data: SeriesPoint[];
 }
 
 export function CashFlowChart({ data }: CashFlowChartProps) {
-  const maxAbs = Math.max(...data.map((point) => Math.abs(point.value)), 1);
-
+  const hasData = data.some((point) => point.value !== 0);
   return (
-    <div className="bg-white p-4 rounded-2xl shadow-2xs border border-slate-200/80">
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex flex-col">
-          <span className="text-xs font-bold text-slate-900">
-            Évolution des Flux ({data.length} derniers jours)
+    <Card
+      title={t.bilan.cashflow.title}
+      description={t.bilan.cashflow.subtitle}
+      action={
+        <div className="flex items-center gap-3 text-xs font-medium text-slate-500">
+          <span className="flex items-center gap-1.5">
+            <span className="size-2.5 rounded-sm bg-brand-500" />
+            {t.bilan.cashflow.surplus}
           </span>
-          <span className="text-[10px] text-slate-500">
-            Solde net quotidien (recettes − dépenses)
-          </span>
-        </div>
-        <div className="flex items-center gap-3 text-[10px] font-semibold">
-          <span className="flex items-center gap-1 text-slate-800">
-            <span className="w-2 h-2 rounded-sm bg-emerald-500" />
-            Excédent
-          </span>
-          <span className="flex items-center gap-1 text-slate-500">
-            <span className="w-2 h-2 rounded-sm bg-rose-500" />
-            Déficit
+          <span className="flex items-center gap-1.5">
+            <span className="size-2.5 rounded-sm bg-rose-400" />
+            {t.bilan.cashflow.deficit}
           </span>
         </div>
-      </div>
-
-      {data.length === 0 ? (
-        <EmptyState
-          icon="bar_chart"
-          title="Aucun flux"
-          description="Aucune recette ou dépense sur la période."
-        />
+      }
+    >
+      {!hasData ? (
+        <EmptyState icon="bar_chart" title={t.bilan.cashflow.emptyTitle} description={t.bilan.cashflow.emptyText} compact />
       ) : (
-        <div className="w-full h-36 flex items-end justify-between gap-2 pt-4 px-1">
-          {data.map((point) => (
-            <div
-              key={point.date}
-              className="flex-1 flex flex-col items-center gap-1 h-full justify-end group"
-            >
-              <div className="w-full flex items-end justify-center h-28">
-                <div
-                  className={`w-2.5 rounded-t-sm transition-all ${
-                    point.value >= 0 ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-rose-400 hover:bg-rose-500'
-                  }`}
-                  style={{
-                    height: `${Math.max((Math.abs(point.value) / maxAbs) * 100, point.value === 0 ? 0 : 4)}%`,
-                  }}
-                  title={`${point.label ?? point.date} : ${formatFCFA(point.value)}`}
-                />
-              </div>
-              <span className="text-[10px] text-slate-500 font-semibold group-hover:text-slate-900">
-                {point.label ?? point.date}
-              </span>
-            </div>
-          ))}
+        <div className="h-52 -mx-2">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={data} margin={{ top: 8, right: 8, left: 8, bottom: 0 }}>
+              <XAxis dataKey="label" stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} interval="preserveStartEnd" minTickGap={8} />
+              <ReferenceLine y={0} stroke="#cbd5e1" />
+              <Tooltip
+                cursor={{ fill: '#f1f5f9' }}
+                content={({ active, payload }) => {
+                  if (!active || !payload || payload.length === 0) return null;
+                  const point = payload[0].payload as SeriesPoint;
+                  return (
+                    <div className="rounded-xl bg-ink-900 text-white px-3 py-2 text-xs shadow-overlay">
+                      <div className="text-slate-400">{point.label}</div>
+                      <div className="font-num font-bold">{formatFCFA(point.value)}</div>
+                    </div>
+                  );
+                }}
+              />
+              <Bar dataKey="value" radius={[4, 4, 4, 4]} maxBarSize={28}>
+                {data.map((point) => (
+                  <Cell key={point.date} fill={point.value >= 0 ? '#10b981' : '#fb7185'} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
         </div>
       )}
-    </div>
+    </Card>
   );
 }

@@ -129,3 +129,65 @@ export interface BreakdownSlice {
   label: string;
   amount: number;
 }
+
+// ---------------------------------------------------------------------------
+// Compte, commerce et abonnement (servis par `services/` — mock ou backend).
+// ---------------------------------------------------------------------------
+
+export interface UserProfile {
+  id: string;
+  firstName: string;
+  lastName: string;
+  role: string;
+  phone: string;
+  email: string;
+}
+
+export interface BusinessProfile {
+  id: string;
+  name: string;
+  activity: string;
+  address: string;
+  city: string;
+  phone: string;
+  email: string;
+  taxId: string;
+  currency: string;
+  registerLabel: string;
+  /** Heure de clôture de caisse recommandée (« HH:MM »). */
+  closingTime: string;
+}
+
+export type BillingCycle = 'monthly' | 'yearly';
+
+export interface SubscriptionPlan {
+  id: string;
+  name: string;
+  monthlyPrice: number;
+  yearlyPrice: number;
+  features: string[];
+}
+
+export interface Invoice {
+  id: string;
+  date: string;
+  amount: number;
+  paymentMethod: string;
+  status: 'Payée' | 'En attente';
+}
+
+export interface Subscription {
+  plan: SubscriptionPlan;
+  cycle: BillingCycle;
+  renewalDate: string;
+  paymentMethod: string;
+  autoRenew: boolean;
+  invoices: Invoice[];
+}
+
+/** Session courante : utilisateur, commerce et abonnement. */
+export interface Session {
+  user: UserProfile;
+  business: BusinessProfile;
+  subscription: Subscription;
+}

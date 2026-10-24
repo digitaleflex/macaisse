@@ -1,53 +1,42 @@
-import type { NotificationItem as Notification } from '@/types';
-
-/**
- * NotificationItem — ligne de notification du tiroir (présentation pure).
- * Reprend à l'identique le markup de l'ancien `NotificationDrawer` :
- * icône/teinte selon `type`, pastille de non-lu, horodatage.
- * Le corps affiche `message` si présent, sinon `description`.
- */
+import type { NotificationItem as Notification, NotificationType } from '@/types';
+import { Icon, cn } from '@/ui';
 
 export interface NotificationItemProps {
   notification: Notification;
   onSelect: (notification: Notification) => void;
 }
 
+const TYPE_STYLE: Record<NotificationType, { icon: string; tone: string }> = {
+  alert: { icon: 'error', tone: 'bg-rose-50 text-rose-600' },
+  warning: { icon: 'warning', tone: 'bg-amber-50 text-amber-600' },
+  info: { icon: 'info', tone: 'bg-sky-50 text-sky-600' },
+  success: { icon: 'check_circle', tone: 'bg-brand-50 text-brand-600' },
+};
+
+/** Ligne de notification du tiroir. */
 export function NotificationItem({ notification, onSelect }: NotificationItemProps) {
   const { read, type, title, time } = notification;
-  const body = notification.message ?? notification.description;
-
+  const style = TYPE_STYLE[type];
   return (
-    <div
+    <button
+      type="button"
       onClick={() => onSelect(notification)}
-      role="button"
-      tabIndex={0}
-      className={`p-2.5 rounded-xl flex items-start gap-2.5 cursor-pointer transition-colors ${
-        read ? 'bg-white hover:bg-slate-50' : 'bg-slate-50/80 hover:bg-slate-100/70'
-      }`}
+      className={cn(
+        'w-full p-3 rounded-2xl flex items-start gap-3 text-left cursor-pointer transition-colors',
+        read ? 'hover:bg-slate-50' : 'bg-slate-50 hover:bg-slate-100'
+      )}
     >
-      <div
-        className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
-          type === 'alert'
-            ? 'bg-rose-50 text-rose-600 border border-rose-200'
-            : type === 'warning'
-              ? 'bg-amber-50 text-amber-700 border border-amber-200'
-              : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-        }`}
-      >
-        <span className="material-symbols-outlined text-[18px]">
-          {type === 'alert' ? 'warning' : type === 'warning' ? 'priority_high' : 'info'}
+      <span className={cn('size-10 rounded-xl flex items-center justify-center shrink-0', style.tone)}>
+        <Icon name={style.icon} size={20} />
+      </span>
+      <span className="flex-1 min-w-0">
+        <span className="flex items-start justify-between gap-2">
+          <span className={cn('text-sm text-ink-900', read ? 'font-medium' : 'font-semibold')}>{title}</span>
+          <span className="text-[11px] text-slate-400 whitespace-nowrap mt-0.5">{time}</span>
         </span>
-      </div>
-
-      <div className="flex flex-col min-w-0 flex-1">
-        <div className="flex items-center justify-between">
-          <span className="font-display font-semibold text-xs text-slate-900 truncate">{title}</span>
-          <span className="text-[10px] text-slate-400">{time}</span>
-        </div>
-        <p className="text-[11px] text-slate-600 mt-0.5 line-clamp-2">{body}</p>
-      </div>
-
-      {!read && <span className="w-2 h-2 rounded-full bg-rose-500 shrink-0 mt-1" />}
-    </div>
+        <span className="block text-[13px] text-slate-500 mt-0.5 line-clamp-2">{notification.message ?? notification.description}</span>
+      </span>
+      {!read && <span className="size-2 rounded-full bg-rose-500 shrink-0 mt-2" />}
+    </button>
   );
 }

@@ -1,6 +1,7 @@
 export { AccueilView } from './AccueilView';
-export { KpiCard } from './KpiCard';
-export type { KpiCardProps } from './KpiCard';
+export { DashboardHero } from './DashboardHero';
+export { SalesTrend } from './SalesTrend';
 export { RecentSales } from './RecentSales';
-export type { RecentSalesProps } from './RecentSales';
 export { StockAlerts } from './StockAlerts';
+export { ClosingCard } from './ClosingCard';
+export type { RecentSalesProps } from './RecentSales';

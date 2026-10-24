@@ -1,40 +1,34 @@
 import { useState } from 'react';
-import { Modal } from '@/ui';
-import { useUiStore } from '@/store/useUiStore';
-import { expensesInRange, useExpensesStore } from '@/store/useExpensesStore';
+import { t } from '@/content';
+import { EXPENSE_CATEGORIES } from '@/config/reference';
 import { formatFCFA } from '@/domain/money';
 import { toIsoDate } from '@/domain/dates';
+import { expensesInRange, useExpensesStore } from '@/store/useExpensesStore';
+import { useUiStore } from '@/store/useUiStore';
+import { Button, Chip, Modal } from '@/ui';
 import { ExpenseForm, type ExpenseFormValues } from './ExpenseForm';
 import { ExpenseList } from './ExpenseList';
 
-const CATEGORY_FILTERS = ['Tous', 'Achat Stock', 'Transport', 'Factures', 'Divers'] as const;
-
-/**
- * Modale globale des dépenses. Aucune prop métier : l'ouverture est pilotée par
- * `useUiStore` (`modal === 'depenses'`) et les données viennent de `useExpensesStore`.
- */
+/** Modale globale des dépenses (pilotée par `useUiStore.modal === 'depenses'`). */
 export function DepensesModal() {
   const open = useUiStore((state) => state.modal === 'depenses');
   const closeModal = useUiStore((state) => state.closeModal);
   const showToast = useUiStore((state) => state.showToast);
-
   const expenses = useExpensesStore((state) => state.expenses);
   const addExpense = useExpensesStore((state) => state.addExpense);
   const removeExpense = useExpensesStore((state) => state.removeExpense);
 
-  const [activeCategory, setActiveCategory] = useState<string>('Tous');
+  const [activeCategory, setActiveCategory] = useState<string>('all');
   const [showAddForm, setShowAddForm] = useState(false);
 
-  const filteredExpenses =
-    activeCategory === 'Tous'
-      ? expenses
-      : expenses.filter((expense) => expense.category === activeCategory);
+  // Les données historiques utilisent « Stock » pour « Achat Stock ».
+  const matches = (category: string) =>
+    activeCategory === 'all' || category === activeCategory || (activeCategory === 'Achat Stock' && category === 'Stock');
+  const filteredExpenses = expenses.filter((expense) => matches(expense.category));
 
   const now = new Date();
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-  const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-  const monthlyExpenses = expensesInRange(expenses, monthStart, monthEnd);
-  const monthlyTotal = monthlyExpenses.reduce((sum, expense) => sum + expense.amount, 0);
+  const monthly = expensesInRange(expenses, new Date(now.getFullYear(), now.getMonth(), 1), new Date(now.getFullYear(), now.getMonth() + 1, 0));
+  const monthlyTotal = monthly.reduce((sum, expense) => sum + expense.amount, 0);
 
   const handleAddExpense = (values: ExpenseFormValues) => {
     addExpense({
@@ -42,68 +36,48 @@ export function DepensesModal() {
       category: values.category,
       amount: values.amount,
       date: toIsoDate(new Date()),
-      paymentMethod: 'Espèces',
+      paymentMethod: t.expenses.form.defaultMethod,
       hasReceipt: values.hasReceipt,
     });
-    showToast(`Dépense de ${formatFCFA(values.amount)} enregistrée !`, 'success');
+    showToast(t.expenses.added(formatFCFA(values.amount)), 'success');
     setShowAddForm(false);
   };
 
-  const handleDeleteExpense = (id: string) => {
-    removeExpense(id);
-    showToast('Dépense supprimée.', 'success');
-  };
-
   return (
-    <Modal open={open} onClose={closeModal} title="Dépenses & Sorties de Caisse">
-      {/* Total décaissé du mois */}
-      <div className="bg-slate-50 p-3.5 rounded-xl flex items-center justify-between border border-slate-200/80">
+    <Modal open={open} onClose={closeModal} title={t.expenses.title} subtitle={t.expenses.subtitle} icon="receipt_long" size="lg">
+      <div className="flex items-center justify-between gap-4 rounded-2xl bg-rose-50 border border-rose-100 p-4">
         <div>
-          <span className="text-[10px] text-slate-500 uppercase font-semibold">
-            Total décaissé (Ce mois)
-          </span>
-          <div className="flex items-baseline gap-1 mt-0.5">
-            <span className="font-display font-bold text-2xl text-rose-700 font-num">
-              -{formatFCFA(monthlyTotal)}
-            </span>
-          </div>
-          <span className="text-[11px] text-slate-500 mt-0.5 block">
-            {monthlyExpenses.length} dépenses ce mois
-          </span>
+          <div className="text-xs text-rose-700/80">{t.expenses.monthTotal}</div>
+          <div className="font-num font-extrabold text-2xl text-rose-700">−{formatFCFA(monthlyTotal)}</div>
+          <div className="text-xs text-rose-700/70">{t.expenses.monthCount(monthly.length)}</div>
         </div>
-        <button
-          type="button"
-          onClick={() => setShowAddForm(true)}
-          className="h-9 px-3.5 bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs rounded-xl flex items-center gap-1.5 active:scale-95 transition-all shadow-xs cursor-pointer"
-        >
-          <span className="material-symbols-outlined text-[18px] text-emerald-400">add</span>
-          <span>Dépense</span>
-        </button>
+        {!showAddForm && (
+          <Button variant="primary" icon="add" onClick={() => setShowAddForm(true)}>
+            {t.expenses.add}
+          </Button>
+        )}
       </div>
 
-      {showAddForm && (
-        <ExpenseForm onSubmit={handleAddExpense} onCancel={() => setShowAddForm(false)} />
-      )}
+      {showAddForm && <ExpenseForm onSubmit={handleAddExpense} onCancel={() => setShowAddForm(false)} />}
 
-      {/* Filtres par catégorie */}
-      <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
-        {CATEGORY_FILTERS.map((category) => (
-          <button
-            key={category}
-            type="button"
-            onClick={() => setActiveCategory(category)}
-            className={`px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer ${
-              activeCategory === category
-                ? 'bg-slate-900 text-white shadow-2xs'
-                : 'bg-slate-100 text-slate-600 hover:text-slate-900'
-            }`}
-          >
+      <div className="flex items-center gap-2 overflow-x-auto no-scrollbar -mx-5 px-5 sm:-mx-6 sm:px-6">
+        <Chip active={activeCategory === 'all'} onClick={() => setActiveCategory('all')}>
+          {t.expenses.all}
+        </Chip>
+        {EXPENSE_CATEGORIES.map((category) => (
+          <Chip key={category} active={activeCategory === category} onClick={() => setActiveCategory(category)}>
             {category}
-          </button>
+          </Chip>
         ))}
       </div>
 
-      <ExpenseList expenses={filteredExpenses} onDelete={handleDeleteExpense} />
+      <ExpenseList
+        expenses={filteredExpenses}
+        onDelete={(id) => {
+          removeExpense(id);
+          showToast(t.expenses.removed, 'success');
+        }}
+      />
     </Modal>
   );
 }

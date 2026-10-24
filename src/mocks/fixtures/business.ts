@@ -1,3 +1,5 @@
+// Jeu de données de démonstration (mode `mock`) — catalogue, ventes, dépenses,
+// crédits et notifications. Seul fichier où vivent les données métier fictives.
 import type { ClientCredit, Expense, NotificationItem, Product, SaleTransaction } from '@/types';
 import { addDays, startOfDay, toIsoDate } from '@/domain/dates';
 
@@ -16,9 +18,6 @@ const CREDIT_DUE_5_DAYS_AGO = toIsoDate(addDays(NOW, -5));
 const CREDIT_DUE_2_DAYS_AGO = toIsoDate(addDays(NOW, -2));
 const CREDIT_DUE_IN_10_DAYS = toIsoDate(addDays(NOW, 10));
 const CREDIT_DUE_IN_12_DAYS = toIsoDate(addDays(NOW, 12));
-
-export const APP_LOGO =
-  'https://lh3.googleusercontent.com/aida/AEtjO1VrMucOqOjpUYzH-Ai6MwRK4ovtso7qpy-pkMXUkwhBbKQqCXuwOhRQf6z86AN7k4ytV6N4kr0nEj7pqfx1Bnr8-pXxb699e0ZJKSD9CBNwmGDW7g5KY7CZ2dZZKFfMS2jp8YC8RS54ZFNevsrv268slX0S-YSvOwnYWv1sa9CW5w0nQ1Gx2gHYlZUfkepH1GaDY8K118NxLRJj-MyXSof1If2HzJGFRWkSbwT36h4mpFCEqnfL-_kavUk';
 
 export const SEED_PRODUCTS: Product[] = [
   {
@@ -99,6 +98,54 @@ export const SEED_PRODUCTS: Product[] = [
       'https://lh3.googleusercontent.com/aida-public/AB6AXuDr5dPa-gVSpzTxvdYGJOXT8NQSKCmvUmrBERHzHF6NGPH_2wL9NPF7DPnLkrkI0z551YvNlrcnJEEhyXEH8Q4Cd7mzXRhkPNDm4ukalAfMA9eKsOnYPS9Ujr2kMbfha4aQTyzAGR7vDqIJyEQ4RTKA5IDRJEayAkWssNjxX3wjsA65UtYcPzpO2uFW5u9qsVo44QzTV5x2AMbn4NDORT_f82U-Jtzdggt6IA8L4CxnxbFU06uBtzr9UQ',
     unit: 'sachet',
   },
+  {
+    id: 'p7',
+    name: 'Café Touba 250g',
+    sku: '#CAF-007',
+    category: 'Épicerie',
+    price: 1200,
+    costPrice: 900,
+    stock: 18,
+    minStockAlert: 6,
+    imageUrl: '',
+    unit: 'paquet',
+  },
+  {
+    id: 'p8',
+    name: 'Jus de Bissap 1L',
+    sku: '#BIS-021',
+    category: 'Boissons',
+    price: 1000,
+    costPrice: 650,
+    stock: 7,
+    minStockAlert: 8,
+    imageUrl: '',
+    unit: 'bouteille',
+  },
+  {
+    id: 'p9',
+    name: 'Yaourt nature x4',
+    sku: '#YAO-044',
+    category: 'Frais',
+    price: 1600,
+    costPrice: 1250,
+    stock: 15,
+    minStockAlert: 5,
+    imageUrl: '',
+    unit: 'pack',
+  },
+  {
+    id: 'p10',
+    name: 'Dentifrice menthe 75ml',
+    sku: '#DEN-009',
+    category: 'Hygiène',
+    price: 750,
+    costPrice: 520,
+    stock: 26,
+    minStockAlert: 8,
+    imageUrl: '',
+    unit: 'tube',
+  },
 ];
 
 export const SEED_SALES: SaleTransaction[] = [
@@ -145,6 +192,49 @@ export const SEED_SALES: SaleTransaction[] = [
     itemsCount: 2,
   },
 ];
+
+// Historique synthétique déterministe (13 jours précédents) pour alimenter les
+// graphiques du bilan et les tendances de l'accueil.
+const HISTORY_AMOUNTS = [
+  [18500, 9200, 31000],
+  [12400, 27800],
+  [22100, 8400, 15600],
+  [41000, 6900],
+  [16800, 23400, 9800],
+  [28700, 14300],
+  [11900, 35200, 7600],
+  [19400, 21800],
+  [26500, 12100, 8900],
+  [33800, 15700],
+  [9600, 24300, 17200],
+  [30400, 11800],
+  [21500, 16900, 13400],
+];
+const HISTORY_METHODS: SaleTransaction['paymentMethod'][] = [
+  'Espèces',
+  'Mobile Money (Wave)',
+  'Orange Money',
+  'Espèces',
+  'Carte Bancaire',
+];
+
+const HISTORY_SALES: SaleTransaction[] = HISTORY_AMOUNTS.flatMap((amounts, dayIndex) =>
+  amounts.map((amount, saleIndex) => {
+    const sequence = 1000 - dayIndex * 3 - saleIndex;
+    return {
+      id: `h${dayIndex + 2}-${saleIndex}`,
+      saleNumber: `#${sequence}`,
+      time: `${String(9 + saleIndex * 4).padStart(2, '0')}:${String((dayIndex * 7) % 60).padStart(2, '0')}`,
+      date: toIsoDate(addDays(NOW, -(dayIndex + 2))),
+      paymentMethod: HISTORY_METHODS[(dayIndex + saleIndex) % HISTORY_METHODS.length],
+      amount,
+      status: 'Validé' as const,
+      itemsCount: 1 + ((dayIndex + saleIndex) % 5),
+    };
+  })
+);
+
+SEED_SALES.push(...HISTORY_SALES);
 
 export const SEED_EXPENSES: Expense[] = [
   {
@@ -253,6 +343,7 @@ export const SEED_NOTIFICATIONS: NotificationItem[] = [
     type: 'warning',
     time: 'Il y a 10 min',
     read: false,
+    relatedTab: 'stock',
   },
   {
     id: 'n2',
@@ -261,6 +352,7 @@ export const SEED_NOTIFICATIONS: NotificationItem[] = [
     type: 'alert',
     time: 'Il y a 35 min',
     read: false,
+    relatedTab: 'credits',
   },
   {
     id: 'n3',

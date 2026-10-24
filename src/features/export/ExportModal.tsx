@@ -1,22 +1,21 @@
 import { useState } from 'react';
-import { Button, EmptyState, Modal } from '@/ui';
-import { useUiStore } from '@/store/useUiStore';
-import { useSalesStore } from '@/store/useSalesStore';
-import { useExpensesStore } from '@/store/useExpensesStore';
+import { t } from '@/content';
 import { exportToCSV, exportToPDF, type ExportFilterType } from '@/lib/export';
+import { useExpensesStore } from '@/store/useExpensesStore';
+import { useSalesStore } from '@/store/useSalesStore';
+import { useCurrentSession } from '@/store/useSessionStore';
+import { useUiStore } from '@/store/useUiStore';
+import { Button, EmptyState, Icon, Modal } from '@/ui';
 import { ExportOptions, type ExportFormat } from './ExportOptions';
 
-/**
- * Modale globale d'export comptable. Aucune prop métier : l'ouverture est pilotée
- * par `useUiStore` (`modal === 'export'`) ; ventes et dépenses viennent des stores.
- */
+/** Modale globale d'export comptable (pilotée par `useUiStore.modal === 'export'`). */
 export function ExportModal() {
   const open = useUiStore((state) => state.modal === 'export');
   const closeModal = useUiStore((state) => state.closeModal);
   const showToast = useUiStore((state) => state.showToast);
-
   const sales = useSalesStore((state) => state.sales);
   const expenses = useExpensesStore((state) => state.expenses);
+  const { business } = useCurrentSession();
 
   const [format, setFormat] = useState<ExportFormat>('PDF');
   const [filterType, setFilterType] = useState<ExportFilterType>('all');
@@ -24,10 +23,7 @@ export function ExportModal() {
 
   const totalSales = sales.reduce((sum, sale) => sum + sale.amount, 0);
   const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
-
-  const salesCount = filterType === 'expenses' ? 0 : sales.length;
-  const expensesCount = filterType === 'sales' ? 0 : expenses.length;
-  const totalRecords = salesCount + expensesCount;
+  const totalRecords = (filterType === 'expenses' ? 0 : sales.length) + (filterType === 'sales' ? 0 : expenses.length);
   const hasAnyData = sales.length > 0 || expenses.length > 0;
 
   const handleDownload = () => {
@@ -35,18 +31,18 @@ export function ExportModal() {
     try {
       if (format === 'CSV') {
         exportToCSV(filterType, sales, expenses);
-        showToast('Fichier CSV comptable exporté avec succès !', 'success');
+        showToast(t.exportModal.csvDone, 'success');
       } else {
-        exportToPDF(filterType, sales, expenses);
-        showToast('Rapport PDF comptable officiel téléchargé !', 'success');
+        exportToPDF(filterType, sales, expenses, business);
+        showToast(t.exportModal.pdfDone, 'success');
       }
       window.setTimeout(() => {
         setIsExporting(false);
         closeModal();
-      }, 500);
+      }, 400);
     } catch (error) {
-      console.error("Erreur lors de l'exportation:", error);
-      showToast("Erreur lors de la génération de l'export.", 'error');
+      console.error(error);
+      showToast(t.exportModal.failed, 'error');
       setIsExporting(false);
     }
   };
@@ -55,31 +51,24 @@ export function ExportModal() {
     <Modal
       open={open}
       onClose={closeModal}
-      title="Export Comptable & Traçabilité"
-      subtitle="Générez vos écritures pour votre comptabilité externe"
+      title={t.exportModal.title}
+      subtitle={t.exportModal.subtitle}
       icon="file_download"
       headerVariant="dark"
       footer={
         <>
-          <Button variant="ghost" size="md" onClick={closeModal}>
-            Annuler
+          <Button variant="secondary" onClick={closeModal}>
+            {t.common.cancel}
           </Button>
           <Button
-            variant="secondary"
-            size="md"
+            variant="primary"
             className="flex-1"
+            icon={format === 'PDF' ? 'picture_as_pdf' : 'download'}
             loading={isExporting}
             disabled={!hasAnyData || totalRecords === 0}
             onClick={handleDownload}
           >
-            <span className="material-symbols-outlined text-[18px] text-emerald-400">
-              {format === 'PDF' ? 'picture_as_pdf' : 'download'}
-            </span>
-            <span>
-              {isExporting
-                ? 'Génération en cours...'
-                : `Télécharger ${format} (${totalRecords} lignes)`}
-            </span>
+            {isExporting ? t.exportModal.generating : t.exportModal.download(format, totalRecords)}
           </Button>
         </>
       }
@@ -95,21 +84,11 @@ export function ExportModal() {
           totalExpenses={totalExpenses}
         />
       ) : (
-        <EmptyState
-          icon="file_download"
-          title="Aucune donnée à exporter"
-          description="Enregistrez des ventes ou des dépenses pour générer un export comptable."
-        />
+        <EmptyState icon="file_download" title={t.exportModal.emptyTitle} description={t.exportModal.emptyText} />
       )}
-
-      <div className="flex items-center gap-2 p-2.5 rounded-lg bg-emerald-50/70 border border-emerald-200/80 text-[11px] text-emerald-800">
-        <span className="material-symbols-outlined text-[16px] text-emerald-600 shrink-0">
-          verified
-        </span>
-        <span>
-          Export certifié conforme avec horodatage pour l&apos;administration fiscale et votre
-          expert-comptable.
-        </span>
+      <div className="flex items-center gap-2.5 p-3 rounded-2xl bg-brand-50 text-xs text-brand-800">
+        <Icon name="verified" size={18} className="text-brand-600" />
+        {t.exportModal.note}
       </div>
     </Modal>
   );

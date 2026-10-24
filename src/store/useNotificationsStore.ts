@@ -5,7 +5,9 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { NotificationItem } from '@/types';
 import { createId } from '@/domain/ids';
-import { SEED_NOTIFICATIONS } from '@/data/seed';
+import { SEED_NOTIFICATIONS } from '@/mocks';
+import { syncRemote } from '@/services';
+import { t } from '@/content';
 import {
   coerceBoolean,
   coerceId,
@@ -43,27 +45,31 @@ export const useNotificationsStore = create<NotificationsState>()(
             {
               ...input,
               id: createId('notif'),
-              time: input.time ?? 'À l’instant',
+              time: input.time ?? t.notifications.justNow,
               read: input.read ?? false,
             },
             ...state.notifications,
           ],
         })),
 
-      markAllRead: () =>
+      markAllRead: () => {
         set((state) => ({
           notifications: state.notifications.map((notification) => ({
             ...notification,
             read: true,
           })),
-        })),
+        }));
+        syncRemote((api) => api.notifications.markAllRead(), 'Lecture non synchronisée.');
+      },
 
-      markRead: (id) =>
+      markRead: (id) => {
         set((state) => ({
           notifications: state.notifications.map((notification) =>
             notification.id === id ? { ...notification, read: true } : notification
           ),
-        })),
+        }));
+        syncRemote((api) => api.notifications.markRead(id), 'Lecture non synchronisée.');
+      },
 
       clear: () => set({ notifications: [] }),
     }),
@@ -103,7 +109,7 @@ function toNotification(value: unknown): NotificationItem | null {
     id,
     title,
     type: value.type,
-    time: coerceString(value.time, 'À l’instant'),
+    time: coerceString(value.time, t.notifications.justNow),
     read: coerceBoolean(value.read, false),
   };
 

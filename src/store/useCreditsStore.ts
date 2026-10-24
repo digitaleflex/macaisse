@@ -7,7 +7,8 @@ import type { ClientCredit } from '@/types';
 import { createId } from '@/domain/ids';
 import { applyPayment, computeCreditStatus, creditSummary, daysLate } from '@/domain/credits';
 import type { CreditSummary } from '@/domain/credits';
-import { SEED_CREDITS } from '@/data/seed';
+import { SEED_CREDITS } from '@/mocks';
+import { syncRemote } from '@/services';
 import {
   coerceId,
   coerceNumber,
@@ -33,7 +34,7 @@ export interface CreditsState {
 
 export const useCreditsStore = create<CreditsState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       credits: SEED_CREDITS.map((credit) => ({ ...credit })),
 
       addCredit: (input) => {
@@ -45,25 +46,34 @@ export const useCreditsStore = create<CreditsState>()(
         };
         if (late > 0) credit.daysLate = late;
         set((state) => ({ credits: [credit, ...state.credits] }));
+        syncRemote((api) => api.credits.create(credit), 'Crédit non synchronisé.');
       },
 
-      payCredit: (id, amount) =>
+      payCredit: (id, amount) => {
         set((state) => ({
           credits: state.credits.map((credit) =>
             credit.id === id ? applyPayment(credit, amount) : credit
           ),
-        })),
+        }));
+        syncRemote((api) => api.credits.pay(id, amount), 'Règlement non synchronisé.');
+      },
 
-      markSettled: (id) =>
+      markSettled: (id) => {
+        const target = get().credits.find((credit) => credit.id === id);
+        if (!target || target.remainingAmount <= 0) return;
+        const amount = target.remainingAmount;
         set((state) => ({
-          credits: state.credits.map((credit) => {
-            if (credit.id !== id || credit.remainingAmount <= 0) return credit;
-            return applyPayment(credit, credit.remainingAmount);
-          }),
-        })),
+          credits: state.credits.map((credit) =>
+            credit.id === id ? applyPayment(credit, amount) : credit
+          ),
+        }));
+        syncRemote((api) => api.credits.pay(id, amount), 'Règlement non synchronisé.');
+      },
 
-      removeCredit: (id) =>
-        set((state) => ({ credits: state.credits.filter((credit) => credit.id !== id) })),
+      removeCredit: (id) => {
+        set((state) => ({ credits: state.credits.filter((credit) => credit.id !== id) }));
+        syncRemote((api) => api.credits.remove(id), 'Suppression non synchronisée.');
+      },
     }),
     persistOptions<CreditsState, { credits: ClientCredit[] }>(
       PERSIST_NAMES.credits,

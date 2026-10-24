@@ -1,125 +1,74 @@
 import { useState } from 'react';
-import { Modal } from '@/ui';
+import type { BillingCycle } from '@/types';
+import { t } from '@/content';
+import { parseDate } from '@/domain/dates';
+import { formatFCFA } from '@/domain/money';
+import { useCurrentSession } from '@/store/useSessionStore';
 import { selectModal, useUiStore } from '@/store/useUiStore';
-import { PlanCard, type SubscriptionPlan } from './PlanCard';
+import { Badge, Button, Icon, Modal, SegmentedControl } from '@/ui';
+import { PlanCard } from './PlanCard';
 
-/**
- * AbonnementModal — entièrement démonstrative (forfait, bascule de facturation
- * et historique de factures sont des maquettes). Pilotée par `useUiStore`
- * (`modal === 'abonnement'`). Aucun contrôle ne prétend silencieusement agir :
- * un bandeau signale la démo et les actions non implémentées publient un toast.
- */
-
-const ACTIVE_PLAN: SubscriptionPlan = {
-  name: 'Forfait Pro Commerçant',
-  priceLabel: '15 000',
-  period: 'FCFA / mois',
-  nextBilling: 'Prochaine échéance le 24 Novembre 2024 via Wave',
-  features: [
-    'Ventes illimitées',
-    'Jusqu’à 3 caissiers',
-    'Reçus WhatsApp inclus',
-    'Export comptable Excel',
-  ],
-};
-
-const INVOICES: { id: string; meta: string }[] = [
-  { id: 'INV-2024-10', meta: '24 Oct 2024 • Payé par Wave • 15 000 F' },
-  { id: 'INV-2024-09', meta: '24 Sep 2024 • Payé par Wave • 15 000 F' },
-];
-
+/** Abonnement (démonstratif) — données issues de la session, actions signalées par toast. */
 export function AbonnementModal() {
   const open = useUiStore(selectModal) === 'abonnement';
   const closeModal = useUiStore((state) => state.closeModal);
   const showToast = useUiStore((state) => state.showToast);
-  const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
+  const { subscription } = useCurrentSession();
+  const [cycle, setCycle] = useState<BillingCycle>(subscription.cycle);
 
-  const notifyUnavailable = () =>
-    showToast('Fonctionnalité de démonstration — non disponible.', 'info');
-
-  const title = (
-    <span className="flex items-center gap-2">
-      <span className="material-symbols-outlined text-emerald-600 text-[22px]">
-        workspace_premium
-      </span>
-      <span>Mon Abonnement Ma Caisse</span>
-    </span>
-  );
+  const formatDate = (iso: string) => parseDate(iso)?.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }) ?? iso;
 
   return (
-    <Modal open={open} onClose={closeModal} title={title}>
-      {/* Demo notice */}
-      <div className="flex items-start gap-2 p-2.5 rounded-lg bg-amber-50 border border-amber-200 text-[11px] text-amber-800">
-        <span className="material-symbols-outlined text-[16px] text-amber-600 shrink-0">info</span>
-        <span>
-          Démonstration : la gestion d’abonnement et la facturation ne sont pas activées. Aucune
-          transaction réelle n’est effectuée.
-        </span>
+    <Modal open={open} onClose={closeModal} title={t.subscription.title} icon="workspace_premium" size="lg">
+      <div className="flex items-start gap-2.5 p-3 rounded-2xl bg-amber-50 text-xs text-amber-800">
+        <Icon name="info" size={18} className="text-amber-600" />
+        {t.subscription.demoNotice}
       </div>
 
-      {/* Active Plan Card */}
-      <PlanCard plan={ACTIVE_PLAN} />
+      <SegmentedControl
+        label={t.subscription.title}
+        value={cycle}
+        onChange={setCycle}
+        fullWidth
+        options={[
+          { value: 'monthly', label: t.subscription.monthly },
+          {
+            value: 'yearly',
+            label: (
+              <>
+                {t.subscription.yearly}
+                <Badge tone="success">{t.subscription.yearlyDiscount}</Badge>
+              </>
+            ),
+          },
+        ]}
+      />
 
-      {/* Billing Cycle Switch (aperçu) */}
-      <div className="space-y-1.5">
-        <div className="flex p-1 bg-slate-100 rounded-xl text-xs font-semibold border border-slate-200/80">
-          <button
-            type="button"
-            onClick={() => setBillingCycle('monthly')}
-            className={`flex-1 py-1.5 rounded-lg text-center transition-all cursor-pointer ${
-              billingCycle === 'monthly'
-                ? 'bg-white text-slate-900 shadow-2xs'
-                : 'text-slate-500 hover:text-slate-900'
-            }`}
-          >
-            Mensuel (15 000 F)
-          </button>
-          <button
-            type="button"
-            onClick={() => setBillingCycle('yearly')}
-            className={`flex-1 py-1.5 rounded-lg text-center transition-all flex items-center justify-center gap-1 cursor-pointer ${
-              billingCycle === 'yearly'
-                ? 'bg-white text-slate-900 shadow-2xs'
-                : 'text-slate-500 hover:text-slate-900'
-            }`}
-          >
-            <span>Annuel (2 mois offerts)</span>
-            <span className="px-1.5 py-0.2 rounded-full bg-emerald-100 text-emerald-800 text-[9px] font-bold border border-emerald-200">
-              -17%
-            </span>
-          </button>
-        </div>
-        <span className="text-[10px] text-slate-500 block px-1">
-          Aperçu de démonstration — la facturation réelle n’est pas activée.
-        </span>
-      </div>
+      <PlanCard subscription={subscription} cycle={cycle} />
+      <p className="text-xs text-slate-500 -mt-2">{t.subscription.preview}</p>
 
-      {/* Invoices History */}
-      <div className="space-y-2">
-        <span className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold block px-1">
-          Historique des Factures
-        </span>
-
-        <div className="bg-white rounded-xl border border-slate-200/80 divide-y divide-slate-100 shadow-2xs">
-          {INVOICES.map((invoice) => (
-            <div key={invoice.id} className="p-3 flex items-center justify-between">
-              <div>
-                <span className="text-xs font-semibold text-slate-900 block">
-                  Facture #{invoice.id}
-                </span>
-                <span className="text-[10px] text-slate-500">{invoice.meta}</span>
+      <section className="space-y-2">
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 px-1">{t.subscription.invoices}</h3>
+        <ul className="rounded-2xl border border-line divide-y divide-line">
+          {subscription.invoices.map((invoice) => (
+            <li key={invoice.id} className="flex items-center gap-3 px-4 py-3">
+              <span className="size-9 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center shrink-0">
+                <Icon name="description" size={19} />
+              </span>
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-semibold text-ink-900">{t.subscription.invoice(invoice.id)}</div>
+                <div className="text-xs text-slate-500">
+                  {t.subscription.invoiceMeta(formatDate(invoice.date), invoice.paymentMethod, formatFCFA(invoice.amount))}
+                </div>
               </div>
-              <button
-                type="button"
-                onClick={notifyUnavailable}
-                className="px-2 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-900 text-[11px] font-semibold transition-colors cursor-pointer"
-              >
-                Télécharger
-              </button>
-            </div>
+              <Badge tone={invoice.status === 'Payée' ? 'success' : 'warning'}>{invoice.status}</Badge>
+              <Button variant="ghost" size="sm" icon="download" onClick={() => showToast(t.common.unavailable, 'info')}>
+                <span className="hidden sm:inline">{t.subscription.download}</span>
+              </Button>
+            </li>
           ))}
-        </div>
-      </div>
+        </ul>
+      </section>
     </Modal>
   );
 }

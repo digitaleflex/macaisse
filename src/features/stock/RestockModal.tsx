@@ -1,15 +1,11 @@
 import { useState, type FormEvent } from 'react';
 import type { Product } from '@/types';
-import { Button, Input, Modal } from '@/ui';
+import { t } from '@/content';
+import { QUICK_RESTOCK_STEPS } from '@/config/reference';
+import { Button, Input, Modal, cn } from '@/ui';
+import { ProductThumb } from '@/features/shared/ProductThumb';
 
-/**
- * RestockModal — saisie d'une quantité de réapprovisionnement.
- *
- * En-tête clair (`<Modal>` par défaut). La validation est déléguée au parent
- * (`onSubmit`) qui appelle `useProductsStore.restock` et gère les erreurs
- * françaises levées par le store (quantité ≤ 0, id inconnu).
- */
-
+/** Saisie d'une quantité de réapprovisionnement (validation déléguée au parent). */
 export interface RestockModalProps {
   open: boolean;
   onClose: () => void;
@@ -20,53 +16,54 @@ export interface RestockModalProps {
 const DEFAULT_QUANTITY = 20;
 
 export function RestockModal({ open, onClose, product, onSubmit }: RestockModalProps) {
-  // Quantité par défaut ; le parent remonte le composant (`key`) à chaque
-  // ouverture, ce qui réinitialise la saisie sans effet ni `setState`.
   const [quantity, setQuantity] = useState(DEFAULT_QUANTITY);
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const value = Number(quantity);
-    if (!Number.isFinite(value) || value <= 0) return;
-    onSubmit(value);
+    if (!Number.isFinite(quantity) || quantity <= 0) return;
+    onSubmit(quantity);
   };
 
   return (
-    <Modal open={open} onClose={onClose} title="Réapprovisionner">
-      <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+    <Modal open={open} onClose={onClose} title={t.stock.restockModal.title} icon="local_shipping" size="sm">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         {product && (
-          <div className="flex items-center gap-2.5 p-3 rounded-xl bg-slate-50 border border-slate-100">
-            <div className="w-10 h-10 rounded-lg bg-slate-100 shrink-0 overflow-hidden border border-slate-200/60">
-              <img
-                src={product.imageUrl}
-                alt={product.imageAlt || product.name}
-                className="w-full h-full object-cover"
-                referrerPolicy="no-referrer"
-              />
-            </div>
-            <div className="flex flex-col min-w-0">
-              <span className="font-display text-xs font-bold text-slate-900 truncate">
-                {product.name}
-              </span>
-              <span className="text-[11px] text-slate-500">
-                Stock actuel : {product.stock} {product.unit}
-                {product.stock > 1 ? 's' : ''}
-              </span>
+          <div className="flex items-center gap-3 p-3 rounded-2xl bg-slate-50 border border-line">
+            <ProductThumb product={product} className="size-12 rounded-xl" />
+            <div className="min-w-0">
+              <div className="text-sm font-semibold text-ink-900 truncate">{product.name}</div>
+              <div className="text-xs text-slate-500">
+                {t.stock.restockModal.current(t.stock.units(product.stock, product.unit))}
+              </div>
             </div>
           </div>
         )}
-
         <Input
-          label="Quantité à ajouter"
+          label={t.stock.restockModal.quantity}
           name="restock-quantity"
           type="number"
+          inputMode="numeric"
           value={quantity}
           onChange={(event) => setQuantity(Number(event.target.value))}
+          hint={product ? t.stock.restockModal.after(t.stock.units(product.stock + Math.max(0, quantity), product.unit)) : undefined}
         />
-
-        <Button type="submit" variant="primary" size="lg" fullWidth className="mt-2">
-          <span className="material-symbols-outlined text-[20px]">add_shopping_cart</span>
-          <span>Valider le réapprovisionnement</span>
+        <div className="grid grid-cols-3 gap-2">
+          {QUICK_RESTOCK_STEPS.map((step) => (
+            <button
+              key={step}
+              type="button"
+              onClick={() => setQuantity(step)}
+              className={cn(
+                'h-9 rounded-xl text-sm font-bold border transition-colors cursor-pointer font-num',
+                quantity === step ? 'bg-ink-900 border-ink-900 text-white' : 'bg-white border-line hover:border-line-strong'
+              )}
+            >
+              {t.stock.quickRestock(step)}
+            </button>
+          ))}
+        </div>
+        <Button type="submit" variant="brand" size="lg" fullWidth icon="inventory">
+          {t.stock.restockModal.submit}
         </Button>
       </form>
     </Modal>
