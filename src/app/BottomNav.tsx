@@ -2,21 +2,22 @@ import { t } from '@/content';
 import { selectCartItemCount, useCartStore } from '@/store/useCartStore';
 import { selectTab, useUiStore } from '@/store/useUiStore';
 import { Icon, cn } from '@/ui';
-import { TABS } from './routes';
+import { useAllowedTabs } from './useAllowedTabs';
 
 /** Barre d'onglets mobile (< lg) — la caisse est mise en avant au centre. */
 export function BottomNav() {
   const currentTab = useUiStore(selectTab);
   const setTab = useUiStore((state) => state.setTab);
   const cartCount = useCartStore(selectCartItemCount);
+  const tabs = useAllowedTabs();
 
   return (
     <nav
       aria-label={t.app.name}
       className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-xl border-t border-line pb-safe"
     >
-      <div className="max-w-xl mx-auto grid grid-cols-5 h-16 px-1">
-        {TABS.map((tab) => {
+      <div className="max-w-xl mx-auto grid h-16 px-1" style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}>
+        {tabs.map((tab) => {
           const active = currentTab === tab.id;
           if (tab.id === 'ventes') {
             return (

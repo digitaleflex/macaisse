@@ -3,14 +3,16 @@ import { t } from '@/content';
 import { exportToCSV, exportToPDF, type ExportFilterType } from '@/lib/export';
 import { useExpensesStore } from '@/store/useExpensesStore';
 import { useSalesStore } from '@/store/useSalesStore';
-import { useCurrentSession } from '@/store/useSessionStore';
+import { useCurrentSession, usePermission } from '@/store/useSessionStore';
 import { useUiStore } from '@/store/useUiStore';
 import { Button, EmptyState, Icon, Modal } from '@/ui';
 import { ExportOptions, type ExportFormat } from './ExportOptions';
 
 /** Modale globale d'export comptable (pilotée par `useUiStore.modal === 'export'`). */
 export function ExportModal() {
-  const open = useUiStore((state) => state.modal === 'export');
+  const isOpen = useUiStore((state) => state.modal === 'export');
+  const allowed = usePermission('export.run');
+  const open = isOpen && allowed;
   const closeModal = useUiStore((state) => state.closeModal);
   const showToast = useUiStore((state) => state.showToast);
   const sales = useSalesStore((state) => state.sales);

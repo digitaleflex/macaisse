@@ -185,9 +185,79 @@ export interface Subscription {
   invoices: Invoice[];
 }
 
-/** Session courante : utilisateur, commerce et abonnement. */
+// ---------------------------------------------------------------------------
+// Multi-organisation (SaaS) : comptes, appartenances, rôles.
+// ---------------------------------------------------------------------------
+
+/** Rôle d'un membre dans une organisation. */
+export type Role = 'owner' | 'manager' | 'cashier';
+
+/** Appartenance d'un utilisateur à une organisation. */
+export interface Membership {
+  organizationId: string;
+  organizationName: string;
+  city: string;
+  role: Role;
+}
+
+/** Résultat d'une authentification (connexion, inscription, reprise de session). */
+export interface AuthResult {
+  token: string;
+  user: UserProfile;
+  memberships: Membership[];
+}
+
+export interface LoginInput {
+  email: string;
+  password: string;
+}
+
+export interface SignupInput {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  password: string;
+  organizationName: string;
+  activity: string;
+  city: string;
+}
+
+/** Compte de démonstration proposé sur l'écran de connexion (mode `mock` uniquement). */
+export interface DemoAccount {
+  email: string;
+  password: string;
+  fullName: string;
+  initials: string;
+  organizations: { name: string; role: Role }[];
+}
+
+/** Membre de l'équipe d'une organisation. */
+export interface TeamMember {
+  userId: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  role: Role;
+  status: 'active' | 'invited';
+  joinedAt: string;
+}
+
+export interface InviteMemberInput {
+  firstName: string;
+  lastName: string;
+  email: string;
+  role: Exclude<Role, 'owner'>;
+}
+
+/**
+ * Session de travail : utilisateur connecté DANS une organisation donnée
+ * (son profil de commerce, son abonnement et le rôle de l'utilisateur).
+ */
 export interface Session {
   user: UserProfile;
   business: BusinessProfile;
   subscription: Subscription;
+  role: Role;
 }

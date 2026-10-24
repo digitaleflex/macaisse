@@ -1,8 +1,10 @@
 # Ma Caisse — Architecture
 
-SPA React 19 + Vite + Tailwind v4 + Zustand. Le frontend fonctionne seul en
-mode démo (`mock`) et se branche sur un backend REST en mode `http` sans
-modifier l'interface.
+SPA React 19 + Vite + Tailwind v4 + Zustand, conçue comme un **SaaS
+multi-organisation** : un utilisateur peut appartenir à plusieurs commerces,
+avec un rôle par commerce (propriétaire, gérant, caissier). Le frontend
+fonctionne seul en mode démo (`mock`) et se branche sur un backend REST en mode
+`http` sans modifier l'interface.
 
 ## Couches et règles d'import (du haut vers le bas uniquement)
 
@@ -27,16 +29,40 @@ app/  ──►  features/  ──►  store/  ──►  services/  ──►  
 | `domain/` | Règles métier pures et testées (stock, ventes, crédits, finances, dates, montants) | React, stores |
 | `lib/` | Intégrations : export CSV/PDF, client Gemini | — |
 
+## Multi-organisation
+
+| Élément | Où |
+|---|---|
+| Compte connecté, appartenances, organisation active (persisté) | `store/useAuthStore.ts` |
+| Connexion, inscription, reprise, changement d'espace, déconnexion | `store/auth.ts` |
+| Contexte des requêtes (jeton, `orgId`) | `services/tenant.ts` → routes `/orgs/:orgId/…` |
+| Cloisonnement local des données (`ma-caisse/<orgId>/<collection>`) | `store/tenantScope.ts` |
+| Session de l'espace (commerce, abonnement, rôle) + `usePermission()` | `store/useSessionStore.ts` |
+| Matrice des droits `can(role, permission)` | `domain/permissions.ts` |
+| Écran de connexion / inscription | `features/auth` |
+| Sélecteur d'espace (barre latérale, feuille mobile, profil) | `features/organisation` |
+| Gestion de l'équipe (inviter, changer de rôle, retirer) | `features/equipe` |
+
+Règles d'interface : la navigation (`app/useAllowedTabs.ts`), les raccourcis,
+les actions et les colonnes sensibles (prix d'achat, marges) dépendent de
+`usePermission`. Un onglet interdit redirige vers la caisse ou affiche « Accès
+réservé ». **La sécurité réelle reste côté serveur** (voir le contrat d'API).
+
+Comptes de démo (mot de passe `demo1234`) : Mamadou (propriétaire de Boutique
+Étoile + gérant de Supérette Le Baobab), Awa (caissière), Koffi (propriétaire
+de la supérette), Fatou (gérante).
+
 ## Flux de données
 
 ```
 UI (features) ──action──► store (mise à jour optimiste, persistée)
                               └── syncRemote(api => api.x.y()) ──► services ──► backend REST
-Démarrage : App ─► bootstrapApp() ─► api.session.get() (+ collections en mode http) ─► stores
+Connexion : login() ─► setAuthToken ─► activateOrganization(orgId)
+             ─► scopeStoresToOrganization ─► api.session.get(orgId) (+ collections en http) ─► stores
 ```
 
-- **Mode `mock`** (défaut) : la session vient de `mocks/`, les stores persistés
-  localement font foi, aucune requête réseau n'est émise.
+- **Mode `mock`** (défaut) : comptes et organisations simulés par `mocks/`,
+  données de chaque organisation persistées localement (elles font foi).
 - **Mode `http`** : les collections du backend remplacent l'état local au
   démarrage ; chaque mutation est envoyée au serveur, un échec déclenche un toast.
   Contrat complet : [`docs/API_CONTRACT.md`](docs/API_CONTRACT.md).

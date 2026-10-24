@@ -4,6 +4,7 @@ import { EXPENSE_CATEGORIES } from '@/config/reference';
 import { formatFCFA } from '@/domain/money';
 import { toIsoDate } from '@/domain/dates';
 import { expensesInRange, useExpensesStore } from '@/store/useExpensesStore';
+import { usePermission } from '@/store/useSessionStore';
 import { useUiStore } from '@/store/useUiStore';
 import { Button, Chip, Modal } from '@/ui';
 import { ExpenseForm, type ExpenseFormValues } from './ExpenseForm';
@@ -11,7 +12,9 @@ import { ExpenseList } from './ExpenseList';
 
 /** Modale globale des dépenses (pilotée par `useUiStore.modal === 'depenses'`). */
 export function DepensesModal() {
-  const open = useUiStore((state) => state.modal === 'depenses');
+  const isOpen = useUiStore((state) => state.modal === 'depenses');
+  const allowed = usePermission('expenses.manage');
+  const open = isOpen && allowed;
   const closeModal = useUiStore((state) => state.closeModal);
   const showToast = useUiStore((state) => state.showToast);
   const expenses = useExpensesStore((state) => state.expenses);

@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { t } from '@/content';
 import { parseDate } from '@/domain/dates';
+import { OrgList } from '@/features/organisation';
 import { api } from '@/services';
-import { bootstrapApp } from '@/store/bootstrap';
-import { useCurrentSession } from '@/store/useSessionStore';
+import { logout, reloadOrganization } from '@/store/auth';
+import { selectMemberships, useAuthStore } from '@/store/useAuthStore';
+import { useCurrentSession, usePermission } from '@/store/useSessionStore';
 import { selectModal, useUiStore } from '@/store/useUiStore';
 import { Avatar, Badge, Button, Icon, Modal } from '@/ui';
 import { PosSettings } from './PosSettings';
@@ -19,7 +21,10 @@ export function ProfilModal() {
   const closeModal = useUiStore((state) => state.closeModal);
   const openModal = useUiStore((state) => state.openModal);
   const showToast = useUiStore((state) => state.showToast);
-  const { user, business, subscription } = useCurrentSession();
+  const { user, business, subscription, role } = useCurrentSession();
+  const memberships = useAuthStore(selectMemberships);
+  const canBill = usePermission('billing.manage');
+  const canManageTeam = usePermission('team.manage');
   const [syncing, setSyncing] = useState(false);
   const live = api.mode === 'http';
 
@@ -29,7 +34,7 @@ export function ProfilModal() {
       return;
     }
     setSyncing(true);
-    await bootstrapApp();
+    await reloadOrganization();
     setSyncing(false);
     showToast(t.profile.syncDone, 'success');
   };
@@ -43,7 +48,7 @@ export function ProfilModal() {
             <span className="font-display font-bold text-lg">
               {user.firstName} {user.lastName}
             </span>
-            <Badge tone="zest">{user.role}</Badge>
+            <Badge tone="zest">{t.roles[role]}</Badge>
           </div>
           <div className="text-sm text-slate-400 truncate">{user.email}</div>
           <div className="text-xs text-slate-500">{user.phone}</div>
@@ -72,11 +77,37 @@ export function ProfilModal() {
             <div className="text-sm font-semibold text-ink-900">{subscription.plan.name}</div>
             <div className="text-xs text-slate-500">{t.profile.subscriptionActive(formatDate(subscription.renewalDate))}</div>
           </div>
-          <Button variant="secondary" size="sm" onClick={() => openModal('abonnement')}>
-            {t.profile.manage}
-          </Button>
+          {canBill && (
+            <Button variant="secondary" size="sm" onClick={() => openModal('abonnement')}>
+              {t.profile.manage}
+            </Button>
+          )}
         </div>
       </section>
+
+      {canManageTeam && (
+        <button
+          type="button"
+          onClick={() => openModal('equipe')}
+          className="w-full rounded-2xl border border-line p-4 flex items-center gap-3 text-left hover:border-line-strong transition-colors cursor-pointer"
+        >
+          <span className="size-10 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center shrink-0">
+            <Icon name="group" size={20} />
+          </span>
+          <span className="flex-1 min-w-0">
+            <span className="block text-sm font-semibold text-ink-900">{t.team.title}</span>
+            <span className="block text-xs text-slate-500">{t.roleDescriptions.owner}</span>
+          </span>
+          <Icon name="chevron_right" size={20} className="text-slate-400" />
+        </button>
+      )}
+
+      {memberships.length > 1 && (
+        <section className="space-y-2">
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 px-1">{t.org.yourSpaces}</h3>
+          <OrgList />
+        </section>
+      )}
 
       <PosSettings />
 
@@ -95,6 +126,10 @@ export function ProfilModal() {
           </Button>
         </div>
       </section>
+
+      <Button variant="danger-soft" size="lg" fullWidth icon="logout" onClick={() => void logout()}>
+        {t.auth.logout}
+      </Button>
     </Modal>
   );
 }

@@ -40,9 +40,19 @@ function isCategoryFilter(value: string): value is StockCategoryFilter {
 }
 
 export function StockFilters(props: StockFiltersProps) {
-  const statusChips: { value: StockStatusFilter; label: string; count: number; dot?: 'success' | 'warning' | 'danger' }[] = [
+  const statusChips: {
+    value: StockStatusFilter;
+    label: string;
+    count: number;
+    dot?: 'success' | 'warning' | 'danger';
+  }[] = [
     { value: 'all', label: t.stock.statusAll, count: props.totalCount },
-    { value: 'disponible', label: t.stock.statusInStock, count: props.inStockCount, dot: 'success' },
+    {
+      value: 'disponible',
+      label: t.stock.statusInStock,
+      count: props.inStockCount,
+      dot: 'success',
+    },
     { value: 'faible', label: t.stock.statusLow, count: props.lowStockCount, dot: 'warning' },
     { value: 'rupture', label: t.stock.statusOut, count: props.outOfStockCount, dot: 'danger' },
   ];
@@ -62,7 +72,8 @@ export function StockFilters(props: StockFiltersProps) {
             name="stock-category"
             value={props.categoryFilter}
             onChange={(event) => {
-              if (isCategoryFilter(event.target.value)) props.onCategoryFilterChange(event.target.value);
+              if (isCategoryFilter(event.target.value))
+                props.onCategoryFilterChange(event.target.value);
             }}
             options={CATEGORY_OPTIONS}
             className="flex-1 md:w-48"

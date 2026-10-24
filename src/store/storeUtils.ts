@@ -36,6 +36,7 @@ export const PERSIST_NAMES = {
   credits: 'ma-caisse/credits',
   notifications: 'ma-caisse/notifications',
   ui: 'ma-caisse/ui',
+  auth: 'ma-caisse/auth',
 } as const;
 
 export type PersistName = (typeof PERSIST_NAMES)[keyof typeof PERSIST_NAMES];

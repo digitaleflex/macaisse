@@ -1,21 +1,49 @@
 import type {
+  AuthResult,
   CartLine,
+  DemoAccount,
   ClientCredit,
   Expense,
   NotificationItem,
   Product,
   SaleTransaction,
+  InviteMemberInput,
+  LoginInput,
+  Role,
   Session,
+  SignupInput,
+  TeamMember,
 } from '@/types';
 
 /**
  * Contrats des dépôts distants. Deux implémentations : `adapters/mock` (démo,
  * en mémoire) et `adapters/http` (backend REST). Les stores ne connaissent que
  * cette interface, jamais l'adaptateur concret.
+ *
+ * Les dépôts métier (produits, ventes…) s'appliquent à l'organisation active
+ * (`services/tenant.ts`) ; auth, session et équipe reçoivent l'organisation
+ * explicitement.
  */
 
+export interface AuthRepository {
+  login(input: LoginInput): Promise<AuthResult>;
+  signup(input: SignupInput): Promise<AuthResult>;
+  /** Reprise de session à partir du jeton courant. */
+  me(): Promise<AuthResult>;
+  logout(): Promise<void>;
+  /** Comptes proposés sur l'écran de connexion (vide hors démo). */
+  demoAccounts(): Promise<DemoAccount[]>;
+}
+
 export interface SessionRepository {
-  get(): Promise<Session>;
+  get(organizationId: string): Promise<Session>;
+}
+
+export interface TeamRepository {
+  list(organizationId: string): Promise<TeamMember[]>;
+  invite(organizationId: string, input: InviteMemberInput): Promise<TeamMember>;
+  updateRole(organizationId: string, userId: string, role: Role): Promise<TeamMember>;
+  remove(organizationId: string, userId: string): Promise<void>;
 }
 
 export interface ProductsRepository {
@@ -58,7 +86,9 @@ export interface NotificationsRepository {
 export interface Api {
   /** `mock` ou `http` : utile pour l'affichage d'un badge « Démo ». */
   readonly mode: 'mock' | 'http';
+  auth: AuthRepository;
   session: SessionRepository;
+  team: TeamRepository;
   products: ProductsRepository;
   sales: SalesRepository;
   expenses: ExpensesRepository;

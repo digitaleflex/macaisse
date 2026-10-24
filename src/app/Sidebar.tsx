@@ -1,12 +1,15 @@
 import { t } from '@/content';
+import { can, type Permission } from '@/domain/permissions';
 import { formatFCFA } from '@/domain/money';
+import { OrgSwitcher } from '@/features/organisation';
 import { api } from '@/services';
+import { logout } from '@/store/auth';
 import { selectCartItemCount, useCartStore } from '@/store/useCartStore';
 import { selectUnreadCount, useNotificationsStore } from '@/store/useNotificationsStore';
 import { useCurrentSession } from '@/store/useSessionStore';
 import { selectTab, useUiStore, type UiModal } from '@/store/useUiStore';
-import { Avatar, BrandMark, Icon, cn } from '@/ui';
-import { TABS } from './routes';
+import { Avatar, BrandMark, Icon, IconButton, cn } from '@/ui';
+import { useAllowedTabs } from './useAllowedTabs';
 
 /** Barre latérale (≥ lg) : marque, navigation principale, raccourcis, compte. */
 export function Sidebar() {
@@ -15,30 +18,32 @@ export function Sidebar() {
   const openModal = useUiStore((state) => state.openModal);
   const cartCount = useCartStore(selectCartItemCount);
   const unread = useNotificationsStore(selectUnreadCount);
-  const { user, business, subscription } = useCurrentSession();
+  const { user, subscription, role } = useCurrentSession();
+  const tabs = useAllowedTabs();
 
-  const shortcuts: { id: UiModal; icon: string; label: string; count?: number }[] = [
-    { id: 'depenses', icon: 'receipt_long', label: t.navSecondary.expenses },
-    { id: 'export', icon: 'download', label: t.navSecondary.export },
+  const shortcuts: { id: UiModal; icon: string; label: string; count?: number; permission?: Permission }[] = [
+    { id: 'depenses', icon: 'receipt_long', label: t.navSecondary.expenses, permission: 'expenses.manage' },
+    { id: 'export', icon: 'download', label: t.navSecondary.export, permission: 'export.run' },
+    { id: 'equipe', icon: 'group', label: t.navSecondary.team, permission: 'team.manage' },
     { id: 'notifications', icon: 'notifications', label: t.navSecondary.notifications, count: unread },
   ];
+  const visibleShortcuts = shortcuts.filter((item) => !item.permission || can(role, item.permission));
 
   return (
     <aside className="hidden lg:flex fixed inset-y-0 left-0 z-40 w-[264px] flex-col bg-ink-900 text-slate-300 bg-grid-ink">
-      <div className="px-5 pt-6 pb-5 flex items-center gap-3">
-        <BrandMark className="size-10" />
-        <div className="min-w-0">
-          <div className="font-display font-extrabold text-white text-[17px] leading-none tracking-tight">
-            {t.app.name}
-          </div>
-          <div className="text-xs text-slate-400 mt-1 truncate">
-            {business.name} · {business.registerLabel}
-          </div>
-        </div>
+      <div className="px-5 pt-6 pb-4 flex items-center gap-2.5">
+        <BrandMark className="size-8" />
+        <span className="font-display font-extrabold text-white text-[17px] tracking-tight">{t.app.name}</span>
+        {api.mode === 'mock' && (
+          <span className="ml-auto text-[10px] font-bold uppercase tracking-wider text-zest-400/80">{t.app.demoBadge}</span>
+        )}
+      </div>
+      <div className="px-3 pb-5">
+        <OrgSwitcher />
       </div>
 
       <nav className="px-3 flex flex-col gap-1" aria-label={t.app.name}>
-        {TABS.map((tab) => {
+        {tabs.map((tab) => {
           const active = tab.id === currentTab;
           const count = tab.id === 'ventes' ? cartCount : 0;
           return (
@@ -69,7 +74,7 @@ export function Sidebar() {
         {t.navSecondary.title}
       </div>
       <div className="px-3 flex flex-col gap-1">
-        {shortcuts.map((item) => (
+        {visibleShortcuts.map((item) => (
           <button
             key={item.id}
             type="button"
@@ -88,36 +93,45 @@ export function Sidebar() {
       </div>
 
       <div className="mt-auto p-3 flex flex-col gap-2">
-        <button
-          type="button"
-          onClick={() => openModal('abonnement')}
-          className="text-left rounded-2xl p-4 bg-gradient-to-br from-white/[0.09] to-white/[0.02] ring-1 ring-white/10 hover:ring-zest-400/40 transition-all cursor-pointer"
-        >
-          <div className="flex items-center gap-2 text-zest-400 text-xs font-bold uppercase tracking-wider">
-            <Icon name="workspace_premium" size={16} filled />
-            {subscription.plan.name}
-          </div>
-          <div className="mt-1.5 font-num font-bold text-white text-lg leading-none">
-            {formatFCFA(subscription.plan.monthlyPrice)}
-            <span className="text-xs font-medium text-slate-400 ml-1">{t.subscription.perMonth}</span>
-          </div>
-          {api.mode === 'mock' && <div className="mt-2 text-[11px] text-slate-500">{t.app.demoHint}</div>}
-        </button>
-
-        <button
-          type="button"
-          onClick={() => openModal('profil')}
-          className="flex items-center gap-3 p-2 rounded-2xl hover:bg-white/[0.05] transition-colors cursor-pointer text-left"
-        >
-          <Avatar initials={`${user.firstName[0]}${user.lastName[0]}`} tone="zest" size="md" />
-          <div className="min-w-0 flex-1">
-            <div className="text-sm font-semibold text-white truncate">
-              {user.firstName} {user.lastName}
+        {can(role, 'billing.manage') && (
+          <button
+            type="button"
+            onClick={() => openModal('abonnement')}
+            className="text-left rounded-2xl p-4 bg-gradient-to-br from-white/[0.09] to-white/[0.02] ring-1 ring-white/10 hover:ring-zest-400/40 transition-all cursor-pointer"
+          >
+            <div className="flex items-center gap-2 text-zest-400 text-xs font-bold uppercase tracking-wider">
+              <Icon name="workspace_premium" size={16} filled />
+              {subscription.plan.name}
             </div>
-            <div className="text-xs text-slate-500 truncate">{user.role}</div>
-          </div>
-          <Icon name="settings" size={19} className="text-slate-500" />
-        </button>
+            <div className="mt-1.5 font-num font-bold text-white text-lg leading-none">
+              {formatFCFA(subscription.plan.monthlyPrice)}
+              <span className="text-xs font-medium text-slate-400 ml-1">{t.subscription.perMonth}</span>
+            </div>
+          </button>
+        )}
+
+        <div className="flex items-center gap-1 p-1.5 rounded-2xl hover:bg-white/[0.04] transition-colors">
+          <button
+            type="button"
+            onClick={() => openModal('profil')}
+            aria-label={t.header.profile}
+            className="flex-1 min-w-0 flex items-center gap-3 text-left cursor-pointer"
+          >
+            <Avatar initials={`${user.firstName[0]}${user.lastName[0]}`} tone="zest" size="md" />
+            <span className="min-w-0">
+              <span className="block text-sm font-semibold text-white truncate">
+                {user.firstName} {user.lastName}
+              </span>
+              <span className="block text-xs text-slate-500 truncate">{t.roles[role]}</span>
+            </span>
+          </button>
+          <IconButton
+            icon="logout"
+            label={t.auth.logout}
+            className="text-slate-500 hover:text-white hover:bg-white/10"
+            onClick={() => void logout()}
+          />
+        </div>
       </div>
     </aside>
   );

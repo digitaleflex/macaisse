@@ -1,10 +1,10 @@
-// Session courante (utilisateur, commerce, abonnement) et état de chargement
-// des données distantes. Non persisté : toujours relu via `services/`.
+// Session de travail : utilisateur dans l'organisation active (profil du
+// commerce, abonnement, rôle) et état de chargement. Non persisté : relu via
+// `services/` à chaque ouverture d'organisation.
 
 import { create } from 'zustand';
 import type { Session } from '@/types';
-import { env } from '@/config/env';
-import { SEED_SESSION } from '@/mocks';
+import { can, type Permission } from '@/domain/permissions';
 
 export type LoadStatus = 'idle' | 'loading' | 'ready' | 'error';
 
@@ -14,17 +14,16 @@ export interface SessionState {
   error: string | null;
   setSession: (session: Session) => void;
   setStatus: (status: LoadStatus, error?: string | null) => void;
+  clear: () => void;
 }
 
-// En mode démo, la session est disponible immédiatement (pas d'écran de chargement).
-const INITIAL_SESSION = env.apiMode === 'mock' ? SEED_SESSION : null;
-
 export const useSessionStore = create<SessionState>()((set) => ({
-  session: INITIAL_SESSION,
-  status: INITIAL_SESSION ? 'ready' : 'idle',
+  session: null,
+  status: 'idle',
   error: null,
   setSession: (session) => set({ session, status: 'ready', error: null }),
   setStatus: (status, error = null) => set({ status, error }),
+  clear: () => set({ session: null, status: 'idle', error: null }),
 }));
 
 export const selectSession = (state: SessionState): Session | null => state.session;
@@ -40,4 +39,9 @@ export function useCurrentSession(): Session {
     throw new Error('Session indisponible : le shell doit attendre le chargement.');
   }
   return session;
+}
+
+/** Vrai si l'utilisateur courant dispose de la permission dans l'organisation active. */
+export function usePermission(permission: Permission): boolean {
+  return useSessionStore((state) => (state.session ? can(state.session.role, permission) : false));
 }

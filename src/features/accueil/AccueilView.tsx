@@ -9,7 +9,7 @@ import { expensesInRange, useExpensesStore } from '@/store/useExpensesStore';
 import { useCreditsStore } from '@/store/useCreditsStore';
 import { useProductsStore } from '@/store/useProductsStore';
 import { useSalesStore } from '@/store/useSalesStore';
-import { useCurrentSession } from '@/store/useSessionStore';
+import { useCurrentSession, usePermission } from '@/store/useSessionStore';
 import { useUiStore } from '@/store/useUiStore';
 import { Badge, PageHeader, SegmentedControl, StatCard } from '@/ui';
 import { ClosingCard } from './ClosingCard';
@@ -50,6 +50,7 @@ export function AccueilView() {
   const [closed, setClosed] = useState(false);
   const now = useMemo(() => new Date(), []);
   const { user } = useCurrentSession();
+  const canSeeFinance = usePermission('finance.view');
 
   const sales = useSalesStore((state) => state.sales);
   const expenses = useExpensesStore((state) => state.expenses);
@@ -143,21 +144,25 @@ export function AccueilView() {
             trend={growth(stats.revenue, stats.previous)}
             hint={growth(stats.revenue, stats.previous) ? t.common.vsPrevious : t.common.insufficientHistory}
           />
-          <StatCard
-            label={t.dashboard.kpi.expenses}
-            value={formatFCFA(stats.expenses)}
-            icon="receipt_long"
-            tone="danger"
-            hint={t.dashboard.kpi.expensesCount(stats.expensesCount)}
-            onClick={() => openModal('depenses')}
-          />
-          <StatCard
-            label={t.dashboard.kpi.net}
-            value={`${net >= 0 ? '+' : ''}${formatFCFA(net)}`}
-            icon="account_balance"
-            tone={net >= 0 ? 'brand' : 'danger'}
-            hint={t.dashboard.kpi.margin(marginRate.toFixed(1))}
-          />
+          {canSeeFinance && (
+            <>
+              <StatCard
+                label={t.dashboard.kpi.expenses}
+                value={formatFCFA(stats.expenses)}
+                icon="receipt_long"
+                tone="danger"
+                hint={t.dashboard.kpi.expensesCount(stats.expensesCount)}
+                onClick={() => openModal('depenses')}
+              />
+              <StatCard
+                label={t.dashboard.kpi.net}
+                value={`${net >= 0 ? '+' : ''}${formatFCFA(net)}`}
+                icon="account_balance"
+                tone={net >= 0 ? 'brand' : 'danger'}
+                hint={t.dashboard.kpi.margin(marginRate.toFixed(1))}
+              />
+            </>
+          )}
           <StatCard
             label={t.dashboard.kpi.receivables}
             value={formatFCFA(kpis.outstandingCredits)}
@@ -183,7 +188,7 @@ export function AccueilView() {
             // Les ventes historiques ne portent pas le détail des lignes : le reçu
             // retombe sur l'affichage « articles divers ».
             onSelect={(sale) => openReceipt(sale, [])}
-            onViewAll={() => setTab('bilan')}
+            onViewAll={canSeeFinance ? () => setTab('bilan') : undefined}
           />
         </div>
       </div>

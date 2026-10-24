@@ -3,12 +3,14 @@ import { act, cleanup, render, screen } from '@testing-library/react';
 import type { SaleTransaction, TabType } from '@/types';
 import App from '@/app/App';
 import { t } from '@/content';
-import { SEED_SESSION } from '@/mocks';
+import { DEMO_PASSWORD } from '@/mocks';
+import { login, logout, switchOrganization } from '@/store/auth';
+import { useSessionStore } from '@/store/useSessionStore';
 import { useUiStore } from '@/store/useUiStore';
 
 /**
  * Smoke test de rendu — garde-fou contre les boucles `useSyncExternalStore`
- * (zustand v5) et les warnings `act()` lors de la navigation entre onglets.
+ * (zustand v5), et vérification du parcours multi-organisation.
  */
 
 const SALE: SaleTransaction = {
@@ -23,7 +25,7 @@ const SALE: SaleTransaction = {
 };
 
 const TAB_MARKERS: { tab: TabType; text: string }[] = [
-  { tab: 'accueil', text: t.dashboard.greeting(SEED_SESSION.user.firstName) },
+  { tab: 'accueil', text: t.dashboard.greeting('Mamadou') },
   { tab: 'ventes', text: t.pos.catalogTitle },
   { tab: 'stock', text: t.stock.audit.title },
   { tab: 'credits', text: t.credits.listTitle },
@@ -33,9 +35,13 @@ const TAB_MARKERS: { tab: TabType; text: string }[] = [
 describe('App — smoke de rendu', () => {
   let consoleError: ReturnType<typeof vi.spyOn>;
 
-  beforeEach(() => {
+  beforeEach(async () => {
+    localStorage.clear();
     useUiStore.setState({ tab: 'accueil', modal: null, receipt: null });
     consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    await act(async () => {
+      await logout();
+    });
   });
 
   afterEach(() => {
@@ -43,9 +49,19 @@ describe('App — smoke de rendu', () => {
     consoleError.mockRestore();
   });
 
-  it('monte les 5 onglets et ouvre/ferme le reçu sans boucle de rendu', () => {
+  it('affiche l’écran de connexion sans session', () => {
     render(<App />);
-    expect(screen.getByText(t.dashboard.greeting(SEED_SESSION.user.firstName))).toBeTruthy();
+    expect(screen.getAllByText(t.auth.tabs.login).length).toBeGreaterThan(0);
+  });
+
+  it('monte les 5 onglets du propriétaire et ouvre/ferme le reçu sans boucle de rendu', async () => {
+    await act(async () => {
+      await login({ email: 'mamadou@boutique-etoile.sn', password: DEMO_PASSWORD });
+    });
+    useUiStore.setState({ tab: 'accueil' });
+    await act(async () => {
+      render(<App />);
+    });
 
     for (const { tab, text } of TAB_MARKERS) {
       act(() => {
@@ -57,18 +73,45 @@ describe('App — smoke de rendu', () => {
     act(() => {
       useUiStore.getState().openReceipt(SALE, []);
     });
-    expect(screen.getByRole('dialog')).toBeTruthy();
     expect(screen.getByText(t.receipt.title)).toBeTruthy();
-
     act(() => {
       useUiStore.getState().closeReceipt();
     });
-    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(screen.queryByText(t.receipt.title)).toBeNull();
 
-    const errors = (consoleError.mock.calls as unknown[][])
-      .map((call) => call.map(String).join(' '))
-      .join('\n');
+    const errors = (consoleError.mock.calls as unknown[][]).map((call) => call.map(String).join(' ')).join('\n');
     expect(errors).not.toMatch(/Maximum update depth exceeded/);
     expect(errors).not.toMatch(/not wrapped in act/);
+  });
+
+  it('change d’organisation et adapte le rôle', async () => {
+    await act(async () => {
+      await login({ email: 'mamadou@boutique-etoile.sn', password: DEMO_PASSWORD });
+    });
+    expect(useSessionStore.getState().session?.role).toBe('owner');
+    await act(async () => {
+      await switchOrganization('org-baobab');
+    });
+    const session = useSessionStore.getState().session;
+    expect(session?.business.name).toBe('Supérette Le Baobab');
+    expect(session?.role).toBe('manager');
+  });
+
+  it('refuse le bilan à un caissier', async () => {
+    await act(async () => {
+      await login({ email: 'awa@boutique-etoile.sn', password: DEMO_PASSWORD });
+    });
+    useUiStore.setState({ tab: 'bilan' });
+    await act(async () => {
+      render(<App />);
+    });
+    // Redirection automatique vers la caisse à l'ouverture de l'organisation…
+    expect(useUiStore.getState().tab).toBe('ventes');
+    // …et écran « Accès réservé » si l'onglet est forcé.
+    act(() => {
+      useUiStore.getState().setTab('bilan');
+    });
+    expect(screen.getByText(t.access.title)).toBeTruthy();
+    expect(screen.queryByText(t.bilan.exports.title)).toBeNull();
   });
 });

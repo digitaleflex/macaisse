@@ -5,6 +5,7 @@ import { createHttpClient } from './http/httpClient';
 import { isApiError } from './http/ApiError';
 import { pushToast } from '@/ui/toastBus';
 import type { Api } from './contracts';
+import { getAuthToken } from './tenant';
 
 /**
  * Point d'accès unique au backend. L'adaptateur est choisi par `VITE_API_MODE` :
@@ -12,26 +13,16 @@ import type { Api } from './contracts';
  * - `http` : API REST à `VITE_API_BASE_URL` (voir `docs/API_CONTRACT.md`).
  */
 
-const TOKEN_KEY = 'ma-caisse/token';
-
-function readToken(): string | null {
-  try {
-    return typeof localStorage !== 'undefined' ? localStorage.getItem(TOKEN_KEY) : null;
-  } catch {
-    return null;
-  }
-}
-
 export const api: Api =
   env.apiMode === 'http'
     ? createHttpApi(
         createHttpClient({
           baseUrl: env.apiBaseUrl,
           timeoutMs: env.requestTimeoutMs,
-          getToken: readToken,
+          getToken: getAuthToken,
         })
       )
-    : createMockApi(env.mockLatencyMs);
+    : createMockApi({ latencyMs: env.mockLatencyMs, persist: typeof localStorage !== 'undefined' });
 
 /**
  * Propage une mutation déjà appliquée localement (mise à jour optimiste) vers le
@@ -49,3 +40,9 @@ export function syncRemote<T>(task: (client: Api) => Promise<T>, failureMessage:
 export type { Api } from './contracts';
 export { ApiError, isApiError } from './http/ApiError';
 export { ENDPOINTS } from './endpoints';
+export {
+  getActiveOrganization,
+  getAuthToken,
+  setActiveOrganization,
+  setAuthToken,
+} from './tenant';

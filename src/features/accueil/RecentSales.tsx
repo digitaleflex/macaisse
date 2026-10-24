@@ -8,7 +8,8 @@ export interface RecentSalesProps {
   sales: SaleTransaction[];
   todayCount: number;
   onSelect: (sale: SaleTransaction) => void;
-  onViewAll: () => void;
+  /** Absent : bouton « Tout voir » masqué (rôle sans accès au bilan). */
+  onViewAll?: () => void;
 }
 
 function methodIcon(method: string): string {
@@ -22,9 +23,11 @@ export function RecentSales({ sales, todayCount, onSelect, onViewAll }: RecentSa
       title={t.dashboard.recent.title}
       description={t.dashboard.recent.today(todayCount)}
       action={
-        <Button variant="ghost" size="sm" iconRight="chevron_right" onClick={onViewAll}>
-          {t.common.seeAll}
-        </Button>
+        onViewAll && (
+          <Button variant="ghost" size="sm" iconRight="chevron_right" onClick={onViewAll}>
+            {t.common.seeAll}
+          </Button>
+        )
       }
       padding="none"
     >

@@ -13,7 +13,10 @@ export interface ProductFormModalProps {
   onSubmit: (input: ProductInput) => void;
 }
 
-const CATEGORY_OPTIONS = PRODUCT_CATEGORIES.map((category) => ({ value: category, label: category }));
+const CATEGORY_OPTIONS = PRODUCT_CATEGORIES.map((category) => ({
+  value: category,
+  label: category,
+}));
 
 function isCategory(value: string): value is Category {
   return (PRODUCT_CATEGORIES as readonly string[]).includes(value);
@@ -137,7 +140,9 @@ export function ProductFormModal({ open, onClose, product, onSubmit }: ProductFo
             placeholder={t.stock.form.unitPlaceholder}
           />
         </div>
-        <p className="text-xs text-slate-500 -mt-1">{t.stock.form.marginPreview(margin.toFixed(1))}</p>
+        <p className="text-xs text-slate-500 -mt-1">
+          {t.stock.form.marginPreview(margin.toFixed(1))}
+        </p>
         <Button type="submit" variant="primary" size="lg" fullWidth icon="check">
           {isEdit ? t.stock.form.submitEdit : t.stock.form.submitCreate}
         </Button>

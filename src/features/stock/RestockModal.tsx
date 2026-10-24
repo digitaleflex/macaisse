@@ -25,7 +25,13 @@ export function RestockModal({ open, onClose, product, onSubmit }: RestockModalP
   };
 
   return (
-    <Modal open={open} onClose={onClose} title={t.stock.restockModal.title} icon="local_shipping" size="sm">
+    <Modal
+      open={open}
+      onClose={onClose}
+      title={t.stock.restockModal.title}
+      icon="local_shipping"
+      size="sm"
+    >
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         {product && (
           <div className="flex items-center gap-3 p-3 rounded-2xl bg-slate-50 border border-line">
@@ -45,7 +51,13 @@ export function RestockModal({ open, onClose, product, onSubmit }: RestockModalP
           inputMode="numeric"
           value={quantity}
           onChange={(event) => setQuantity(Number(event.target.value))}
-          hint={product ? t.stock.restockModal.after(t.stock.units(product.stock + Math.max(0, quantity), product.unit)) : undefined}
+          hint={
+            product
+              ? t.stock.restockModal.after(
+                  t.stock.units(product.stock + Math.max(0, quantity), product.unit),
+                )
+              : undefined
+          }
         />
         <div className="grid grid-cols-3 gap-2">
           {QUICK_RESTOCK_STEPS.map((step) => (
@@ -55,7 +67,9 @@ export function RestockModal({ open, onClose, product, onSubmit }: RestockModalP
               onClick={() => setQuantity(step)}
               className={cn(
                 'h-9 rounded-xl text-sm font-bold border transition-colors cursor-pointer font-num',
-                quantity === step ? 'bg-ink-900 border-ink-900 text-white' : 'bg-white border-line hover:border-line-strong'
+                quantity === step
+                  ? 'bg-ink-900 border-ink-900 text-white'
+                  : 'bg-white border-line hover:border-line-strong',
               )}
             >
               {t.stock.quickRestock(step)}

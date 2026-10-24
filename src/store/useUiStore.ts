@@ -14,7 +14,7 @@ import {
   persistOptions,
 } from './storeUtils';
 
-export type UiModal = 'depenses' | 'export' | 'profil' | 'abonnement' | 'notifications';
+export type UiModal = 'depenses' | 'export' | 'profil' | 'abonnement' | 'notifications' | 'equipe';
 
 /**
  * Contenu du reçu global (ticket de caisse) affiché par `ReceiptModal`.
@@ -77,6 +77,7 @@ const UI_MODAL_SET: ReadonlySet<string> = new Set([
   'profil',
   'abonnement',
   'notifications',
+  'equipe',
 ]);
 
 function isUiModal(value: unknown): value is UiModal {

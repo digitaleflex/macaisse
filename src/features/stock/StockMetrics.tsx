@@ -9,6 +9,8 @@ export interface StockMetricsProps {
   outOfStockCount: number;
   totalStockValue: number;
   averageMarginPercent: number;
+  /** Valeur du stock au prix d'achat : masquée si le rôle ne voit pas les coûts. */
+  showValue?: boolean;
   onShowLowStock: () => void;
   onShowOutOfStock: () => void;
 }
@@ -19,19 +21,25 @@ export function StockMetrics({
   outOfStockCount,
   totalStockValue,
   averageMarginPercent,
+  showValue = true,
   onShowLowStock,
   onShowOutOfStock,
 }: StockMetricsProps) {
   return (
     <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 lg:gap-4">
-      <StatCard
-        label={t.stock.metrics.value}
-        value={formatFCFA(totalStockValue)}
-        icon="account_balance_wallet"
-        tone="brand"
-        trend={{ value: t.stock.metrics.margin(averageMarginPercent), positive: averageMarginPercent >= 0 }}
-        className="col-span-2 xl:col-span-1"
-      />
+      {showValue && (
+        <StatCard
+          label={t.stock.metrics.value}
+          value={formatFCFA(totalStockValue)}
+          icon="account_balance_wallet"
+          tone="brand"
+          trend={{
+            value: t.stock.metrics.margin(averageMarginPercent),
+            positive: averageMarginPercent >= 0,
+          }}
+          className="col-span-2 xl:col-span-1"
+        />
+      )}
       <StatCard
         label={t.stock.metrics.references}
         value={productCount}

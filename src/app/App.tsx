@@ -1,7 +1,9 @@
 import { useEffect, type ComponentType } from 'react';
 import type { TabType } from '@/types';
 import { t } from '@/content';
+import { canAccessTab } from '@/domain/permissions';
 import { AccueilView } from '@/features/accueil';
+import { LoginScreen } from '@/features/auth';
 import { VentesView, ReceiptModal } from '@/features/ventes';
 import { StockView } from '@/features/stock';
 import { CreditsView } from '@/features/credits';
@@ -11,7 +13,9 @@ import { ExportModal } from '@/features/export';
 import { ProfilModal } from '@/features/profil';
 import { AbonnementModal } from '@/features/abonnement';
 import { NotificationDrawer } from '@/features/notifications';
-import { bootstrapApp } from '@/store/bootstrap';
+import { TeamModal } from '@/features/equipe';
+import { logout, reloadOrganization, restoreSession } from '@/store/auth';
+import { selectIsAuthenticated, useAuthStore } from '@/store/useAuthStore';
 import { selectSession, useSessionStore } from '@/store/useSessionStore';
 import { selectTab, useUiStore } from '@/store/useUiStore';
 import { BrandMark, Button, EmptyState, Spinner, ToastHost } from '@/ui';
@@ -40,38 +44,85 @@ function SplashScreen() {
           title={t.app.loadErrorTitle}
           description={error ?? undefined}
           action={
-            <Button icon="refresh" onClick={() => void bootstrapApp()}>
-              {t.app.retry}
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="secondary" icon="logout" onClick={() => void logout()}>
+                {t.auth.logout}
+              </Button>
+              <Button icon="refresh" onClick={() => void reloadOrganization()}>
+                {t.app.retry}
+              </Button>
+            </div>
           }
         />
       ) : (
         <div className="flex items-center gap-2.5 text-sm text-slate-500">
           <Spinner size="sm" />
-          {t.app.loading}
+          {t.auth.restoring}
         </div>
       )}
     </div>
   );
 }
 
+/** Voile affiché pendant l'ouverture d'une autre organisation. */
+function SwitchingOverlay() {
+  const loading = useSessionStore((state) => state.status === 'loading');
+  if (!loading) return null;
+  return (
+    <div className="fixed inset-0 z-[65] flex items-center justify-center bg-canvas/70 backdrop-blur-sm animate-fade-in" role="status">
+      <div className="flex items-center gap-3 px-5 py-3 rounded-2xl bg-ink-900 text-white text-sm shadow-overlay">
+        <Spinner size="sm" />
+        {t.org.switching}
+      </div>
+    </div>
+  );
+}
+
+function AccessDenied() {
+  const setTab = useUiStore((state) => state.setTab);
+  const role = useSessionStore((state) => state.session?.role ?? 'cashier');
+  return (
+    <div className="bg-surface rounded-card border border-line">
+      <EmptyState
+        icon="lock"
+        title={t.access.title}
+        description={t.access.text(t.roles[role])}
+        action={
+          <Button icon="point_of_sale" onClick={() => setTab('ventes')}>
+            {t.access.back}
+          </Button>
+        }
+      />
+    </div>
+  );
+}
+
 /**
- * Shell applicatif : chargement initial (services), layout responsive
+ * Shell applicatif : authentification, organisation active, layout responsive
  * (sidebar ≥ lg, barre d'onglets < lg), routage d'onglet et overlays globaux.
  */
 export default function App() {
   const tab = useUiStore(selectTab);
   const initOnlineListener = useUiStore((state) => state.initOnlineListener);
+  const isAuthenticated = useAuthStore(selectIsAuthenticated);
   const session = useSessionStore(selectSession);
 
   useEffect(() => initOnlineListener(), [initOnlineListener]);
   useEffect(() => {
-    void bootstrapApp();
+    void restoreSession();
   }, []);
 
+  if (!isAuthenticated) {
+    return (
+      <>
+        <LoginScreen />
+        <ToastHost />
+      </>
+    );
+  }
   if (session === null) return <SplashScreen />;
 
-  const View = VIEWS[tab];
+  const View = canAccessTab(session.role, tab) ? VIEWS[tab] : AccessDenied;
 
   return (
     <div className="min-h-dvh bg-canvas text-ink-900">
@@ -85,7 +136,7 @@ export default function App() {
       <div className="lg:pl-[264px] flex flex-col min-h-dvh">
         <Topbar />
         <main id="main" className="flex-1 w-full max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 pt-5 sm:pt-7 pb-28 lg:pb-10">
-          <View key={tab} />
+          <View key={`${session.business.id}-${tab}`} />
         </main>
       </div>
       <BottomNav />
@@ -95,8 +146,10 @@ export default function App() {
       <ExportModal />
       <ProfilModal />
       <AbonnementModal />
+      <TeamModal />
       <NotificationDrawer />
       <ReceiptModal />
+      <SwitchingOverlay />
       <ToastHost />
     </div>
   );

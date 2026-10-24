@@ -3,14 +3,16 @@ import type { BillingCycle } from '@/types';
 import { t } from '@/content';
 import { parseDate } from '@/domain/dates';
 import { formatFCFA } from '@/domain/money';
-import { useCurrentSession } from '@/store/useSessionStore';
+import { useCurrentSession, usePermission } from '@/store/useSessionStore';
 import { selectModal, useUiStore } from '@/store/useUiStore';
 import { Badge, Button, Icon, Modal, SegmentedControl } from '@/ui';
 import { PlanCard } from './PlanCard';
 
 /** Abonnement (démonstratif) — données issues de la session, actions signalées par toast. */
 export function AbonnementModal() {
-  const open = useUiStore(selectModal) === 'abonnement';
+  const isOpen = useUiStore(selectModal) === 'abonnement';
+  const allowed = usePermission('billing.manage');
+  const open = isOpen && allowed;
   const closeModal = useUiStore((state) => state.closeModal);
   const showToast = useUiStore((state) => state.showToast);
   const { subscription } = useCurrentSession();

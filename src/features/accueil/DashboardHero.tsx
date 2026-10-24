@@ -1,7 +1,9 @@
 import { t } from '@/content';
 import { formatFCFA } from '@/domain/money';
 import { selectCartItemCount, useCartStore } from '@/store/useCartStore';
+import { useCurrentSession } from '@/store/useSessionStore';
 import { useUiStore } from '@/store/useUiStore';
+import { can } from '@/domain/permissions';
 import { Icon } from '@/ui';
 
 export interface DashboardHeroProps {
@@ -15,12 +17,13 @@ export function DashboardHero({ todayCount, averageTicket }: DashboardHeroProps)
   const setTab = useUiStore((state) => state.setTab);
   const openModal = useUiStore((state) => state.openModal);
 
+  const { role } = useCurrentSession();
   const actions = [
-    { label: t.dashboard.quickActions.expense, icon: 'remove_circle', tone: 'text-rose-300', onClick: () => openModal('depenses') },
-    { label: t.dashboard.quickActions.product, icon: 'add_box', tone: 'text-brand-300', onClick: () => setTab('stock') },
-    { label: t.dashboard.quickActions.credit, icon: 'person_add', tone: 'text-sky-300', onClick: () => setTab('credits') },
-    { label: t.dashboard.quickActions.export, icon: 'download', tone: 'text-amber-200', onClick: () => openModal('export') },
-  ];
+    { label: t.dashboard.quickActions.expense, icon: 'remove_circle', tone: 'text-rose-300', onClick: () => openModal('depenses'), allowed: can(role, 'expenses.manage') },
+    { label: t.dashboard.quickActions.product, icon: 'add_box', tone: 'text-brand-300', onClick: () => setTab('stock'), allowed: can(role, 'stock.edit') },
+    { label: t.dashboard.quickActions.credit, icon: 'person_add', tone: 'text-sky-300', onClick: () => setTab('credits'), allowed: true },
+    { label: t.dashboard.quickActions.export, icon: 'download', tone: 'text-amber-200', onClick: () => openModal('export'), allowed: can(role, 'export.run') },
+  ].filter((action) => action.allowed);
 
   return (
     <section className="relative overflow-hidden rounded-card bg-ink-900 text-white p-5 sm:p-6 bg-grid-ink shadow-raised flex flex-col gap-5 h-full">
@@ -43,7 +46,7 @@ export function DashboardHero({ todayCount, averageTicket }: DashboardHeroProps)
         </span>
       </button>
 
-      <div className="relative grid grid-cols-4 gap-2">
+      <div className="relative grid gap-2" style={{ gridTemplateColumns: `repeat(${actions.length}, minmax(0, 1fr))` }}>
         {actions.map((action) => (
           <button
             key={action.label}

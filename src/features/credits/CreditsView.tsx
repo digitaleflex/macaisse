@@ -4,6 +4,7 @@ import { t } from '@/content';
 import { computeCreditStatus, creditProgress, creditSummary, daysLate } from '@/domain/credits';
 import { formatFCFA } from '@/domain/money';
 import { useCreditsStore, type CreditInput } from '@/store/useCreditsStore';
+import { usePermission } from '@/store/useSessionStore';
 import { useUiStore } from '@/store/useUiStore';
 import { Button, EmptyState, Icon, PageHeader, ProgressBar, SectionTitle } from '@/ui';
 import { CreditDetailCard } from './CreditDetailCard';
@@ -34,6 +35,7 @@ export function CreditsView() {
   const payCredit = useCreditsStore((state) => state.payCredit);
   const markSettled = useCreditsStore((state) => state.markSettled);
   const showToast = useUiStore((state) => state.showToast);
+  const canCreate = usePermission('credits.create');
 
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<CreditFilterKey>('all');
@@ -104,9 +106,11 @@ export function CreditsView() {
         title={t.nav.credits.title}
         description={t.nav.credits.description}
         actions={
-          <Button id="btnNewCredit" variant="primary" icon="person_add" onClick={openForm}>
-            {t.credits.newCredit}
-          </Button>
+          canCreate && (
+            <Button id="btnNewCredit" variant="primary" icon="person_add" onClick={openForm}>
+              {t.credits.newCredit}
+            </Button>
+          )
         }
       />
 
@@ -178,9 +182,11 @@ export function CreditsView() {
               title={t.credits.emptyTitle}
               description={t.credits.emptyText}
               action={
-                <Button icon="person_add" onClick={openForm}>
-                  {t.credits.newCredit}
-                </Button>
+                canCreate && (
+                  <Button icon="person_add" onClick={openForm}>
+                    {t.credits.newCredit}
+                  </Button>
+                )
               }
             />
           </div>
