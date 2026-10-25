@@ -109,6 +109,7 @@ différences de permissions.
 | `bun run preview` | Prévisualisation du build |
 | `bun run lint` | `tsc --noEmit` + `eslint src --max-warnings 0` (zéro tolérance) |
 | `bun run test` | Tests Vitest (une passe) |
+| `bun run test:coverage` | Tests + couverture (seuils bloquants) |
 | `bun run test:watch` | Tests en mode watch |
 | `bun run format` | Prettier sur `src/**/*.{ts,tsx,css}` |
 | `bun run clean` | Supprime `dist/` et `server.js` |
@@ -233,6 +234,7 @@ docs/
 ```bash
 bun run lint   # tsc strict + eslint --max-warnings 0
 bun run test   # 23 fichiers, 175 tests
+bun run test:coverage   # + couverture (lignes 65 %, branches 58 %)
 ```
 
 - **`src/domain/__tests__/`** — règles métier pures (stock, ventes, crédits,
