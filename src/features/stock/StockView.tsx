@@ -307,16 +307,35 @@ export function StockView() {
 
       <Card padding="none" className="overflow-hidden">
         {visibleProducts.length === 0 ? (
-          <EmptyState
-            icon="inventory_2"
-            title={t.stock.emptyTitle}
-            description={t.stock.emptyText}
-            action={
-              <Button variant="secondary" icon="restart_alt" onClick={resetFilters}>
-                {t.common.reset}
-              </Button>
-            }
-          />
+          rawProducts.length === 0 ? (
+            <EmptyState
+              icon="add_box"
+              title={t.stock.emptyCatalogTitle}
+              description={t.stock.emptyCatalogText}
+              action={
+                <Button
+                  icon="add"
+                  onClick={() => {
+                    setEditingProduct(null);
+                    setIsProductFormOpen(true);
+                  }}
+                >
+                  {t.stock.emptyCatalogAction}
+                </Button>
+              }
+            />
+          ) : (
+            <EmptyState
+              icon="inventory_2"
+              title={t.stock.emptyTitle}
+              description={t.stock.emptyText}
+              action={
+                <Button variant="secondary" icon="restart_alt" onClick={resetFilters}>
+                  {t.common.reset}
+                </Button>
+              }
+            />
+          )
         ) : (
           <>
             {/* Tableau (≥ md) */}

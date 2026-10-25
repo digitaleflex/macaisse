@@ -9,6 +9,7 @@ import { ExportModal } from '@/features/export';
 import { ProfilModal } from '@/features/profil';
 import { AbonnementModal } from '@/features/abonnement';
 import { NotificationDrawer } from '@/features/notifications';
+import { OnboardingModal } from '@/features/onboarding';
 import { TeamModal } from '@/features/equipe';
 import { logout, reloadOrganization, restoreSession } from '@/store/auth';
 import { selectIsAuthenticated, useAuthStore } from '@/store/useAuthStore';
@@ -174,6 +175,7 @@ export default function App() {
       <ProfilModal />
       <AbonnementModal />
       <TeamModal />
+      <OnboardingModal />
       <NotificationDrawer />
       <ReceiptModal />
       <SwitchingOverlay />

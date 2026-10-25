@@ -1,5 +1,6 @@
 import type {
   AuthResult,
+  BusinessProfile,
   CartLine,
   DemoAccount,
   ClientCredit,
@@ -7,6 +8,7 @@ import type {
   Expense,
   GoogleIdentity,
   NotificationItem,
+  OnboardingInput,
   Product,
   SaleTransaction,
   InviteMemberInput,
@@ -57,6 +59,12 @@ export interface AuthRepository {
 
 export interface SessionRepository {
   get(organizationId: string): Promise<Session>;
+}
+
+/** Mise en route d'une organisation (RG-A04). */
+export interface OnboardingRepository {
+  /** Enregistre les informations du commerce et clôt l'onboarding. */
+  complete(organizationId: string, input: OnboardingInput): Promise<BusinessProfile>;
 }
 
 export interface TeamRepository {
@@ -114,6 +122,7 @@ export interface Api {
   readonly mode: 'mock' | 'http';
   auth: AuthRepository;
   session: SessionRepository;
+  onboarding: OnboardingRepository;
   team: TeamRepository;
   products: ProductsRepository;
   sales: SalesRepository;

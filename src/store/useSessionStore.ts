@@ -3,7 +3,7 @@
 // `services/` à chaque ouverture d'organisation.
 
 import { create } from 'zustand';
-import type { Session } from '@/types';
+import type { BusinessProfile, Session } from '@/types';
 import { can, type Permission } from '@/domain/permissions';
 
 export type LoadStatus = 'idle' | 'loading' | 'ready' | 'error';
@@ -13,6 +13,8 @@ export interface SessionState {
   status: LoadStatus;
   error: string | null;
   setSession: (session: Session) => void;
+  /** Met à jour le commerce de l'organisation active (onboarding, paramètres). */
+  setBusiness: (business: BusinessProfile) => void;
   setStatus: (status: LoadStatus, error?: string | null) => void;
   clear: () => void;
 }
@@ -22,6 +24,8 @@ export const useSessionStore = create<SessionState>()((set) => ({
   status: 'idle',
   error: null,
   setSession: (session) => set({ session, status: 'ready', error: null }),
+  setBusiness: (business) =>
+    set((state) => ({ session: state.session === null ? null : { ...state.session, business } })),
   setStatus: (status, error = null) => set({ status, error }),
   clear: () => set({ session: null, status: 'idle', error: null }),
 }));

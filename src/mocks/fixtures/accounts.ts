@@ -106,6 +106,8 @@ export const MOCK_ORGANIZATIONS: Record<string, MockOrganization> = {
       currency: 'FCFA',
       registerLabel: 'Caisse #01',
       closingTime: '20:00',
+      // Organisations de démonstration : onboarding déjà fait.
+      onboardedAt: day(-120),
     },
     subscription: {
       plan: PRO_PLAN,
@@ -133,6 +135,8 @@ export const MOCK_ORGANIZATIONS: Record<string, MockOrganization> = {
       currency: 'FCFA',
       registerLabel: 'Caisse principale',
       closingTime: '21:30',
+      // Organisation de démonstration : onboarding déjà fait.
+      onboardedAt: day(-120),
     },
     subscription: {
       plan: STARTER_PLAN,

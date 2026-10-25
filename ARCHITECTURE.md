@@ -40,7 +40,8 @@ app/  ──►  features/  ──►  store/  ──►  services/  ──►  
 | Session de l'espace (commerce, abonnement, rôle) + `usePermission()` | `store/useSessionStore.ts` |
 | Matrice des droits `can(role, permission)` | `domain/permissions.ts` |
 | Écran de connexion / inscription | `features/auth` |
-| Décisions et règles d'authentification (D1–D9, RG-A01–RG-A26) | [`docs/AUTH_DECISIONS.md`](docs/AUTH_DECISIONS.md) — **normatif** |
+| Décisions et règles d'authentification (D1–D9, RG-A01–RG-A29) | [`docs/AUTH_DECISIONS.md`](docs/AUTH_DECISIONS.md) — **normatif** |
+| Mise en route d'un commerce (2 étapes + checklist) | `features/onboarding`, `store/onboarding.ts`, `features/accueil/SetupChecklist.tsx` |
 | Sélecteur d'espace (barre latérale, feuille mobile, profil) | `features/organisation` |
 | Gestion de l'équipe (inviter, changer de rôle, retirer) | `features/equipe` |
 
@@ -48,7 +49,7 @@ Règles d'interface : la navigation (`app/useAllowedTabs.ts`), les raccourcis,
 les actions et les colonnes sensibles (prix d'achat, marges) dépendent de
 `usePermission`. Un onglet interdit redirige vers la caisse ou affiche « Accès
 réservé ». **La sécurité réelle reste côté serveur** : règles normatives dans
-[`docs/AUTH_DECISIONS.md`](docs/AUTH_DECISIONS.md) (D1–D9, RG-A01–RG-A26) et le
+[`docs/AUTH_DECISIONS.md`](docs/AUTH_DECISIONS.md) (D1–D9, RG-A01–RG-A29) et le
 [contrat d'API](docs/API_CONTRACT.md).
 
 Comptes de démo (mot de passe `demo1234`) : Mamadou (propriétaire de Boutique

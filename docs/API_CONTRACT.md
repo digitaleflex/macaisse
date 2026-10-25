@@ -234,6 +234,7 @@ structurantes pour le backend :
 | Méthode | Route | Corps | Réponse | Rôle |
 |---|---|---|---|---|
 | GET | `/orgs/:orgId/session` | — | `Session` (`user`, `business`, `subscription`, `role`) | membre |
+| POST | `/orgs/:orgId/onboarding` | `{ name, city, phone, activity }` | `BusinessProfile` avec `onboardedAt` renseigné (RG-A04) · `403` si caissier | membre (hors caissier) |
 | GET | `/orgs/:orgId/members` | — | `TeamMember[]` | membre |
 | POST | `/orgs/:orgId/members` | `InviteMemberInput` (`role` ∈ `manager`/`cashier`) | `TeamMember` (`status: "invited"`) ; `409` si déjà membre | owner |
 | PATCH | `/orgs/:orgId/members/:userId` | `{ role }` | `TeamMember` ; `422` si cible ou rôle `owner` | owner |

@@ -177,6 +177,37 @@ describe('createMockApi — multi-organisation', () => {
     expect(verified.user.emailVerificationDueAt).toBeNull();
   });
 
+  it('clôt l’onboarding en enregistrant les informations du commerce (RG-A04)', async () => {
+    const api = createMockApi();
+    const signup = await api.auth.signup({
+      firstName: '',
+      lastName: '',
+      email: 'aicha@test.sn',
+      phone: '',
+      password: 'motdepasse-solide-2026',
+      organizationName: '',
+      activity: '',
+      city: '',
+    });
+    const orgId = signup.memberships[0]?.organizationId ?? '';
+    // Espace neuf : onboarding à faire, nom par défaut.
+    const before = await api.session.get(orgId);
+    expect(before.business.name).toBe(t.auth.googleDefaultOrg);
+    expect(before.business.onboardedAt).toBeNull();
+
+    const business = await api.onboarding.complete(orgId, {
+      name: 'Boutique Aïcha',
+      city: 'Thiès',
+      phone: '+221 77 123 45 67',
+      activity: 'Cosmétiques',
+    });
+    expect(business).toMatchObject({ name: 'Boutique Aïcha', city: 'Thiès', activity: 'Cosmétiques' });
+    expect(business.onboardedAt).not.toBeNull();
+
+    const after = await api.session.get(orgId);
+    expect(after.business.name).toBe('Boutique Aïcha');
+  });
+
   it('rejette un identifiant inconnu par une ApiError 404', async () => {
     const api = createMockApi();
     await loginAs(api, 'mamadou@boutique-etoile.sn');

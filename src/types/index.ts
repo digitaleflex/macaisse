@@ -163,6 +163,19 @@ export interface BusinessProfile {
   registerLabel: string;
   /** Heure de clôture de caisse recommandée (« HH:MM »). */
   closingTime: string;
+  /**
+   * Date (ISO) à laquelle l'onboarding a été terminé. `null`/absent = à faire :
+   * le shell propose alors les 2 étapes de mise en route (RG-A04).
+   */
+  onboardedAt?: string | null;
+}
+
+/** Ce que l'onboarding enregistre sur le commerce (RG-A04). */
+export interface OnboardingInput {
+  name: string;
+  city: string;
+  phone: string;
+  activity: string;
 }
 
 export type BillingCycle = 'monthly' | 'yearly';

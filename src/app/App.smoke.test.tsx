@@ -3,6 +3,7 @@ import { act, cleanup, render, screen } from '@testing-library/react';
 import type { SaleTransaction, TabType } from '@/types';
 import App from '@/app/App';
 import { t } from '@/content';
+import { personDisplayName } from '@/domain/users';
 import { DEMO_PASSWORD } from '@/mocks';
 import { login, logout, switchOrganization } from '@/store/auth';
 import { useSessionStore } from '@/store/useSessionStore';
@@ -25,7 +26,7 @@ const SALE: SaleTransaction = {
 };
 
 const TAB_MARKERS: { tab: TabType; text: string }[] = [
-  { tab: 'accueil', text: t.dashboard.greeting('Mamadou') },
+  { tab: 'accueil', text: t.dashboard.greeting(personDisplayName('Mamadou', 'Konaté')) },
   { tab: 'ventes', text: t.pos.catalogTitle },
   { tab: 'stock', text: t.stock.audit.title },
   { tab: 'credits', text: t.credits.listTitle },

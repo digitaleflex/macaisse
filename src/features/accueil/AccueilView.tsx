@@ -13,10 +13,12 @@ import { useSalesStore } from '@/store/useSalesStore';
 import { useCurrentSession, usePermission } from '@/store/useSessionStore';
 import { useUiStore } from '@/store/useUiStore';
 import { Badge, PageHeader, SegmentedControl, StatCard } from '@/ui';
+import { personDisplayName } from '@/domain/users';
 import { ClosingCard } from './ClosingCard';
 import { DashboardHero } from './DashboardHero';
 import { RecentSales } from './RecentSales';
 import { SalesTrend } from './SalesTrend';
+import { SetupChecklist } from './SetupChecklist';
 import { StockAlerts } from './StockAlerts';
 
 /**
@@ -130,12 +132,14 @@ export function AccueilView() {
             {closed ? t.dashboard.registerClosed : t.dashboard.registerOpen}
           </Badge>
         }
-        title={t.dashboard.greeting(user.firstName)}
+        title={t.dashboard.greeting(personDisplayName(user.firstName, user.lastName))}
         description={todayLabel}
         actions={
           <SegmentedControl label={t.nav.accueil.title} value={period} onChange={setPeriod} options={PERIOD_OPTIONS} />
         }
       />
+
+      <SetupChecklist />
 
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 lg:gap-5">
         <div className="xl:col-span-4 order-first">

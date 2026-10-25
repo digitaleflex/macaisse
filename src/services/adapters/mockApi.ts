@@ -255,6 +255,8 @@ export function createMockApi({ latencyMs = 0, persist = false }: MockApiOptions
         currency: 'FCFA',
         registerLabel: t.org.defaultRegister,
         closingTime: '20:00',
+        // Onboarding à faire : le shell propose les 2 étapes de mise en route.
+        onboardedAt: null,
       },
       subscription: trialSubscription(),
     };
@@ -446,6 +448,24 @@ export function createMockApi({ latencyMs = 0, persist = false }: MockApiOptions
           const membership = requireMembership(orgId);
           const org = auth.organizations[orgId] ?? fail(t.auth.errors.notFound, 404, 'NOT_FOUND');
           return { user: profileOf(currentAccount()), business: org.business, subscription: org.subscription, role: membership.role };
+        }),
+    },
+    onboarding: {
+      complete: (orgId, input) =>
+        respond(() => {
+          const membership = requireMembership(orgId);
+          if (membership.role === 'cashier') fail(t.auth.errors.forbidden, 403, 'FORBIDDEN');
+          const org = auth.organizations[orgId] ?? fail(t.auth.errors.notFound, 404, 'NOT_FOUND');
+          org.business = {
+            ...org.business,
+            name: input.name.trim() || org.business.name,
+            city: input.city.trim(),
+            phone: input.phone.trim(),
+            activity: input.activity.trim(),
+            onboardedAt: new Date().toISOString(),
+          };
+          saveAuth();
+          return org.business;
         }),
     },
     team: {

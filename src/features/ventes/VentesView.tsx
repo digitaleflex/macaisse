@@ -30,6 +30,7 @@ export function VentesView() {
   const clearCart = useCartStore((state) => state.clear);
   const completeSale = useSalesStore((state) => state.completeSale);
   const openReceipt = useUiStore((state) => state.openReceipt);
+  const setTab = useUiStore((state) => state.setTab);
   const showToast = useUiStore((state) => state.showToast);
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -165,23 +166,36 @@ export function VentesView() {
 
         {filteredProducts.length === 0 ? (
           <div className="bg-surface rounded-card border border-line">
-            <EmptyState
-              icon="search_off"
-              title={t.pos.emptyTitle}
-              description={t.pos.emptyText}
-              action={
-                <Button
-                  variant="secondary"
-                  icon="restart_alt"
-                  onClick={() => {
-                    setSearchQuery('');
-                    setCategory('all');
-                  }}
-                >
-                  {t.pos.showAll}
-                </Button>
-              }
-            />
+            {products.length === 0 ? (
+              <EmptyState
+                icon="add_box"
+                title={t.pos.emptyCatalogTitle}
+                description={t.pos.emptyCatalogText}
+                action={
+                  <Button icon="add" onClick={() => setTab('stock')}>
+                    {t.pos.emptyCatalogAction}
+                  </Button>
+                }
+              />
+            ) : (
+              <EmptyState
+                icon="search_off"
+                title={t.pos.emptyTitle}
+                description={t.pos.emptyText}
+                action={
+                  <Button
+                    variant="secondary"
+                    icon="restart_alt"
+                    onClick={() => {
+                      setSearchQuery('');
+                      setCategory('all');
+                    }}
+                  >
+                    {t.pos.showAll}
+                  </Button>
+                }
+              />
+            )}
           </div>
         ) : (
           <div id="product-grid" className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3">

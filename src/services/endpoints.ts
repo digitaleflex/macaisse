@@ -17,6 +17,7 @@ export const ENDPOINTS = {
   acceptInvitation: (orgId: string) => `/auth/invitations/${enc(orgId)}/accept`,
 
   session: (orgId: string) => `${org(orgId)}/session`,
+  onboarding: (orgId: string) => `${org(orgId)}/onboarding`,
   members: (orgId: string) => `${org(orgId)}/members`,
   member: (orgId: string, userId: string) => `${org(orgId)}/members/${enc(userId)}`,
 

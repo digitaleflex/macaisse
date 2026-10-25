@@ -65,7 +65,7 @@ Démarrage : restoreSession() ─► api.auth.me() ─► même activation
 | A10 | mineur | `403` traité comme une session expirée à la reprise | `restoreSession` | **décidé RG-A12** — `403` et `STEP_UP_REQUIRED` ne déconnectent pas |
 | A11 | ~~majeur (UX)~~ ✅ **corrigé** | `autoComplete` renseigné sur les deux formulaires (gestionnaires de mots de passe, saisie assistée) | `features/auth/LoginScreen.tsx` | livré |
 | A12 | 🟡 **partiel** | Mot de passe **affichable** et minimum porté à **12 caractères** avec consigne ; la récupération par OTP reste à livrer (D4) | `features/auth/LoginScreen.tsx`, `content/fr.ts` | D4 / [#21](https://github.com/digitaleflex/macaisse/issues/21) |
-| A13 | majeur (UX) | Après inscription, espace vide sans onboarding : les états vides renvoient « Afficher tous les articles » / « Réinitialiser » sur un catalogue vide | `content/fr.ts:189-191,303-304` | **décidé RG-A04** — onboarding 3 étapes + états vides actionnables |
+| A13 | ~~majeur (UX)~~ ✅ **corrigé** | Après inscription, l'espace n'est plus vide : onboarding en 2 étapes (nom du commerce, coordonnées) + checklist de démarrage actionnable et états vides qui créent un article | `features/onboarding/OnboardingModal.tsx`, `features/accueil/SetupChecklist.tsx` | livré |
 
 ---
 

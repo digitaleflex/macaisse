@@ -1,5 +1,6 @@
 import type {
   AuthResult,
+  BusinessProfile,
   ClientCredit,
   EmailChallenge,
   Expense,
@@ -49,6 +50,9 @@ export function createHttpApi(http: HttpClient): Api {
     },
     session: {
       get: (orgId) => http.get<Session>(ENDPOINTS.session(orgId)),
+    },
+    onboarding: {
+      complete: (orgId, input) => http.post<BusinessProfile>(ENDPOINTS.onboarding(orgId), input),
     },
     team: {
       list: (orgId) => http.get<TeamMember[]>(ENDPOINTS.members(orgId)),
