@@ -23,7 +23,7 @@ Légende : ✔ implémenté et fonctionnel · ◐ simulé (UI + toast, aucun eff
 | Connexion | e-mail + mot de passe affichable, erreurs **par champ**, `autoComplete`, erreurs API typées (`invalidCredentials`, `sessionExpired`, `forbidden`…) | idem |
 | Inscription | **2 champs** : e-mail + mot de passe (12 car. min) ; nom, commerce, téléphone, ville et activité sont collectés après l'ouverture (RG-A04). Espace créé sous « Mon commerce » | idem |
 | Connexion 1 clic | 4 comptes de démonstration listés (mot de passe `demo1234`) | `mocks/fixtures/accounts.ts` |
-| Google (démo) | « Continuer avec Google » : identité simulée, espace « Mon commerce » créé au premier accès (production = PKCE serveur, `501` en `http`) | `features/auth/LoginScreen.tsx`, `adapters/mockApi.ts` |
+| Google (démo) | Bouton « Continuer avec Google » avec le **logo « G » officiel** (SVG inline, non recoloré) : identité simulée, espace « Mon commerce » créé au premier accès (production = PKCE serveur, `501` en `http`) | `features/auth/GoogleButton.tsx`, `ui/GoogleMark.tsx`, `adapters/mockApi.ts` |
 | Reprise de session | `restoreSession()` au démarrage, écran splash + écran d'erreur avec *Réessayer* / *Se déconnecter* | `app/App.tsx`, `store/auth.ts` |
 
 > **Cible arrêtée** (non implémentée) : inscription en **1 champ** (OTP téléphone),

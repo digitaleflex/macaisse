@@ -6,6 +6,7 @@ import { isApiError } from '@/services';
 import { login, loadDemoAccounts, signInWithGoogle, signup } from '@/store/auth';
 import { useUiStore } from '@/store/useUiStore';
 import { Avatar, Badge, BrandMark, Button, Icon, Input, SegmentedControl } from '@/ui';
+import { GoogleButton } from './GoogleButton';
 
 /**
  * Écran d'accès : connexion, création d'un compte (inscription) et, en mode démo,
@@ -198,18 +199,7 @@ export function LoginScreen() {
 
           {isDemoMode && (
             <>
-              <Button
-                type="button"
-                variant="secondary"
-                size="lg"
-                fullWidth
-                icon="account_circle"
-                className="mt-6"
-                loading={pending}
-                onClick={handleGoogle}
-              >
-                {t.auth.google}
-              </Button>
+              <GoogleButton className="mt-6" loading={pending} onClick={handleGoogle} />
               <p className="text-xs text-slate-500 mt-2 text-center">{t.auth.googleHint}</p>
               <div className="my-5 flex items-center gap-3 text-xs uppercase tracking-wider text-slate-400" aria-hidden="true">
                 <span className="h-px flex-1 bg-line" />

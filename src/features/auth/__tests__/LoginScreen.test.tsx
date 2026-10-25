@@ -43,10 +43,13 @@ describe('LoginScreen — accès', () => {
     expect(input('auth-password')).toBeTruthy();
   });
 
-  it('expose Google et permet d’afficher le mot de passe saisi', () => {
+  it('expose Google avec son logo officiel et permet d’afficher le mot de passe saisi', () => {
     render(<LoginScreen />);
 
-    expect(screen.getByRole('button', { name: t.auth.google })).toBeTruthy();
+    const google = screen.getByRole('button', { name: t.auth.google });
+    expect(google).toBeTruthy();
+    // Logo « G » officiel (SVG inline), pas une icône Material.
+    expect(google.querySelector('svg')).not.toBeNull();
 
     const password = input('auth-password');
     expect(password.type).toBe('password');

@@ -4,6 +4,7 @@
 export { cn } from './cn';
 export { useMediaQuery } from './useMediaQuery';
 export { Icon, type IconProps } from './Icon';
+export { GoogleMark, type GoogleMarkProps } from './GoogleMark';
 export { Spinner, type SpinnerProps, type SpinnerSize } from './Spinner';
 export {
   Button,
