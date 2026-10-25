@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import type { Product } from '@/types';
 import { t } from '@/content';
-import { computeCreditStatus } from '@/domain/credits';
+import { overdueCredits } from '@/domain/credits';
 import { computeStockStatus } from '@/domain/stock';
 import { formatFCFA } from '@/domain/money';
 import { selectLowStockProducts, selectOutOfStockProducts, useProductsStore } from '@/store/useProductsStore';
@@ -27,9 +27,7 @@ export function StockAlerts() {
   const stockTotal = outOfStock.length + lowStock.length;
   const details = [...outOfStock, ...lowStock].slice(0, 2).map(describeProduct).join(', ');
 
-  const overdue = credits.filter(
-    (credit) => computeCreditStatus(credit.remainingAmount, credit.totalInitial, credit.dueDate, now) === 'En retard'
-  );
+  const overdue = overdueCredits(credits, now);
   const overdueTotal = overdue.reduce((sum, credit) => sum + credit.remainingAmount, 0);
   const totalAlerts = stockTotal + overdue.length;
 

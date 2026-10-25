@@ -3,7 +3,7 @@ import { createHttpApi } from './adapters/httpApi';
 import { createMockApi } from './adapters/mockApi';
 import { createHttpClient } from './http/httpClient';
 import { isApiError } from './http/ApiError';
-import { pushToast } from '@/ui/toastBus';
+import { reportError } from './errorReporter';
 import type { Api } from './contracts';
 import { getAuthToken } from './tenant';
 
@@ -33,11 +33,12 @@ export function syncRemote<T>(task: (client: Api) => Promise<T>, failureMessage:
   if (api.mode !== 'http') return;
   task(api).catch((error: unknown) => {
     const detail = isApiError(error) ? ` ${error.message}` : '';
-    pushToast(`${failureMessage}${detail}`, 'error');
+    reportError(`${failureMessage}${detail}`);
   });
 }
 
 export type { Api } from './contracts';
+export { reportError, setErrorReporter, type ErrorReporter } from './errorReporter';
 export { ApiError, isApiError } from './http/ApiError';
 export { ENDPOINTS } from './endpoints';
 export {

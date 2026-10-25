@@ -177,7 +177,9 @@ Puis : exposer un sélecteur **stable** si l'UI en a besoin, et tester
 2. `src/config/reference.ts` → `TAB_ORDER` **et** `TAB_ICON` (sinon `Record` incomplet → erreur TS).
 3. `src/content/fr.ts` → `nav.<nouvelOnglet>` : `{ label, title, description }`
    (le type `Content` impose la clé).
-4. `src/app/App.tsx` → ajouter la vue dans la table `VIEWS: Record<TabType, ComponentType>`.
+4. `src/app/App.tsx` → déclarer la vue avec `lazy(() => import('@/features/<x>').then((m) => ({ default: m.XView })))`
+   puis l'ajouter à `VIEWS: Record<TabType, ComponentType>`. Ne jamais l'importer statiquement :
+   le premier écran ne doit embarquer que le shell.
 5. `src/store/storeUtils.ts` → ajouter l'id dans `TAB_SET` (validation de `tab`
    persisté, sinon l'ancien onglet sera perdu à la réhydratation).
 6. `src/domain/permissions.ts` → si l'onglet est réservé, étendre `canAccessTab`.
@@ -255,6 +257,7 @@ unitaire sur la mise en forme (jamais sur le binaire PDF).
 | **Zustand 5** | Jamais de sélecteur qui alloue (`{a, b}`, `state.x.filter(…)`) ; s'abonner à `state.x` + `useMemo`, ou `useShallow` | `useSyncExternalStore` boucle sinon (écran figé) |
 | **TypeScript** | `strict`, `noUnusedLocals`, `noUnusedParameters` ; ESLint `--max-warnings 0` | Le build CI est impitoyable |
 | **Nommage** | Fichiers de composants en `PascalCase.tsx`, modules/domaine en `camelCase.ts`, un dossier par feature avec `index.ts` | Découvrabilité |
+| **Couches** | Les imports interdits sont refusés par ESLint (`no-restricted-imports` par lane) ; toute exception doit être justifiée sur place | Le lint remplace la revue humaine sur ce point |
 | **Langue de code** | Code et commentaires en anglais technique ou français, **mais l'UI et les messages sont en français** | Cohérence produit |
 
 ---

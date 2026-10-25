@@ -72,12 +72,6 @@ export function expensesInRange(expenses: Expense[], from: Date, to: Date): Expe
   });
 }
 
-/** Fabrique de sélecteur bornant les dépenses sur une période. */
-export const selectExpensesInRange =
-  (from: Date, to: Date) =>
-  (state: ExpensesState): Expense[] =>
-    expensesInRange(state.expenses, from, to);
-
 // ---------------------------------------------------------------------------
 // Migration v1 (ids numériques) → v2
 // ---------------------------------------------------------------------------

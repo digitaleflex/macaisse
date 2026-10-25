@@ -1,10 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { NotificationItem } from '@/types';
-import {
-  selectUnreadCount,
-  selectUnreadNotifications,
-  useNotificationsStore,
-} from '../useNotificationsStore';
+import { selectUnreadCount, useNotificationsStore } from '../useNotificationsStore';
 
 function makeNotification(overrides: Partial<NotificationItem> = {}): NotificationItem {
   return {
@@ -42,11 +38,6 @@ describe('useNotificationsStore', () => {
     });
 
     expect(selectUnreadCount(useNotificationsStore.getState())).toBe(2);
-    expect(selectUnreadNotifications(useNotificationsStore.getState()).map((n) => n.id)).toEqual([
-      'n1',
-      'n3',
-    ]);
-
     useNotificationsStore.getState().markAllRead();
     expect(selectUnreadCount(useNotificationsStore.getState())).toBe(0);
   });

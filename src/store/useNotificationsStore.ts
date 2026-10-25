@@ -92,10 +92,6 @@ export const useNotificationsStore = create<NotificationsState>()(
 export const selectUnreadCount = (state: NotificationsState): number =>
   state.notifications.filter((notification) => !notification.read).length;
 
-/** Notifications non lues. */
-export const selectUnreadNotifications = (state: NotificationsState): NotificationItem[] =>
-  state.notifications.filter((notification) => !notification.read);
-
 // ---------------------------------------------------------------------------
 // Migration v1 (ids numériques) → v2
 // ---------------------------------------------------------------------------

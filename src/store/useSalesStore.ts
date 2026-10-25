@@ -3,12 +3,10 @@
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { PaymentMethod, SaleTransaction, SeriesPoint } from '@/types';
+import type { PaymentMethod, SaleTransaction } from '@/types';
 import { nextSaleNumber } from '@/domain/ids';
-import { isSameDay, parseDate } from '@/domain/dates';
 import { creditFromSale } from '@/domain/credits';
 import { completeSale as buildSale } from '@/domain/sales';
-import { dailyRevenueSeries } from '@/domain/finances';
 import { t } from '@/content';
 import { SEED_SALES } from '@/mocks';
 import { syncRemote } from '@/services';
@@ -111,27 +109,6 @@ export const useSalesStore = create<SalesState>()(
     )
   )
 );
-
-// ---------------------------------------------------------------------------
-// Sélecteurs
-// ---------------------------------------------------------------------------
-
-/** Ventes du jour (comparaison de date locale via le domaine). */
-export const selectTodaySales = (state: SalesState, now: Date = new Date()): SaleTransaction[] =>
-  state.sales.filter((sale) => {
-    const date = parseDate(sale.date);
-    return date !== null && isSameDay(date, now);
-  });
-
-/** Fabrique de sélecteur : série des revenus journaliers sur `days` jours. */
-export const selectRevenueSeries =
-  (days: number) =>
-  (state: SalesState): SeriesPoint[] =>
-    dailyRevenueSeries(state.sales, days);
-
-/** Ventes les plus récentes (tête de liste, la plus récente en premier). */
-export const selectRecentSales = (state: SalesState, limit: number): SaleTransaction[] =>
-  state.sales.slice(0, Math.max(0, limit));
 
 // ---------------------------------------------------------------------------
 // Migration v1 (ids numériques) → v2

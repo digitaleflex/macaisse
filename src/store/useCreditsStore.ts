@@ -5,8 +5,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { ClientCredit } from '@/types';
 import { createId } from '@/domain/ids';
-import { applyPayment, computeCreditStatus, creditSummary, daysLate } from '@/domain/credits';
-import type { CreditSummary } from '@/domain/credits';
+import { applyPayment, computeCreditStatus, daysLate } from '@/domain/credits';
 import { SEED_CREDITS } from '@/mocks';
 import { syncRemote } from '@/services';
 import {
@@ -93,34 +92,6 @@ export const useCreditsStore = create<CreditsState>()(
     )
   )
 );
-
-// ---------------------------------------------------------------------------
-// Sélecteurs
-// ---------------------------------------------------------------------------
-
-/** Crédits non soldés. */
-export const selectActiveCredits = (state: CreditsState, now: Date = new Date()): ClientCredit[] =>
-  state.credits.filter(
-    (credit) =>
-      computeCreditStatus(credit.remainingAmount, credit.totalInitial, credit.dueDate, now) !==
-      'Réglé'
-  );
-
-/** Crédits échus. */
-export const selectOverdueCredits = (state: CreditsState, now: Date = new Date()): ClientCredit[] =>
-  state.credits.filter(
-    (credit) =>
-      computeCreditStatus(credit.remainingAmount, credit.totalInitial, credit.dueDate, now) ===
-      'En retard'
-  );
-
-/** Synthèse agrégée du carnet de crédits (délègue à `@/domain/credits`). */
-export const selectCreditSummary = (state: CreditsState, now: Date = new Date()): CreditSummary =>
-  creditSummary(state.credits, now);
-
-/** Total des restes dus. */
-export const selectTotalOutstanding = (state: CreditsState): number =>
-  state.credits.reduce((sum, credit) => sum + Math.max(0, credit.remainingAmount), 0);
 
 // ---------------------------------------------------------------------------
 // Migration v1 (ids numériques) → v2

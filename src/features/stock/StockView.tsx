@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import type { Product, ProductInput } from '@/types';
 import { t } from '@/content';
 import { STOCK_STATUS_TONE } from '@/config/reference';
-import { filterProducts, sortProducts } from '@/domain/stock';
+import { filterProducts, marginPercent, sortProducts } from '@/domain/stock';
 import { formatFCFA } from '@/domain/money';
 import {
   productsWithStatus,
@@ -45,12 +45,6 @@ const SORT_LABEL: Record<StockSortKey, string> = {
   name: t.stock.sort.name,
   price: t.stock.sort.price,
 };
-
-function marginPercent(product: Product): number {
-  return product.price > 0
-    ? Math.round(((product.price - product.costPrice) / product.price) * 100)
-    : 0;
-}
 
 interface RowActionsProps {
   product: Product;
@@ -374,7 +368,7 @@ export function StockView() {
                           {formatFCFA(product.costPrice)}
                         </td>
                         <td className="px-3 py-3 text-right font-num font-semibold text-brand-600">
-                          +{marginPercent(product)} %
+                          +{marginPercent(product.price, product.costPrice)} %
                         </td>
                       </>
                     )}
@@ -432,7 +426,7 @@ export function StockView() {
                         <div className="text-right">
                           <div className="text-slate-500">{t.stock.table.margin}</div>
                           <div className="font-num font-bold text-brand-600">
-                            +{marginPercent(product)} %
+                            +{marginPercent(product.price, product.costPrice)} %
                           </div>
                         </div>
                       </>

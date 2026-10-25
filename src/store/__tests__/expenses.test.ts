@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { Expense } from '@/types';
-import { expensesInRange, selectExpensesInRange, useExpensesStore } from '../useExpensesStore';
+import { expensesInRange, useExpensesStore } from '../useExpensesStore';
 
 function makeExpense(overrides: Partial<Expense> = {}): Expense {
   return {
@@ -46,9 +46,6 @@ describe('useExpensesStore', () => {
 
     const from = new Date(2024, 9, 1);
     const to = new Date(2024, 9, 18);
-    const selected = selectExpensesInRange(from, to)(useExpensesStore.getState());
-
-    expect(selected.map((e) => e.id)).toEqual(['e1', 'e2']);
     expect(
       expensesInRange(useExpensesStore.getState().expenses, from, to).map((e) => e.id)
     ).toEqual(['e1', 'e2']);

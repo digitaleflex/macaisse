@@ -4,8 +4,8 @@ import { t } from '@/content';
 import { addDays, parseDate } from '@/domain/dates';
 import { cashFlowSeries, channelSplit, computeKpis, dailyRevenueSeries, expenseBreakdown } from '@/domain/finances';
 import { formatFCFA } from '@/domain/money';
-import { retailValue } from '@/domain/stock';
-import { exportToCSV, exportToPDF } from '@/lib/export';
+import { marginRatePercent, retailValue } from '@/domain/stock';
+import { exportToCSV } from '@/lib/export';
 import { expensesInRange, useExpensesStore } from '@/store/useExpensesStore';
 import { useCreditsStore } from '@/store/useCreditsStore';
 import { useProductsStore } from '@/store/useProductsStore';
@@ -75,7 +75,7 @@ export function BilanView() {
       previous,
       expenses: expenseTotal,
       net: revenue - expenseTotal,
-      marginRate: retail > 0 ? (margin / retail) * 100 : 0,
+      marginRate: marginRatePercent(margin, retail),
     };
   }, [sales, expenses, credits, products, days, from, now]);
 
@@ -86,7 +86,8 @@ export function BilanView() {
     exportToCSV('all', sales, expenses);
     showToast(t.bilan.exports.csvDone, 'success');
   };
-  const handleExportPDF = () => {
+  const handleExportPDF = async () => {
+    const { exportToPDF } = await import('@/lib/export/pdf');
     exportToPDF('all', sales, expenses, business);
     showToast(t.bilan.exports.pdfDone, 'success');
   };

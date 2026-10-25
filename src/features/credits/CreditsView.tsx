@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import type { ClientCredit, CreditStatus } from '@/types';
 import { t } from '@/content';
-import { computeCreditStatus, creditProgress, creditSummary, daysLate } from '@/domain/credits';
+import { creditProgress, creditRows, creditSummary } from '@/domain/credits';
 import { formatFCFA } from '@/domain/money';
 import { useCreditsStore, type CreditInput } from '@/store/useCreditsStore';
 import { usePermission } from '@/store/useSessionStore';
@@ -23,11 +23,6 @@ const FILTER_STATUS: Record<Exclude<CreditFilterKey, 'all'>, CreditStatus> = {
   attente: 'En attente',
 };
 
-interface CreditRow {
-  credit: ClientCredit;
-  status: CreditStatus;
-  late: number;
-}
 
 export function CreditsView() {
   const credits = useCreditsStore((state) => state.credits);
@@ -47,16 +42,8 @@ export function CreditsView() {
   const summary = useMemo(() => creditSummary(credits, now), [credits, now]);
 
   // Créances actives, enrichies et triées par urgence (retards d'abord).
-  const activeRows = useMemo<CreditRow[]>(
-    () =>
-      credits
-        .map((credit) => ({
-          credit,
-          status: computeCreditStatus(credit.remainingAmount, credit.totalInitial, credit.dueDate, now),
-          late: daysLate(credit.dueDate, now),
-        }))
-        .filter((row) => row.status !== 'Réglé')
-        .sort((a, b) => b.late - a.late || a.credit.dueDate.localeCompare(b.credit.dueDate)),
+  const activeRows = useMemo(
+    () => creditRows(credits, now).filter((row) => row.status !== 'Réglé'),
     [credits, now]
   );
 

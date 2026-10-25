@@ -1,9 +1,44 @@
 // Référentiels et constantes d'affichage partagés (catégories, moyens de
 // paiement, seuils). Les libellés longs restent dans `@/content`.
 
-import type { Category, PaymentMethod, StockStatus, CreditStatus, TabType } from '@/types';
+import type {
+  Category,
+  CreditStatus,
+  NotificationType,
+  PaymentMethod,
+  SaleStatus,
+  StockStatus,
+  TabType,
+} from '@/types';
 
-export const PRODUCT_CATEGORIES: readonly Category[] = ['Épicerie', 'Boissons', 'Frais', 'Hygiène'];
+/**
+ * Référentiels de valeurs : SOURCE UNIQUE des unions métier côté valeurs.
+ * `satisfies` garantit qu'aucune valeur n'est inventée ; les gardes de
+ * `store/storeUtils.ts` et les formulaires en dérivent (ne jamais réécrire
+ * ces listes ailleurs).
+ */
+export const PRODUCT_CATEGORIES = [
+  'Épicerie',
+  'Boissons',
+  'Frais',
+  'Hygiène',
+] as const satisfies readonly Category[];
+
+export const SALE_STATUSES = ['Validé', 'Partiel', 'En attente'] as const satisfies readonly SaleStatus[];
+
+export const CREDIT_STATUSES = [
+  'En retard',
+  'Partiel',
+  'En attente',
+  'Réglé',
+] as const satisfies readonly CreditStatus[];
+
+export const NOTIFICATION_TYPES = [
+  'warning',
+  'alert',
+  'info',
+  'success',
+] as const satisfies readonly NotificationType[];
 
 /** Icône et teinte associées à chaque rayon (vignettes produit sans image). */
 export const CATEGORY_STYLE: Record<Category, { icon: string; tone: string }> = {
@@ -38,6 +73,11 @@ export const PAYMENT_METHODS: readonly PaymentMethodOption[] = [
   { method: 'Carte Bancaire', short: 'Carte', icon: 'credit_card' },
   { method: 'Crédit Partiel', short: 'Crédit', icon: 'account_balance_wallet' },
 ];
+
+/** Valeurs de `PaymentMethod` (dérivées, jamais dupliquées). */
+export const PAYMENT_METHOD_VALUES: readonly PaymentMethod[] = PAYMENT_METHODS.map(
+  (option) => option.method
+);
 
 export function paymentShortLabel(method: string): string {
   return PAYMENT_METHODS.find((option) => option.method === method)?.short ?? method;

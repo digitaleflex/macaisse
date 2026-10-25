@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, cleanup, render, screen } from '@testing-library/react';
 import type { SaleTransaction, TabType } from '@/types';
 import App from '@/app/App';
@@ -35,6 +35,18 @@ const TAB_MARKERS: { tab: TabType; text: string }[] = [
 describe('App — smoke de rendu', () => {
   let consoleError: ReturnType<typeof vi.spyOn>;
 
+  // Les vues sont découpées (React.lazy) : on précharge leurs chunks pour que la
+  // résolution soit synchrone au rendu, sinon chaque assertion attend le réseau.
+  beforeAll(async () => {
+    await Promise.all([
+      import('@/features/accueil'),
+      import('@/features/ventes'),
+      import('@/features/stock'),
+      import('@/features/credits'),
+      import('@/features/bilan'),
+    ]);
+  });
+
   beforeEach(async () => {
     localStorage.clear();
     useUiStore.setState({ tab: 'accueil', modal: null, receipt: null });
@@ -64,7 +76,9 @@ describe('App — smoke de rendu', () => {
     });
 
     for (const { tab, text } of TAB_MARKERS) {
-      act(() => {
+      // Les vues sont découpées : on laisse React résoudre la promesse du chunk
+      // dans une mise à jour `act` avant d'interroger le DOM.
+      await act(async () => {
         useUiStore.getState().setTab(tab);
       });
       expect(screen.getAllByText(text).length).toBeGreaterThan(0);

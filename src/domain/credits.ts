@@ -145,3 +145,37 @@ export function creditSummary(credits: ClientCredit[], now: Date = new Date()): 
     { total: 0, outstanding: 0, overdue: 0, settled: 0, count: 0 }
   );
 }
+
+/** Ligne de carnet enrichie : statut calculé et jours de retard. */
+export interface CreditRow {
+  credit: ClientCredit;
+  status: CreditStatus;
+  late: number;
+}
+
+/** Carnet enrichi et trié par urgence (retards d'abord, puis échéance proche). */
+export function creditRows(credits: ClientCredit[], now: Date = new Date()): CreditRow[] {
+  return credits
+    .map((credit) => ({
+      credit,
+      status: computeCreditStatus(credit.remainingAmount, credit.totalInitial, credit.dueDate, now),
+      late: daysLate(credit.dueDate, now),
+    }))
+    .sort((a, b) => b.late - a.late || a.credit.dueDate.localeCompare(b.credit.dueDate));
+}
+
+/** Créances non soldées. */
+export function activeCredits(credits: ClientCredit[], now: Date = new Date()): ClientCredit[] {
+  return credits.filter(
+    (credit) =>
+      computeCreditStatus(credit.remainingAmount, credit.totalInitial, credit.dueDate, now) !== 'Réglé'
+  );
+}
+
+/** Créances échues. */
+export function overdueCredits(credits: ClientCredit[], now: Date = new Date()): ClientCredit[] {
+  return credits.filter(
+    (credit) =>
+      computeCreditStatus(credit.remainingAmount, credit.totalInitial, credit.dueDate, now) === 'En retard'
+  );
+}

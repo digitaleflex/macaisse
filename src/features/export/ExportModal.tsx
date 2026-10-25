@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { t } from '@/content';
-import { exportToCSV, exportToPDF, type ExportFilterType } from '@/lib/export';
+import { exportToCSV, type ExportFilterType } from '@/lib/export';
 import { useExpensesStore } from '@/store/useExpensesStore';
 import { useSalesStore } from '@/store/useSalesStore';
 import { useCurrentSession, usePermission } from '@/store/useSessionStore';
@@ -28,13 +28,15 @@ export function ExportModal() {
   const totalRecords = (filterType === 'expenses' ? 0 : sales.length) + (filterType === 'sales' ? 0 : expenses.length);
   const hasAnyData = sales.length > 0 || expenses.length > 0;
 
-  const handleDownload = () => {
+  const handleDownload = async () => {
     setIsExporting(true);
     try {
       if (format === 'CSV') {
         exportToCSV(filterType, sales, expenses);
         showToast(t.exportModal.csvDone, 'success');
       } else {
+        // jsPDF est chargé uniquement au moment de l'export.
+        const { exportToPDF } = await import('@/lib/export/pdf');
         exportToPDF(filterType, sales, expenses, business);
         showToast(t.exportModal.pdfDone, 'success');
       }

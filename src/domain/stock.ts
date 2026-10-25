@@ -17,6 +17,20 @@ export function isLowStock(product: Product): boolean {
   return computeStockStatus(product.stock, product.minStockAlert) === 'faible';
 }
 
+/**
+ * Marge unitaire en pourcentage du prix de vente, arrondie au point
+ * (0 si le prix est nul). Source unique : formulaires, tableau et KPI.
+ */
+export function marginPercent(price: number, costPrice: number): number {
+  if (price <= 0) return 0;
+  return Math.round(((price - costPrice) / price) * 100);
+}
+
+/** Marge potentielle en pourcentage du chiffre d'affaires (KPI accueil/bilan). */
+export function marginRatePercent(margin: number, retail: number): number {
+  return retail > 0 ? (margin / retail) * 100 : 0;
+}
+
 /** Valeur du stock au prix d'achat (somme stock × costPrice). */
 export function stockValue(products: Product[]): number {
   return products.reduce((sum, p) => sum + p.stock * p.costPrice, 0);

@@ -1,12 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { ClientCredit } from '@/types';
-import {
-  selectActiveCredits,
-  selectCreditSummary,
-  selectOverdueCredits,
-  selectTotalOutstanding,
-  useCreditsStore,
-} from '../useCreditsStore';
+import { useCreditsStore } from '../useCreditsStore';
 
 function makeCredit(overrides: Partial<ClientCredit> = {}): ClientCredit {
   return {
@@ -75,39 +69,3 @@ describe('useCreditsStore — mutations', () => {
   });
 });
 
-describe('sélecteurs de crédits (date figée)', () => {
-  const now = new Date(2024, 9, 18);
-
-  beforeEach(() => {
-    useCreditsStore.setState({
-      credits: [
-        makeCredit({ id: 'c1', remainingAmount: 45000, totalInitial: 60000, dueDate: '2024-10-13' }),
-        makeCredit({ id: 'c2', remainingAmount: 40000, totalInitial: 100000, dueDate: '2999-01-01' }),
-        makeCredit({ id: 'c3', remainingAmount: 0, totalInitial: 120000, dueDate: '2999-01-01' }),
-      ],
-    });
-  });
-
-  it('selectOverdueCredits ne retient que les échéances dépassées', () => {
-    expect(selectOverdueCredits(useCreditsStore.getState(), now).map((c) => c.id)).toEqual(['c1']);
-  });
-
-  it('selectActiveCredits exclut les crédits réglés', () => {
-    expect(selectActiveCredits(useCreditsStore.getState(), now).map((c) => c.id)).toEqual([
-      'c1',
-      'c2',
-    ]);
-  });
-
-  it('selectCreditSummary et selectTotalOutstanding agrègent', () => {
-    const state = useCreditsStore.getState();
-    expect(selectCreditSummary(state, now)).toEqual({
-      total: 280000,
-      outstanding: 85000,
-      overdue: 45000,
-      settled: 195000,
-      count: 3,
-    });
-    expect(selectTotalOutstanding(state)).toBe(85000);
-  });
-});

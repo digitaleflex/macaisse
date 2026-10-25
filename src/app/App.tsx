@@ -1,13 +1,9 @@
-import { useEffect, type ComponentType } from 'react';
+import { lazy, Suspense, useEffect, type ComponentType } from 'react';
 import type { TabType } from '@/types';
 import { t } from '@/content';
 import { canAccessTab } from '@/domain/permissions';
-import { AccueilView } from '@/features/accueil';
 import { LoginScreen } from '@/features/auth';
-import { VentesView, ReceiptModal } from '@/features/ventes';
-import { StockView } from '@/features/stock';
-import { CreditsView } from '@/features/credits';
-import { BilanView } from '@/features/bilan';
+import { ReceiptModal } from '@/features/ventes';
 import { DepensesModal } from '@/features/depenses';
 import { ExportModal } from '@/features/export';
 import { ProfilModal } from '@/features/profil';
@@ -22,6 +18,24 @@ import { BrandMark, Button, EmptyState, Spinner, ToastHost } from '@/ui';
 import { BottomNav } from './BottomNav';
 import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
+
+// Chaque vue est chargée à la demande : la caisse n'embarque ni Recharts (bilan)
+// ni les écrans qu'un caissier n'ouvrira jamais.
+const AccueilView = lazy(() =>
+  import('@/features/accueil').then((module) => ({ default: module.AccueilView }))
+);
+const VentesView = lazy(() =>
+  import('@/features/ventes').then((module) => ({ default: module.VentesView }))
+);
+const StockView = lazy(() =>
+  import('@/features/stock').then((module) => ({ default: module.StockView }))
+);
+const CreditsView = lazy(() =>
+  import('@/features/credits').then((module) => ({ default: module.CreditsView }))
+);
+const BilanView = lazy(() =>
+  import('@/features/bilan').then((module) => ({ default: module.BilanView }))
+);
 
 /** Table de routage onglet → vue de feature (les vues lisent elles-mêmes les stores). */
 const VIEWS: Record<TabType, ComponentType> = {
@@ -60,6 +74,16 @@ function SplashScreen() {
           {t.auth.restoring}
         </div>
       )}
+    </div>
+  );
+}
+
+/** Attente du chargement d'une vue découpée (première visite de l'onglet). */
+function ViewFallback() {
+  return (
+    <div className="flex items-center justify-center gap-2.5 py-24 text-sm text-slate-500" role="status">
+      <Spinner size="sm" />
+      {t.common.loading}
     </div>
   );
 }
@@ -136,7 +160,9 @@ export default function App() {
       <div className="lg:pl-[264px] flex flex-col min-h-dvh">
         <Topbar />
         <main id="main" className="flex-1 w-full max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 pt-5 sm:pt-7 pb-28 lg:pb-10">
-          <View key={`${session.business.id}-${tab}`} />
+          <Suspense fallback={<ViewFallback />}>
+            <View key={`${session.business.id}-${tab}`} />
+          </Suspense>
         </main>
       </div>
       <BottomNav />

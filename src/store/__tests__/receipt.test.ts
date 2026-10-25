@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { CartLine, SaleTransaction } from '@/types';
 import { PERSIST_NAMES } from '../storeUtils';
-import { selectReceipt, useUiStore } from '../useUiStore';
+import { useUiStore } from '../useUiStore';
 
 const SALE: SaleTransaction = {
   id: 'sale-1',
@@ -28,7 +28,7 @@ describe('useUiStore — reçu global', () => {
     useUiStore.getState().openReceipt(SALE, ITEMS);
 
     expect(useUiStore.getState().receipt).toEqual({ sale: SALE, items: ITEMS });
-    expect(selectReceipt(useUiStore.getState())).toEqual({ sale: SALE, items: ITEMS });
+    expect(useUiStore.getState().receipt).toEqual({ sale: SALE, items: ITEMS });
   });
 
   it('openReceipt retombe sur des items vides quand le détail est inconnu', () => {

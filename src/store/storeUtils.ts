@@ -12,6 +12,14 @@
 
 import { createJSONStorage, type PersistOptions } from 'zustand/middleware';
 import { env, type ApiMode } from '@/config/env';
+import {
+  CREDIT_STATUSES,
+  NOTIFICATION_TYPES,
+  PAYMENT_METHOD_VALUES,
+  PRODUCT_CATEGORIES,
+  SALE_STATUSES,
+  TAB_ORDER,
+} from '@/config/reference';
 import type {
   Category,
   CreditStatus,
@@ -121,38 +129,34 @@ function stringSet(values: readonly string[]): ReadonlySet<string> {
   return new Set(values);
 }
 
-const CATEGORY_SET = stringSet(['Frais', 'Épicerie', 'Boissons', 'Hygiène']);
+// Les gardes dérivent des référentiels : ajouter une valeur dans
+// `config/reference.ts` suffit, aucune liste n'est réécrite ici.
+const CATEGORY_SET = stringSet(PRODUCT_CATEGORIES);
 export function isCategory(value: unknown): value is Category {
   return typeof value === 'string' && CATEGORY_SET.has(value);
 }
 
-const PAYMENT_METHOD_SET = stringSet([
-  'Espèces',
-  'Mobile Money (Wave)',
-  'Orange Money',
-  'Carte Bancaire',
-  'Crédit Partiel',
-]);
+const PAYMENT_METHOD_SET = stringSet(PAYMENT_METHOD_VALUES);
 export function isPaymentMethod(value: unknown): value is PaymentMethod {
   return typeof value === 'string' && PAYMENT_METHOD_SET.has(value);
 }
 
-const SALE_STATUS_SET = stringSet(['Validé', 'Partiel', 'En attente']);
+const SALE_STATUS_SET = stringSet(SALE_STATUSES);
 export function isSaleStatus(value: unknown): value is SaleStatus {
   return typeof value === 'string' && SALE_STATUS_SET.has(value);
 }
 
-const CREDIT_STATUS_SET = stringSet(['En retard', 'Partiel', 'En attente', 'Réglé']);
+const CREDIT_STATUS_SET = stringSet(CREDIT_STATUSES);
 export function isCreditStatus(value: unknown): value is CreditStatus {
   return typeof value === 'string' && CREDIT_STATUS_SET.has(value);
 }
 
-const NOTIFICATION_TYPE_SET = stringSet(['warning', 'alert', 'info', 'success']);
+const NOTIFICATION_TYPE_SET = stringSet(NOTIFICATION_TYPES);
 export function isNotificationType(value: unknown): value is NotificationType {
   return typeof value === 'string' && NOTIFICATION_TYPE_SET.has(value);
 }
 
-const TAB_SET = stringSet(['accueil', 'ventes', 'stock', 'credits', 'bilan']);
+const TAB_SET = stringSet(TAB_ORDER);
 export function isTabType(value: unknown): value is TabType {
   return typeof value === 'string' && TAB_SET.has(value);
 }

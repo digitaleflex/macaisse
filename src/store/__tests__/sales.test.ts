@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import type { CartLine, Product, SaleTransaction } from '@/types';
+import type { CartLine, Product } from '@/types';
 import { useCartStore } from '../useCartStore';
 import { useCreditsStore } from '../useCreditsStore';
 import { useProductsStore } from '../useProductsStore';
-import { selectRevenueSeries, selectTodaySales, useSalesStore } from '../useSalesStore';
+import { useSalesStore } from '../useSalesStore';
 
 function makeProduct(overrides: Partial<Product> = {}): Product {
   return {
@@ -17,20 +17,6 @@ function makeProduct(overrides: Partial<Product> = {}): Product {
     minStockAlert: 5,
     imageUrl: '',
     unit: 'brique',
-    ...overrides,
-  };
-}
-
-function makeSale(overrides: Partial<SaleTransaction> = {}): SaleTransaction {
-  return {
-    id: 's',
-    saleNumber: 'V-20241018-0001',
-    time: '09:00',
-    date: '2024-10-18',
-    paymentMethod: 'Espèces',
-    amount: 1000,
-    status: 'Validé',
-    itemsCount: 1,
     ...overrides,
   };
 }
@@ -109,31 +95,6 @@ describe('useSalesStore.completeSale', () => {
     expect(sale.status).toBe('Partiel');
     expect(sale.remainingAmount).toBe(500);
     expect(sale.clientName).toBe('Mme Diallo');
-  });
-});
-
-describe('sélecteurs de ventes', () => {
-  it('selectTodaySales filtre sur la date locale', () => {
-    useSalesStore.setState({
-      sales: [
-        makeSale({ id: 's1', date: '2024-10-18' }),
-        makeSale({ id: 's2', date: '2024-10-17' }),
-      ],
-      sequence: 0,
-    });
-
-    const today = selectTodaySales(useSalesStore.getState(), new Date(2024, 9, 18));
-    expect(today.map((s) => s.id)).toEqual(['s1']);
-  });
-
-  it('selectRevenueSeries délègue au domaine', () => {
-    useSalesStore.setState({
-      sales: [makeSale({ id: 's1', date: '2024-10-18', amount: 2000 })],
-      sequence: 0,
-    });
-
-    const series = selectRevenueSeries(3)(useSalesStore.getState());
-    expect(series).toHaveLength(3);
   });
 });
 

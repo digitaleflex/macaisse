@@ -2,9 +2,10 @@ import { useMemo, useState } from 'react';
 import type { SeriesPoint } from '@/types';
 import { t } from '@/content';
 import { addDays, isSameDay, parseDate } from '@/domain/dates';
+import { activeCredits } from '@/domain/credits';
 import { computeKpis, dailyRevenueSeries } from '@/domain/finances';
 import { formatFCFA } from '@/domain/money';
-import { retailValue } from '@/domain/stock';
+import { marginRatePercent, retailValue } from '@/domain/stock';
 import { expensesInRange, useExpensesStore } from '@/store/useExpensesStore';
 import { useCreditsStore } from '@/store/useCreditsStore';
 import { useProductsStore } from '@/store/useProductsStore';
@@ -84,12 +85,12 @@ export function AccueilView() {
     };
   }, [period, sales, expenses, credits, products, kpis, now]);
 
-  const marginRate = useMemo(() => {
-    const retail = retailValue(products);
-    return retail > 0 ? (kpis.margin / retail) * 100 : 0;
-  }, [products, kpis.margin]);
+  const marginRate = useMemo(
+    () => marginRatePercent(kpis.margin, retailValue(products)),
+    [products, kpis.margin]
+  );
 
-  const debtors = useMemo(() => credits.filter((credit) => credit.remainingAmount > 0).length, [credits]);
+  const debtors = useMemo(() => activeCredits(credits, now).length, [credits, now]);
   const todaySales = useMemo(
     () =>
       sales.filter((sale) => {

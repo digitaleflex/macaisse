@@ -5,6 +5,9 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { CartLine, SaleTransaction, TabType } from '@/types';
+// Exception de couche assumée (contrat `toastBus`) : le store publie des toasts
+// sans connaître le rendu, et `ToastHost` ne dépend pas du store.
+// eslint-disable-next-line no-restricted-imports
 import { pushToast, type ToastTone } from '@/ui/toastBus';
 import {
   coerceBoolean,
@@ -155,6 +158,5 @@ export const useUiStore = create<UiState>()(
 
 export const selectTab = (state: UiState): TabType => state.tab;
 export const selectModal = (state: UiState): UiModal | null => state.modal;
-export const selectReceipt = (state: UiState): ReceiptState | null => state.receipt;
 export const selectIsOnline = (state: UiState): boolean => coerceBoolean(state.isOnline, true);
 export const selectPreferences = (state: UiState): UiPreferences => state.preferences;
