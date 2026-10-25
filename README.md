@@ -270,6 +270,8 @@ bun run build      # puis servir dist/
 | [`docs/DEVELOPER_GUIDE.md`](docs/DEVELOPER_GUIDE.md) | nouveaux développeurs | Par où commencer, où vit quoi, 8 recettes (« ajouter un champ », « ajouter une collection », « ajouter un onglet »…), pièges, Definition of Done |
 | [`ARCHITECTURE.md`](ARCHITECTURE.md) | développeurs | Couches et règles d'import, multi-organisation, design system, flux de données |
 | [`docs/API_CONTRACT.md`](docs/API_CONTRACT.md) | équipe backend | Routes, types, erreurs, rôles attendus côté serveur |
+| [`docs/FEATURES_INVENTORY.md`](docs/FEATURES_INVENTORY.md) | produit / avant-vente | Inventaire exhaustif de ce qui existe, avec le tableau de ce qui est **simulé ou absent** |
+| [`docs/ARCHITECTURE_AUDIT.md`](docs/ARCHITECTURE_AUDIT.md) | tech lead / équipe | Audit : 2 critiques, 9 majeurs, 15 mineurs, preuves `fichier:ligne`, plan d'action priorisé |
 
 ---
 
