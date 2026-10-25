@@ -6,7 +6,7 @@ d'issue orpheline (25 issues → 8 jalons).
 
 Sources : [`ARCHITECTURE_AUDIT.md`](ARCHITECTURE_AUDIT.md) (constats C1, M*, m*),
 [`AUTH_REVIEW.md`](AUTH_REVIEW.md) (A1–A13),
-[`AUTH_DECISIONS.md`](AUTH_DECISIONS.md) (D1–D9, RG-A01–RG-A22),
+[`AUTH_DECISIONS.md`](AUTH_DECISIONS.md) (D1–D9, RG-A01–RG-A26),
 [`FEATURES_INVENTORY.md`](FEATURES_INVENTORY.md) (manques produit).
 
 Légende : **P0** bloquant · **P1** fiabilité/exploitation · **P2** dette · **R** roadmap.
@@ -114,20 +114,20 @@ qu'un compte peut être corrigé ou supprimé (RGPD).
 **Objectif** — une session volée expire, un compte perdu se récupère, la caisse
 fonctionne hors ligne, et un poste partagé ne laisse rien derrière lui.
 Décisions et règles : [`AUTH_DECISIONS.md`](AUTH_DECISIONS.md) (D1–D9,
-RG-A01–RG-A22).
+RG-A01–RG-A26).
 
 | # | Sujet | Prio | Effort | Dépend |
 |---|---|---|---|---|
 | [#25](https://github.com/digitaleflex/macaisse/issues/25) | Contrat d'auth : §2 d'`API_CONTRACT.md` + `AUTH_DECISIONS` | **P0** | S | doc |
 | [#19](https://github.com/digitaleflex/macaisse/issues/19) | **D1** session cookie `HttpOnly` + refresh rotatif + CSRF + `AuthResult` sans jeton | **P0** | M | #25 + #1 |
-| à ouvrir | **D2** OTP téléphone **WhatsApp Cloud API** (SMS repli plafonné) : `/auth/otp/*`, quotas, budget 20/org/mois, non-révélation | **P0** | L | #19, WABA + template approuvé |
+| à ouvrir | **D3** Google (démo livrée) : production = ID client Google + échange PKCE serveur, rattachement e-mail ↔ téléphone | P1 | S/M | #19 |
+| à ouvrir | **D2 palier 1** OTP WhatsApp **conversation initiée** (0 FCFA) : `/auth/otp/*`, quotas, non-révélation | **P0** | L | #19, numéro WhatsApp + lien `wa.me` |
 | à ouvrir | **D4** mot de passe optionnel (12 car., liste noire) + reset par OTP | P1 | M | D2 |
 | à ouvrir | **RG-A04** onboarding 3 étapes + états vides actionnables | P1 | M | front |
 | [#23](https://github.com/digitaleflex/macaisse/issues/23) | **RG-A13** purge des collections locales au logout | P1 | S/M | front |
 | à ouvrir | **D6** PIN caissier + appareil enrôlé + écran de verrouillage | P1 | L | #19, #17 |
 | [#21](https://github.com/digitaleflex/macaisse/issues/21) | Remplacé par D2/D4 (conserver l'issue comme suivi de migration) | P1 | M/L | D2 |
 | [#22](https://github.com/digitaleflex/macaisse/issues/22) | **D8** anti-bruteforce (`429` + `Retry-After`) + journal 90 j | P1 | M | D1 |
-| à ouvrir | **D3** Google OAuth + rattachement e-mail ↔ téléphone | P2 | M | D1, D2 |
 | à ouvrir | **D9** step-up sur actions sensibles (`401 STEP_UP_REQUIRED`) | P2 | S/M | D1 |
 | à ouvrir | **D7** passkeys (opt-in, après récupération vérifiée) | P3 | M | D3 |
 | [#4](https://github.com/digitaleflex/macaisse/issues/4) | Durcir la migration du store auth (devient sans objet avec D1) | P2 | S | front |
@@ -184,7 +184,7 @@ n'est livré, et que la déconnexion ne laisse pas de panier derrière elle.
 1. #25 (contrat auth)            — débloque le jalon 6 (API_CONTRACT §2 + AUTH_DECISIONS)
 2. #19 (D1 cookie + refresh)     — prérequis de tout le reste en auth
 3. #3, #7, #6, #11               — petits gains front, aucune dépendance
-4. D2/D4 (OTP + mot de passe)    — puis #23 (purge) et l'onboarding RG-A04
+4. D3 (Google, ✅ démo) → onboarding RG-A04 → D2 palier 1 (0 FCFA) → #23 (purge)
 5. #20 (statut d'invitation)     — bug d'accès réel, corrigeable en mock
 6. #5, #9, #10                   — fiabilité perçue
 7. D6 (PIN + appareil enrôlé)    — avec #17 (hors ligne), puis #22/D8, D3, D9, D7

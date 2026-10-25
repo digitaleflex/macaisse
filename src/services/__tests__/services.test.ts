@@ -5,8 +5,9 @@ import { createHttpApi } from '../adapters/httpApi';
 import { createHttpClient } from '../http/httpClient';
 import { ApiError } from '../http/ApiError';
 import { ENDPOINTS } from '../endpoints';
-import { setActiveOrganization, setAuthToken } from '../tenant';
+import { setActiveOrganization } from '../tenant';
 import { DEMO_PASSWORD } from '@/mocks';
+import { t } from '@/content';
 
 describe('readEnv', () => {
   it('utilise le mode mock par défaut', () => {
@@ -23,14 +24,11 @@ describe('readEnv', () => {
 
 describe('createMockApi — multi-organisation', () => {
   beforeEach(() => {
-    setAuthToken(null);
     setActiveOrganization(null);
   });
 
   async function loginAs(api: ReturnType<typeof createMockApi>, email: string) {
-    const result = await api.auth.login({ email, password: DEMO_PASSWORD });
-    setAuthToken(result.token);
-    return result;
+    return api.auth.login({ email, password: DEMO_PASSWORD });
   }
 
   it('refuse un mot de passe invalide', async () => {
@@ -87,7 +85,6 @@ describe('createMockApi — multi-organisation', () => {
 
     // L'acceptation est un acte explicite.
     const accepted = await api.auth.acceptInvitation('org-etoile');
-    setAuthToken(accepted.token);
     expect(accepted.memberships).toEqual([
       expect.objectContaining({ organizationId: 'org-etoile', role: 'cashier' }),
     ]);
@@ -107,11 +104,48 @@ describe('createMockApi — multi-organisation', () => {
       activity: 'Cosmétiques',
       city: 'Thiès',
     });
-    setAuthToken(result.token);
     const [membership] = result.memberships;
     expect(membership.role).toBe('owner');
     setActiveOrganization(membership.organizationId);
     expect(await api.products.list()).toEqual([]);
+  });
+
+  it('ouvre un espace « Mon commerce » au premier sign-in Google', async () => {
+    const api = createMockApi();
+    const first = await api.auth.googleSignIn({
+      email: 'awa.ndiaye@gmail.com',
+      firstName: 'Awa',
+      lastName: 'Ndiaye',
+    });
+
+    expect(first.memberships).toHaveLength(1);
+    expect(first.memberships[0]).toMatchObject({
+      organizationName: t.auth.googleDefaultOrg,
+      role: 'owner',
+    });
+    // RG-A03 : compte Google sans téléphone vérifié — la vente reste bloquée (D2).
+    expect(first.user.phone).toBe('');
+
+    // Un second passage reprend le même compte, sans doublon (RG-A02).
+    const second = await api.auth.googleSignIn({
+      email: 'AWA.NDIAYE@GMAIL.COM',
+      firstName: 'Awa',
+      lastName: 'Ndiaye',
+    });
+    expect(second.user.id).toBe(first.user.id);
+    expect(second.memberships).toHaveLength(1);
+  });
+
+  it('refuse une connexion par mot de passe sur un compte créé par Google', async () => {
+    const api = createMockApi();
+    const google = await api.auth.googleSignIn({
+      email: 'awa.ndiaye@gmail.com',
+      firstName: 'Awa',
+      lastName: 'Ndiaye',
+    });
+    await expect(api.auth.login({ email: google.user.email, password: '' })).rejects.toMatchObject({
+      status: 401,
+    });
   });
 
   it('rejette un identifiant inconnu par une ApiError 404', async () => {
@@ -126,9 +160,14 @@ describe('createHttpClient / createHttpApi', () => {
   const jsonResponse = (body: unknown, status = 200) =>
     new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
 
-  it('appelle la bonne route avec le jeton et le corps JSON', async () => {
+  it('appelle la bonne route avec le corps JSON et le jeton CSRF', async () => {
     const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(jsonResponse({ id: 'p1', stock: 12 }));
-    const http = createHttpClient({ baseUrl: 'https://api.test', timeoutMs: 1000, getToken: () => 'abc', fetchImpl });
+    const http = createHttpClient({
+      baseUrl: 'https://api.test',
+      timeoutMs: 1000,
+      getCsrfToken: () => 'csrf-abc',
+      fetchImpl,
+    });
     const api = createHttpApi(http);
     setActiveOrganization('org-1');
 
@@ -139,7 +178,10 @@ describe('createHttpClient / createHttpApi', () => {
     expect(url).toBe(`https://api.test${ENDPOINTS.productRestock('org-1', 'p1')}`);
     expect(init?.method).toBe('POST');
     expect(init?.body).toBe(JSON.stringify({ quantity: 2 }));
-    expect((init?.headers as Record<string, string>).Authorization).toBe('Bearer abc');
+    expect((init?.headers as Record<string, string>)['X-CSRF-Token']).toBe('csrf-abc');
+    // D1 : plus d'en-tête Authorization, la session passe par les cookies.
+    expect((init?.headers as Record<string, string>).Authorization).toBeUndefined();
+    expect(init?.credentials).toBe('include');
   });
 
   it('convertit une réponse en erreur en ApiError avec le message serveur', async () => {

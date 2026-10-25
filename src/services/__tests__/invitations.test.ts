@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { DEMO_PASSWORD } from '@/mocks';
 import { createMockApi } from '../adapters/mockApi';
 import type { Api } from '../contracts';
-import { setActiveOrganization, setAuthToken } from '../tenant';
+import { setActiveOrganization } from '../tenant';
 
 /**
  * Cycle de vie des invitations (issue #20).
@@ -15,8 +15,7 @@ import { setActiveOrganization, setAuthToken } from '../tenant';
 const BAOBAB = 'org-baobab';
 
 async function loginAs(api: Api, email: string): Promise<void> {
-  const result = await api.auth.login({ email, password: DEMO_PASSWORD });
-  setAuthToken(result.token);
+  await api.auth.login({ email, password: DEMO_PASSWORD });
   setActiveOrganization(null);
 }
 
@@ -24,7 +23,6 @@ describe('invitations — accès refusé tant qu’elles ne sont pas acceptées'
   let api: Api;
 
   beforeEach(() => {
-    setAuthToken(null);
     setActiveOrganization(null);
     api = createMockApi();
   });
@@ -76,7 +74,6 @@ describe('invitations — accès refusé tant qu’elles ne sont pas acceptées'
     await loginAs(api, 'awa@boutique-etoile.sn');
 
     const accepted = await api.auth.acceptInvitation(BAOBAB);
-    setAuthToken(accepted.token);
     expect(accepted.memberships.map((membership) => membership.organizationId)).toContain(BAOBAB);
 
     setActiveOrganization(BAOBAB);

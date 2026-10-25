@@ -4,6 +4,7 @@ import type {
   DemoAccount,
   ClientCredit,
   Expense,
+  GoogleIdentity,
   NotificationItem,
   Product,
   SaleTransaction,
@@ -29,7 +30,13 @@ import type {
 export interface AuthRepository {
   login(input: LoginInput): Promise<AuthResult>;
   signup(input: SignupInput): Promise<AuthResult>;
-  /** Reprise de session à partir du jeton courant. */
+  /**
+   * Connexion par Google. En démo, l'identité est simulée ; un compte inconnu est
+   * créé avec un espace « Mon commerce » (décision D3). En production, l'échange
+   * PKCE est fait par le serveur et l'identité ne transite jamais par le client.
+   */
+  googleSignIn(identity: GoogleIdentity): Promise<AuthResult>;
+  /** Reprise de session à partir du cookie courant. */
   me(): Promise<AuthResult>;
   logout(): Promise<void>;
   /** Comptes proposés sur l'écran de connexion (vide hors démo). */

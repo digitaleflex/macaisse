@@ -11,6 +11,7 @@ import type {
 } from '@/types';
 import type { Api } from '../contracts';
 import { ENDPOINTS } from '../endpoints';
+import { ApiError } from '../http/ApiError';
 import type { HttpClient } from '../http/httpClient';
 import { requireOrganization } from '../tenant';
 
@@ -22,6 +23,20 @@ export function createHttpApi(http: HttpClient): Api {
     auth: {
       login: (input) => http.post<AuthResult>(ENDPOINTS.login, input),
       signup: (input) => http.post<AuthResult>(ENDPOINTS.signup, input),
+      /**
+       * L'échange PKCE est fait par le serveur : le client ne doit jamais envoyer
+       * une identité Google auto-déclarée. Tant que le backend et l'identifiant
+       * client Google ne sont pas fournis, l'appel échoue explicitement plutôt
+       * que d'ouvrir une session sur une identité non vérifiée (D3).
+       */
+      googleSignIn: () =>
+        Promise.reject(
+          new ApiError(
+            'La connexion Google n’est pas encore activée sur ce serveur.',
+            501,
+            'NOT_IMPLEMENTED'
+          )
+        ),
       me: () => http.get<AuthResult>(ENDPOINTS.me),
       logout: () => http.post<void>(ENDPOINTS.logout),
       demoAccounts: () => Promise.resolve([]),

@@ -26,7 +26,7 @@ import {
 } from '@/mocks';
 import type { Api } from '../contracts';
 import { ApiError } from '../http/ApiError';
-import { getAuthToken, requireOrganization } from '../tenant';
+import { requireOrganization } from '../tenant';
 
 /**
  * Adaptateur de démonstration : simule le backend multi-organisation à partir
@@ -51,7 +51,19 @@ interface OrgDb {
 }
 
 const AUTH_DB_KEY = 'ma-caisse/mock-auth-db';
-const TOKEN_PREFIX = 'mock.';
+/**
+ * Simulation du cookie de session : `localStorage` tient lieu de jar de cookies
+ * en mode démo. La session n'est **jamais** rangée dans le store d'auth du client
+ * (décision D1) ; elle est lue par l'adaptateur, comme le ferait le serveur.
+ */
+const SESSION_KEY = 'ma-caisse/mock-session';
+const SESSION_TTL_MS = 15 * 60 * 1000;
+
+interface MockSession {
+  userId: string;
+  /** Expiration en millisecondes epoch. */
+  expiresAt: number;
+}
 
 const clone = <T>(value: T): T => structuredClone(value);
 
@@ -70,6 +82,19 @@ function loadAuthDb(persist: boolean): AuthDb {
   return defaultAuthDb();
 }
 
+function loadSession(persist: boolean): MockSession | null {
+  if (!persist) return null;
+  try {
+    const raw = localStorage.getItem(SESSION_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<MockSession>;
+    if (typeof parsed.userId !== 'string' || typeof parsed.expiresAt !== 'number') return null;
+    return parsed.expiresAt > Date.now() ? { userId: parsed.userId, expiresAt: parsed.expiresAt } : null;
+  } catch {
+    return null;
+  }
+}
+
 function fail(message: string, status: number, code: string): never {
   throw new ApiError(message, status, code);
 }
@@ -83,6 +108,7 @@ export interface MockApiOptions {
 export function createMockApi({ latencyMs = 0, persist = false }: MockApiOptions = {}): Api {
   const auth = loadAuthDb(persist);
   const orgData = new Map<string, OrgDb>();
+  let session = loadSession(persist);
 
   const saveAuth = () => {
     if (!persist) return;
@@ -90,6 +116,28 @@ export function createMockApi({ latencyMs = 0, persist = false }: MockApiOptions
       localStorage.setItem(AUTH_DB_KEY, JSON.stringify(auth));
     } catch {
       // Quota atteint ou stockage désactivé : la démo continue en mémoire.
+    }
+  };
+
+  /** Ouvre la « session » simulée (équivalent du cookie `mc_session`). */
+  const openSession = (userId: string): void => {
+    session = { userId, expiresAt: Date.now() + SESSION_TTL_MS };
+    if (!persist) return;
+    try {
+      localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+    } catch {
+      // Stockage indisponible : session en mémoire pour l'onglet courant.
+    }
+  };
+
+  /** Ferme la session simulée (équivalent de `POST /auth/logout`). */
+  const closeSession = (): void => {
+    session = null;
+    if (!persist) return;
+    try {
+      localStorage.removeItem(SESSION_KEY);
+    } catch {
+      // Rien à faire : la session mémoire est déjà nulle.
     }
   };
 
@@ -126,16 +174,26 @@ export function createMockApi({ latencyMs = 0, persist = false }: MockApiOptions
         role: m.role,
       }));
 
-  const authResult = (account: MockAccount): AuthResult => ({
-    token: `${TOKEN_PREFIX}${account.id}`,
-    user: profileOf(account),
-    memberships: membershipsOf(account.id),
-  });
+  const authResult = (account: MockAccount): AuthResult => {
+    const expiresAt =
+      session !== null && session.userId === account.id ? session.expiresAt : Date.now() + SESSION_TTL_MS;
+    return {
+      user: profileOf(account),
+      memberships: membershipsOf(account.id),
+      expiresAt: new Date(expiresAt).toISOString(),
+    };
+  };
 
   const currentAccount = (): MockAccount => {
-    const token = getAuthToken();
-    const userId = token?.startsWith(TOKEN_PREFIX) ? token.slice(TOKEN_PREFIX.length) : null;
-    return auth.accounts.find((a) => a.id === userId) ?? fail(t.auth.errors.sessionExpired, 401, 'UNAUTHORIZED');
+    const active = session;
+    if (!active || active.expiresAt <= Date.now()) {
+      closeSession();
+      fail(t.auth.errors.sessionExpired, 401, 'UNAUTHENTICATED');
+    }
+    return (
+      auth.accounts.find((a) => a.id === active.userId) ??
+      fail(t.auth.errors.sessionExpired, 401, 'UNAUTHENTICATED')
+    );
   };
 
   const requireMembership = (orgId: string): MockMembership => {
@@ -170,6 +228,38 @@ export function createMockApi({ latencyMs = 0, persist = false }: MockApiOptions
 
   // --- Données métier par organisation ---------------------------------------
 
+  /** Crée l'espace d'un nouveau propriétaire (inscription et connexion Google). */
+  const createOwnerOrganization = (
+    account: MockAccount,
+    business: { name: string; activity: string; city: string }
+  ): string => {
+    const orgId = createId('org');
+    auth.organizations[orgId] = {
+      business: {
+        id: orgId,
+        name: business.name,
+        activity: business.activity,
+        address: '',
+        city: business.city,
+        phone: account.phone,
+        email: account.email,
+        taxId: '—',
+        currency: 'FCFA',
+        registerLabel: t.org.defaultRegister,
+        closingTime: '20:00',
+      },
+      subscription: trialSubscription(),
+    };
+    auth.memberships.push({
+      userId: account.id,
+      organizationId: orgId,
+      role: 'owner',
+      status: 'active',
+      joinedAt: toIsoDate(new Date()),
+    });
+    return orgId;
+  };
+
   const db = (): OrgDb => {
     const orgId = requireOrganization();
     requireMembership(orgId);
@@ -190,9 +280,14 @@ export function createMockApi({ latencyMs = 0, persist = false }: MockApiOptions
       login: ({ email, password }) =>
         respond(() => {
           const account = auth.accounts.find((a) => a.email.toLowerCase() === email.trim().toLowerCase());
-          if (!account || account.password !== password) fail(t.auth.errors.invalidCredentials, 401, 'INVALID_CREDENTIALS');
+          // Un compte créé par Google n'a pas de mot de passe : `!account.password`
+          // empêche une connexion avec une chaîne vide.
+          if (!account || !account.password || account.password !== password) {
+            fail(t.auth.errors.invalidCredentials, 401, 'INVALID_CREDENTIALS');
+          }
           // Aucune activation implicite : accepter une invitation est un acte
           // explicite (`acceptInvitation`), sinon l'invité accède sans consentir.
+          openSession(account.id);
           return authResult(account);
         }),
       signup: (input) =>
@@ -208,30 +303,48 @@ export function createMockApi({ latencyMs = 0, persist = false }: MockApiOptions
             email,
             password: input.password,
           };
-          const orgId = createId('org');
           auth.accounts.push(account);
-          auth.organizations[orgId] = {
-            business: {
-              id: orgId,
-              name: input.organizationName.trim(),
-              activity: input.activity.trim(),
-              address: '',
-              city: input.city.trim(),
-              phone: account.phone,
-              email,
-              taxId: '—',
-              currency: 'FCFA',
-              registerLabel: t.org.defaultRegister,
-              closingTime: '20:00',
-            },
-            subscription: trialSubscription(),
-          };
-          auth.memberships.push({ userId: account.id, organizationId: orgId, role: 'owner', status: 'active', joinedAt: toIsoDate(new Date()) });
+          createOwnerOrganization(account, {
+            name: input.organizationName.trim(),
+            activity: input.activity.trim(),
+            city: input.city.trim(),
+          });
           saveAuth();
+          openSession(account.id);
+          return authResult(account);
+        }),
+      googleSignIn: (identity) =>
+        respond(() => {
+          const email = identity.email.trim().toLowerCase();
+          const existing = auth.accounts.find((a) => a.email.toLowerCase() === email);
+          if (existing) {
+            openSession(existing.id);
+            return authResult(existing);
+          }
+          const account: MockAccount = {
+            id: createId('user'),
+            firstName: identity.firstName.trim(),
+            lastName: identity.lastName.trim(),
+            role: t.roles.owner,
+            phone: '',
+            email,
+            password: '',
+          };
+          auth.accounts.push(account);
+          createOwnerOrganization(account, {
+            name: t.auth.googleDefaultOrg,
+            activity: '',
+            city: '',
+          });
+          saveAuth();
+          openSession(account.id);
           return authResult(account);
         }),
       me: () => respond(() => authResult(currentAccount())),
-      logout: () => respond(() => undefined),
+      logout: () =>
+        respond(() => {
+          closeSession();
+        }),
       invitations: () =>
         respond(() =>
           auth.memberships
@@ -255,6 +368,7 @@ export function createMockApi({ latencyMs = 0, persist = false }: MockApiOptions
             m === membership ? { ...m, status: 'active' } : m
           );
           saveAuth();
+          openSession(account.id);
           return authResult(account);
         }),
       demoAccounts: () =>

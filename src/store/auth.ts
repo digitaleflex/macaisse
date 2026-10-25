@@ -2,10 +2,10 @@
 // connexion, inscription, reprise de session, changement d'espace, déconnexion.
 // Seul module autorisé à modifier le contexte `services/tenant`.
 
-import type { AuthResult, DemoAccount, Invitation, LoginInput, SignupInput } from '@/types';
+import type { AuthResult, DemoAccount, GoogleIdentity, Invitation, LoginInput, SignupInput } from '@/types';
 import { t } from '@/content';
 import { canAccessTab } from '@/domain/permissions';
-import { api, isApiError, setActiveOrganization, setAuthToken } from '@/services';
+import { api, isApiError, setActiveOrganization } from '@/services';
 import { scopeStoresToOrganization } from './tenantScope';
 import { useAuthStore } from './useAuthStore';
 import { useCartStore } from './useCartStore';
@@ -74,7 +74,6 @@ function pickOrganization(result: AuthResult): string | null {
 }
 
 async function applyAuth(result: AuthResult): Promise<void> {
-  setAuthToken(result.token);
   useAuthStore.getState().setAuth(result);
   const organizationId = pickOrganization(result);
   if (organizationId) await activateOrganization(organizationId);
@@ -103,18 +102,28 @@ export async function login(input: LoginInput): Promise<void> {
   await applyAuth(await api.auth.login(input));
 }
 
+/**
+ * Connexion / création de compte par Google (décision D3). En démo, l'identité
+ * est simulée par l'appelant ; en production, le serveur reçoit un code PKCE et
+ * ne voit jamais une identité auto-déclarée.
+ */
+export async function signInWithGoogle(identity: GoogleIdentity): Promise<void> {
+  await applyAuth(await api.auth.googleSignIn(identity));
+}
+
 export async function signup(input: SignupInput): Promise<void> {
   useAuthStore.getState().setCurrentOrganization(null);
   await applyAuth(await api.auth.signup(input));
 }
 
-/** Reprise au démarrage : revalide le jeton persisté et rouvre l'organisation. */
+/**
+ * Reprise au démarrage : le cookie de session est revalidé par `GET /auth/me`.
+ * Un utilisateur persisté n'est qu'un indice d'interface — jamais une preuve.
+ */
 export async function restoreSession(): Promise<void> {
-  const { token } = useAuthStore.getState();
-  if (!token) return;
-  setAuthToken(token);
+  if (!useAuthStore.getState().user) return;
   try {
-    await applyAuth({ ...(await api.auth.me()), token });
+    await applyAuth(await api.auth.me());
   } catch (error) {
     if (isApiError(error) && (error.status === 401 || error.status === 403)) await logout();
     else useSessionStore.getState().setStatus('error', errorMessage(error, t.auth.errors.generic));
@@ -145,7 +154,6 @@ export async function logout(): Promise<void> {
   } catch {
     // Déconnexion locale même si le serveur est injoignable.
   }
-  setAuthToken(null);
   setActiveOrganization(null);
   useAuthStore.getState().reset();
   useSessionStore.getState().clear();

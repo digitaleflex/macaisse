@@ -47,7 +47,9 @@ describe('session — déconnexion', () => {
     await logout();
 
     expect(useCartStore.getState().lines).toHaveLength(0);
-    expect(useAuthStore.getState().token).toBeNull();
+    // D1 : plus de jeton persisté — seul le profil est un indice d'interface.
+    expect(useAuthStore.getState().user).toBeNull();
+    expect(useAuthStore.getState().expiresAt).toBeNull();
     expect(useAuthStore.getState().memberships).toHaveLength(0);
   });
 });

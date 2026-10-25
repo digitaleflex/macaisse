@@ -23,6 +23,7 @@ Légende : ✔ implémenté et fonctionnel · ◐ simulé (UI + toast, aucun eff
 | Connexion | e-mail + mot de passe, erreurs typées (`invalidCredentials`, `sessionExpired`, `forbidden`…) | idem |
 | Inscription | 8 champs : prénom, nom, e-mail, téléphone, mot de passe, nom du commerce, activité, ville | idem |
 | Connexion 1 clic | 4 comptes de démonstration listés (mot de passe `demo1234`) | `mocks/fixtures/accounts.ts` |
+| Google (démo) | « Continuer avec Google » : identité simulée, espace « Mon commerce » créé au premier accès (production = PKCE serveur, `501` en `http`) | `features/auth/LoginScreen.tsx`, `adapters/mockApi.ts` |
 | Reprise de session | `restoreSession()` au démarrage, écran splash + écran d'erreur avec *Réessayer* / *Se déconnecter* | `app/App.tsx`, `store/auth.ts` |
 
 > **Cible arrêtée** (non implémentée) : inscription en **1 champ** (OTP téléphone),

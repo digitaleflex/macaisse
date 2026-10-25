@@ -1,19 +1,13 @@
 /**
- * Contexte d'exécution des appels API : jeton d'authentification et
- * organisation active. Alimenté par `store/auth.ts` ; lu par les adaptateurs
- * pour préfixer chaque requête métier par `/orgs/:orgId`.
+ * Contexte d'exécution des appels API : organisation active.
+ *
+ * La session n'est **plus** transportée ici : elle vit dans les cookies
+ * `HttpOnly` posés par le serveur (décision D1, `docs/AUTH_DECISIONS.md`).
+ * Ce module ne conserve donc aucun secret — seulement l'espace de travail que
+ * l'utilisateur a ouvert, pour préfixer les routes métier par `/orgs/:orgId`.
  */
 
-let authToken: string | null = null;
 let activeOrganizationId: string | null = null;
-
-export function setAuthToken(token: string | null): void {
-  authToken = token;
-}
-
-export function getAuthToken(): string | null {
-  return authToken;
-}
 
 export function setActiveOrganization(organizationId: string | null): void {
   activeOrganizationId = organizationId;

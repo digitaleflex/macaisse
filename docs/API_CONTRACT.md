@@ -85,8 +85,15 @@ restent cloisonnées par organisation (`localStorage['ma-caisse/<orgId>/…']`).
 
 | Méthode | Route | Corps | Réponse |
 |---|---|---|---|
-| POST | `/auth/otp/request` | `{ phone }` (E.164) | `202 { challengeId, channel: "whatsapp" (défaut) ou "sms" (repli), expiresIn, retryAfter?, remainingQuota }` · `429 OTP_RATE_LIMITED` · `429 OTP_BUDGET_EXCEEDED` + `Retry-After` |
+| POST | `/auth/otp/request` | `{ phone }` (E.164) | `202 { challengeId, channel: "whatsapp_user" ou "whatsapp" ou "sms" (repli), expiresIn, retryAfter?, remainingQuota }` · `429 OTP_RATE_LIMITED` · `429 OTP_BUDGET_EXCEEDED` + `Retry-After` |
 | POST | `/auth/otp/verify` | `{ challengeId, code }` | `AuthResult` + cookies · `401 INVALID_OTP` · `410 OTP_EXPIRED` · `429 OTP_LOCKED` |
+
+> **Palier 1 (0 FCFA)** : le code peut être servi dans une **conversation
+> initiée par l'utilisateur** (`wa.me`, `channel: "whatsapp_user"`), dans le quota
+> gratuit de 1 000 messages de service par mois et par numéro. **Palier 2** :
+> template `authentication` (`channel: "whatsapp"`), ≈ 7 FCFA par message livré.
+> Le client ne choisit pas le palier : le serveur décide selon le volume
+> (RG-A23) et le renvoie dans `channel`.
 
 ### Google (D3)
 
@@ -94,6 +101,12 @@ restent cloisonnées par organisation (`localStorage['ma-caisse/<orgId>/…']`).
 |---|---|---|---|
 | POST | `/auth/oauth/google` | `{ code, codeVerifier }` (PKCE) | `AuthResult` + cookies ; compte inconnu → créé avec `onboardingStep: "phone"` |
 | POST | `/auth/oauth/google/link` | `{ code, codeVerifier, challengeId, code: otp }` | `AuthResult` — rattachement e-mail ↔ téléphone (RG-A02) |
+
+> **Mode démo** : l'adaptateur `mock` simule l'identité Google (`googleSignIn`) et
+> crée un espace « Mon commerce » sans téléphone (l'application de RG-A03 arrive
+> avec D2). En mode `http`, l'appel échoue explicitement en `501 NOT_IMPLEMENTED`
+> tant que l'identifiant client Google et l'échange PKCE ne sont pas branchés :
+> on ne crée **jamais** une session à partir d'une identité auto-déclarée.
 
 ### Session (D1)
 

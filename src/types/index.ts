@@ -208,14 +208,30 @@ export interface Invitation extends Membership {
 
 /** Résultat d'une authentification (connexion, inscription, reprise de session). */
 export interface AuthResult {
-  token: string;
   user: UserProfile;
   memberships: Membership[];
+  /**
+   * Expiration (ISO 8601) de l'access token porté par le cookie de session.
+   * Aucun jeton n'est renvoyé dans le corps : la session vit dans des cookies
+   * `HttpOnly` (décision D1, `docs/AUTH_DECISIONS.md`).
+   */
+  expiresAt: string;
 }
 
 export interface LoginInput {
   email: string;
   password: string;
+}
+
+/**
+ * Identité Google simulée par l'adaptateur de démonstration. En production, le
+ * client enverra un code d'autorisation PKCE et l'échange se fera côté serveur
+ * (décision D3, `docs/AUTH_DECISIONS.md`).
+ */
+export interface GoogleIdentity {
+  email: string;
+  firstName: string;
+  lastName: string;
 }
 
 export interface SignupInput {

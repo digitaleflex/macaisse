@@ -78,10 +78,16 @@ distance, indispensables pour une caisse dont le téléphone peut être perdu.
 ### D2 — OTP téléphone comme identité principale
 
 **Décision.** L'inscription d'un propriétaire se fait avec **un seul champ :
-le numéro de téléphone**. Le code est envoyé **par WhatsApp Cloud API (Meta)**,
-catégorie de template `authentication`. **Le canal est arrêté : WhatsApp est le
-canal par défaut, le SMS est un repli désactivé par défaut** (voir RG-A23 et
-§7 pour le budget).
+le numéro de téléphone**. Le canal est WhatsApp, en **deux paliers de coût** :
+
+| Palier | Mécanisme | Coût |
+|---|---|---|
+| **1 — lancement** | **Conversation initiée par l'utilisateur** : le client tape « Bonjour » sur le numéro du service (lien `wa.me`), la fenêtre de service s'ouvre et le code part en message libre. Dans le quota gratuit de **1 000 messages de service par mois et par numéro**. | **0 FCFA** jusqu'à ≈ 700 inscriptions/mois |
+| **2 — volume** | Template `authentication` de la Cloud API (envoi à froid, sans action de l'utilisateur). | ≈ **7 FCFA** par message livré |
+
+Le palier 2 s'active quand le volume dépasse le quota gratuit, ou quand le
+« tapez Bonjour » coûte plus cher en friction que 7 FCFA. **Le SMS reste un
+repli désactivé par défaut** (RG-A23, budget §7).
 
 **Pourquoi.** Le numéro est déjà nécessaire au produit (ticket, PDF comptable,
 contact client — `receipt.phone(business.phone)`, `lib/export/pdf.ts:52`), alors
@@ -252,7 +258,7 @@ Identifiants stables : **RG-Axx**, cités par `API_CONTRACT.md` et par les tests
 |---|---|
 | **RG-A01** | Un compte est identifié par un **numéro de téléphone vérifié, unique, au format E.164**. Le numéro est la clé de connexion : il ne peut appartenir qu'à un seul compte. |
 | **RG-A02** | L'e-mail, s'il est fourni, est **unique** et **vérifié**. Google fournit un e-mail vérifié : un e-mail déjà utilisé **rattache** l'identité au compte existant après OTP sur le téléphone du compte — jamais de doublon, jamais de fusion silencieuse. |
-| **RG-A03** | Un compte sans téléphone vérifié **ne peut pas vendre** ni encaisser : il peut explorer son espace, pas opérer une caisse. Objectif : ne jamais produire un ticket sans coordonnées du commerce. |
+| **RG-A03** | Un compte sans numéro de téléphone **renseigné** ne peut pas vendre ni encaisser : il peut explorer son espace, pas opérer une caisse. Objectif : ne jamais produire un ticket sans coordonnées du commerce. *Application* : la **vérification** du numéro par OTP devient obligatoire avant la première vente dès que D2 est livré ; d'ici là, D3 peut créer des comptes sans numéro — écart tracé au backlog (jalon 6). |
 | **RG-A04** | L'inscription ne demande **qu'un champ** (téléphone). Le nom du commerce, la ville et l'activité sont collectés dans un **onboarding de 3 étapes** après la première connexion, avec des valeurs par défaut utilisables (« Mon commerce », fuseau `Africa/Dakar`, devise `FCFA`). Tant que l'onboarding n'est pas terminé, `onboardedAt` est `null` et l'accueil affiche la checklist, pas un état vide. |
 | **RG-A05** | Une organisation a **exactement un propriétaire actif** minimum, jamais supprimable ni rétrogradable (`422 OWNER_LOCKED`). Le transfert de propriété est une action explicite à double confirmation. |
 | **RG-A06** | L'essai de 14 jours démarre à la **création de l'organisation**, pas à la première vente, et ne redémarre jamais (pas de réessai par re-création avec le même téléphone). |
@@ -297,7 +303,7 @@ Identifiants stables : **RG-Axx**, cités par `API_CONTRACT.md` et par les tests
 
 | # | Règle |
 |---|---|
-| **RG-A23** | **Canal** : WhatsApp Cloud API par défaut, template `authentication` approuvé. Le SMS est **désactivé par défaut** ; s'il est activé, il ne part qu'**après un échec de livraison WhatsApp** (`status: failed`) — jamais en parallèle — et **2 SMS maximum par organisation et par mois**. Aucun autre canal (voix, e-mail) n'est un substitut accepté au lancement. |
+| **RG-A23** | **Canal** : WhatsApp, en deux paliers — (1) **conversation initiée par l'utilisateur** (`wa.me`, message libre dans la fenêtre de service, quota gratuit de 1 000 messages/mois/numéro) ; (2) **template `authentication`** payant au-delà. Le **SMS est désactivé par défaut** ; s'il est activé, il ne part qu'**après un échec de livraison** WhatsApp (`status: failed`), jamais en parallèle, et **2 SMS maximum par organisation et par mois**. Aucun autre canal (voix, e-mail) n'est un substitut accepté au lancement. |
 | **RG-A24** | **Budget** : **20 OTP inclus par organisation et par mois civil** (alerte interne à 80 %, `429 OTP_BUDGET_EXCEEDED` à 100 %). Un **plafond global mensuel** est fixé par l'exploitant ; au-delà de 120 % de ce plafond, le service passe en mode dégradé : OTP WhatsApp suspendu, connexion par mot de passe ou magic link pour les comptes qui en disposent, support humain pour les autres. **Jamais de dépassement silencieux.** |
 | **RG-A25** | **Séparation des usages** : le numéro et le template d'authentification ne servent **jamais** au marketing ni aux notifications produit. Les messages de service (reçus, alertes) utilisent un template `utility` distinct et sont comptés séparément. |
 | **RG-A26** | **Changement de numéro** : exige la vérification de l'**ancien** numéro (OTP) **et** du nouveau, plus un step-up (D9). Impossible depuis un appareil enrôlé par un caissier. L'ancien numéro reçoit une notification du changement. |
@@ -345,13 +351,14 @@ réutilise `applyAuth()` (`store/auth.ts:69-75`) sans le modifier.
 | Étape | Contenu | Dépend de | Livrable vérifiable |
 |---|---|---|---|
 | 1 | Contrat écrit (ce document + §2 de `API_CONTRACT.md`) | — | revue backend signée |
-| 2 | D1 session cookie + CSRF + `AuthResult` sans jeton | 1 | tests `httpClient` : cookie, refresh rotatif, `401/403` |
-| 3 | D2 OTP + D4 mot de passe optionnel + RG-A13 purge | 2, **WABA vérifié + template `authentication` approuvé** | tests `mockApi` : OTP expiré, quota, budget, énumération |
-| 4 | Onboarding 3 étapes + états vides actionnables | 3 | parcours complet : téléphone → vente → ticket |
-| 5 | D6 PIN + appareil enrôlé + verrouillage | 2, 3 | test hors ligne : PIN validé sans réseau |
-| 6 | D3 Google | 2 | rattachement e-mail existant (RG-A02) |
+| 2 | D1 session cookie + CSRF + `AuthResult` sans jeton | 1 | ✅ **client livré** (lint + 210 tests) ; serveur à brancher |
+| 3 | **D3 Google** (accélérateur d'inscription, 0 FCFA) | 2 | ✅ **démo livrée** ; production = identifiant client Google + échange PKCE serveur |
+| 4 | Onboarding 3 étapes + états vides actionnables | 3 | parcours complet : Google → commerce → vente → ticket |
+| 5 | **D2 OTP palier 1** (conversation initiée, 0 FCFA) + D4 mot de passe optionnel + RG-A13 purge | 2, **numéro WhatsApp + lien `wa.me`** | tests `mockApi` : OTP expiré, quota, budget, énumération, non-révélation |
+| 6 | D6 PIN + appareil enrôlé + verrouillage | 2, 5 | test hors ligne : PIN validé sans réseau |
 | 7 | D8 journal + D9 step-up | 2 | `429` + `Retry-After`, `STEP_UP_REQUIRED` sans déconnexion |
-| 8 | D7 passkey | 6 | enrôlement + récupération par OTP |
+| 8 | D2 OTP palier 2 (template payant) | 5 | bascule à l'unité quand le quota gratuit est dépassé |
+| 9 | D7 passkey | 3, 5 | enrôlement + récupération par OTP |
 
 **Règle de gestion** : aucune étape ne démarre avant que la précédente soit
 couverte par des tests et que `docs/` soit à jour — cohérent avec la règle de
@@ -367,7 +374,8 @@ d'où les plafonds ci-dessous qui bornent la dépense indépendamment du tarif.
 
 | Paramètre | Valeur retenue | Note |
 |---|---|---|
-| Prix unitaire | **0,012 USD** par message `authentication` livré | fourchette « reste de l'Afrique » ; à confirmer sur la rate card Meta |
+| **Palier 1 — conversation initiée par l'utilisateur** | **0 FCFA** | 1 000 messages de service gratuits/mois/numéro ≈ **700 inscriptions** |
+| Prix unitaire du palier 2 | **0,012 USD** par message `authentication` livré | fourchette « reste de l'Afrique » ; à confirmer sur la rate card Meta |
 | Taux de conversion | 1 USD ≈ **600 FCFA** | parité FCFA/EUR fixe, USD flottant |
 | Coût unitaire | ≈ **7 FCFA** | 0,012 × 600 |
 | Messages par compte / mois | **5,4** | 1,4 à l'inscription (renvois inclus) + 4 connexions |
@@ -382,9 +390,11 @@ d'où les plafonds ci-dessous qui bornent la dépense indépendamment du tarif.
 | 1 000 comptes | 5 400 | ≈ 65 USD (~39 000 FCFA) | 20 000 FCFA | **60 000 FCFA** |
 | 5 000 comptes | 27 000 | ≈ 324 USD (~194 000 FCFA) | 100 000 FCFA | **300 000 FCFA** |
 
-**Budget de base retenu : 15 000 FCFA/mois**, soit ≈ 385 comptes actifs ou
-≈ 1 500 inscriptions. Au-delà, on passe au palier suivant sans changer de code :
-seul le plafond global (RG-A24) est relevé.
+**Budget de base au lancement : 0 FCFA** — le palier 1 couvre ≈ 700
+inscriptions/mois, et la friction ajoutée est un seul tap (« Envoyer Bonjour »).
+Le **palier payant démarre à 15 000 FCFA/mois** (≈ 385 comptes actifs ou
+≈ 1 500 inscriptions) dès que le volume dépasse le quota gratuit, ou dès que la
+friction du « Bonjour » coûte plus cher que 7 FCFA par message.
 
 Deux garde-fous rendent ce budget vérifiable plutôt que théorique :
 

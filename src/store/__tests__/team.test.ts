@@ -1,23 +1,21 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { DEMO_PASSWORD } from '@/mocks';
 import { api } from '@/services';
-import { setActiveOrganization, setAuthToken } from '@/services/tenant';
+import { setActiveOrganization } from '@/services/tenant';
 import { useTeamStore } from '../useTeamStore';
 
 const ORG = 'org-etoile';
 
 async function connectAsOwner(): Promise<void> {
-  const result = await api.auth.login({
+  await api.auth.login({
     email: 'mamadou@boutique-etoile.sn',
     password: DEMO_PASSWORD,
   });
-  setAuthToken(result.token);
   setActiveOrganization(ORG);
 }
 
 describe('useTeamStore', () => {
   beforeEach(async () => {
-    setAuthToken(null);
     setActiveOrganization(null);
     useTeamStore.getState().reset();
     await connectAsOwner();

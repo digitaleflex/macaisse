@@ -1,8 +1,9 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import type { DemoAccount, SignupInput } from '@/types';
+import type { DemoAccount, GoogleIdentity, SignupInput } from '@/types';
 import { t } from '@/content';
+import { isDemoMode } from '@/config/env';
 import { isApiError } from '@/services';
-import { login, loadDemoAccounts, signup } from '@/store/auth';
+import { login, loadDemoAccounts, signInWithGoogle, signup } from '@/store/auth';
 import { useUiStore } from '@/store/useUiStore';
 import { Avatar, Badge, BrandMark, Button, Icon, Input, SegmentedControl } from '@/ui';
 
@@ -24,6 +25,18 @@ const EMPTY_SIGNUP: SignupInput = {
 };
 
 const MIN_PASSWORD = 8;
+
+/**
+ * Identité Google simulée (démo uniquement) : elle rejoue ce que renverrait le
+ * sélecteur de compte Google. En production, le bouton ouvre le consentement
+ * Google et le serveur échange le code PKCE — aucune identité ne transite par le
+ * client (décision D3, `docs/AUTH_DECISIONS.md`).
+ */
+const DEMO_GOOGLE_IDENTITY: GoogleIdentity = {
+  email: 'awa.ndiaye@gmail.com',
+  firstName: 'Awa',
+  lastName: 'Ndiaye',
+};
 
 function errorText(error: unknown): string {
   return isApiError(error) ? error.message : t.auth.errors.generic;
@@ -107,6 +120,10 @@ export function LoginScreen() {
       return;
     }
     void run(() => signup(form), form.firstName);
+  };
+
+  const handleGoogle = () => {
+    void run(() => signInWithGoogle(DEMO_GOOGLE_IDENTITY), DEMO_GOOGLE_IDENTITY.firstName);
   };
 
   const field = (key: keyof SignupInput) => ({
@@ -200,6 +217,29 @@ export function LoginScreen() {
                 {t.auth.signupSubmit}
               </Button>
             </form>
+          )}
+
+          {isDemoMode && (
+            <div className="mt-5">
+              <div className="flex items-center gap-3 text-xs uppercase tracking-wider text-slate-400" aria-hidden="true">
+                <span className="h-px flex-1 bg-line" />
+                {t.auth.orSeparator}
+                <span className="h-px flex-1 bg-line" />
+              </div>
+              <Button
+                type="button"
+                variant="secondary"
+                size="lg"
+                fullWidth
+                icon="account_circle"
+                className="mt-4"
+                loading={pending}
+                onClick={handleGoogle}
+              >
+                {t.auth.google}
+              </Button>
+              <p className="text-xs text-slate-500 mt-2 text-center">{t.auth.googleHint}</p>
+            </div>
           )}
 
           {mode === 'login' && demoAccounts.length > 0 && (

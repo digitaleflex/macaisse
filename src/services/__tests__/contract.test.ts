@@ -6,7 +6,7 @@ import { createHttpApi } from '../adapters/httpApi';
 import { createHttpClient } from '../http/httpClient';
 import { ApiError } from '../http/ApiError';
 import { ENDPOINTS } from '../endpoints';
-import { setActiveOrganization, setAuthToken } from '../tenant';
+import { setActiveOrganization } from '../tenant';
 import type { Api } from '../contracts';
 
 /**
@@ -48,6 +48,8 @@ interface Captured {
   method: string;
   body: unknown;
   authorization: string | null;
+  csrf: string | null;
+  credentials: RequestCredentials | undefined;
 }
 
 /** Faux serveur minimal : renvoie ce que le test décide, capture la requête. */
@@ -63,6 +65,8 @@ function stubFetch(reply: { status: number; body: unknown }): {
       method: init?.method ?? 'GET',
       body: init?.body ? JSON.parse(String(init.body)) : undefined,
       authorization: new Headers(init?.headers).get('authorization'),
+      csrf: new Headers(init?.headers).get('x-csrf-token'),
+      credentials: init?.credentials,
     });
     return new Response(JSON.stringify(reply.body), {
       status: reply.status,
@@ -77,24 +81,30 @@ function httpApiWith(reply: { status: number; body: unknown }) {
   return {
     captured,
     api: createHttpApi(
-      createHttpClient({ baseUrl: BASE_URL, timeoutMs: 1000, getToken: () => 'jeton', fetchImpl })
+      createHttpClient({
+        baseUrl: BASE_URL,
+        timeoutMs: 1000,
+        getCsrfToken: () => 'csrf-test',
+        fetchImpl,
+      })
     ),
   };
 }
 
 describe('contrat http — contexte et payload', () => {
   beforeEach(() => {
-    setAuthToken('jeton');
     setActiveOrganization(ORG);
   });
 
-  it('préfixe chaque route métier par /orgs/:orgId et envoie le jeton', async () => {
+  it('préfixe chaque route métier par /orgs/:orgId et envoie les cookies', async () => {
     const { api, captured } = httpApiWith({ status: 200, body: [] });
     await api.products.list();
 
     expect(captured).toHaveLength(1);
     expect(captured[0]?.url).toBe(`${BASE_URL}${ENDPOINTS.products(ORG)}`);
-    expect(captured[0]?.authorization).toBe('Bearer jeton');
+    // D1 : session par cookie, aucun jeton dans les en-têtes.
+    expect(captured[0]?.authorization).toBeNull();
+    expect(captured[0]?.credentials).toBe('include');
   });
 
   it('transmet la créance dans la même requête que la vente', async () => {
@@ -142,11 +152,10 @@ describe('contrat mock — même sémantique que le serveur', () => {
   let api: Api;
 
   async function connectAsOwner(): Promise<void> {
-    const auth = await api.auth.login({
+    await api.auth.login({
       email: 'mamadou@boutique-etoile.sn',
       password: DEMO_PASSWORD,
     });
-    setAuthToken(auth.token);
     setActiveOrganization(ORG);
   }
 
@@ -166,7 +175,6 @@ describe('contrat mock — même sémantique que le serveur', () => {
   }
 
   beforeEach(async () => {
-    setAuthToken(null);
     setActiveOrganization(null);
     api = createMockApi();
     await connectAsOwner();

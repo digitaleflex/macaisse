@@ -387,7 +387,7 @@ Une tâche n'est pas terminée tant que :
 - **Comprendre le multi-tenant** : `store/useAuthStore.ts`, `store/auth.ts`,
   `store/tenantScope.ts`, `services/tenant.ts` — dans cet ordre.
 - **Toucher à l'authentification** : lire d'abord
-  [`AUTH_DECISIONS.md`](AUTH_DECISIONS.md) (normatif : D1–D9, RG-A01–RG-A22),
+  [`AUTH_DECISIONS.md`](AUTH_DECISIONS.md) (normatif : D1–D9, RG-A01–RG-A26),
   puis `docs/API_CONTRACT.md` §2 (routes), puis seulement `features/auth` et
   `store/auth.ts`. **Toute règle `RG-A…` modifiée dans le code doit citer son
   identifiant dans le test** ; un écart entre le code et une règle est un bug.

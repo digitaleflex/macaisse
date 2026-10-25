@@ -5,7 +5,7 @@ Périmètre : connexion, inscription, reprise de session, multi-organisation,
 rôles, invitations, déconnexion.
 
 Voir aussi : [`AUTH_DECISIONS.md`](AUTH_DECISIONS.md) (**décisions
-normatives D1–D9 et règles RG-A01–RG-A22**, priment sur ce document),
+normatives D1–D9 et règles RG-A01–RG-A26**, priment sur ce document),
 [`ARCHITECTURE_AUDIT.md`](ARCHITECTURE_AUDIT.md),
 [`API_CONTRACT.md`](API_CONTRACT.md) (routes d'auth).
 
