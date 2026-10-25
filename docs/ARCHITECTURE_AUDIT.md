@@ -240,3 +240,17 @@ Labels : `bug`, `tech-debt`, `enhancement`, `audit`, `data-integrity`, `blocked`
 | [#18](https://github.com/digitaleflex/macaisse/issues/18) — Annulation / remboursement | inventaire | roadmap | contrat API |
 
 Ordre conseillé : **#1** dès que le backend répond, puis les P1 (#5–#11), puis les P2.
+
+### Backlog authentification
+
+Issues créées après la revue dédiée ([`AUTH_REVIEW.md`](AUTH_REVIEW.md)) :
+
+| Issue | Constat | Priorité |
+|---|---|---|
+| [#19](https://github.com/digitaleflex/macaisse/issues/19) — Jeton court, refresh `httpOnly`, `expiresAt` | A1 | **P0** (avec #1) |
+| [#20](https://github.com/digitaleflex/macaisse/issues/20) — Cycle de vie des invitations | A2, A5 | P1 |
+| [#21](https://github.com/digitaleflex/macaisse/issues/21) — Mot de passe oublié, vérification e-mail | A3 | P1 |
+| [#22](https://github.com/digitaleflex/macaisse/issues/22) — Anti-bruteforce, journal de connexion | A4 | P1 |
+| [#23](https://github.com/digitaleflex/macaisse/issues/23) — Purge des données locales au logout | A6 | P1 |
+| [#24](https://github.com/digitaleflex/macaisse/issues/24) — Édition de profil, suppression de compte | A8 | P2 |
+| [#25](https://github.com/digitaleflex/macaisse/issues/25) — Contrat d'auth (401/403, `expiresAt`, mot de passe) | A1, A7, A10 | **P0** (doc) |
