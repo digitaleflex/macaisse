@@ -4,13 +4,16 @@ import type { CartLine, Category, Product } from '@/types';
 import { t } from '@/content';
 import { CATEGORY_STYLE, PAYMENT_METHODS, PRODUCT_CATEGORIES } from '@/config/reference';
 import { filterProducts } from '@/domain/stock';
+import { hasContactPhone } from '@/domain/sales';
 import { productsWithStatus, useProductsStore } from '@/store/useProductsStore';
 import { selectCartTotals, useCartStore } from '@/store/useCartStore';
 import { useSalesStore } from '@/store/useSalesStore';
+import { useCurrentSession } from '@/store/useSessionStore';
 import { useUiStore } from '@/store/useUiStore';
 import { Button, Chip, EmptyState, IconButton, Modal, SearchField, cn } from '@/ui';
 import { CartPanel, MobileCartBar } from './CartPanel';
 import { PaymentPad, type PaymentPayload } from './PaymentPad';
+import { PhoneRequiredModal } from './PhoneRequiredModal';
 import { ProductCard } from './ProductCard';
 
 /**
@@ -20,6 +23,7 @@ import { ProductCard } from './ProductCard';
 type CategoryFilter = Category | 'all';
 
 export function VentesView() {
+  const { business, user } = useCurrentSession();
   const storedProducts = useProductsStore((state) => state.products);
   const products = useMemo(() => productsWithStatus(storedProducts), [storedProducts]);
   const lines = useCartStore((state) => state.lines);
@@ -38,6 +42,7 @@ export function VentesView() {
   const [scanning, setScanning] = useState(false);
   const [paymentOpen, setPaymentOpen] = useState(false);
   const [paymentInstance, setPaymentInstance] = useState(0);
+  const [phoneModalOpen, setPhoneModalOpen] = useState(false);
   const [cartSheetOpen, setCartSheetOpen] = useState(false);
 
   const scanTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -83,6 +88,11 @@ export function VentesView() {
       showToast(t.pos.cart.empty);
       return;
     }
+    // RG-A03 : pas de ticket sans contact téléphonique.
+    if (!hasContactPhone(business.phone, user.phone)) {
+      setPhoneModalOpen(true);
+      return;
+    }
     setCartSheetOpen(false);
     setPaymentInstance((instance) => instance + 1);
     setPaymentOpen(true);
@@ -95,6 +105,12 @@ export function VentesView() {
   };
 
   const handleValidateSale = (payload: PaymentPayload) => {
+    // RG-A03 : le paiement a pu être ouvert avant l'ajout du téléphone.
+    if (!hasContactPhone(business.phone, user.phone)) {
+      setPaymentOpen(false);
+      setPhoneModalOpen(true);
+      return;
+    }
     // Snapshot AVANT validation : `completeSale` vide le panier.
     const snapshot: CartLine[] = [...useCartStore.getState().lines];
     try {
@@ -230,6 +246,15 @@ export function VentesView() {
         total={totals.subtotal}
         onClose={() => setPaymentOpen(false)}
         onValidate={handleValidateSale}
+      />
+
+      <PhoneRequiredModal
+        open={phoneModalOpen}
+        onClose={() => setPhoneModalOpen(false)}
+        onSaved={() => {
+          setPhoneModalOpen(false);
+          setPaymentOpen(false);
+        }}
       />
     </div>
   );

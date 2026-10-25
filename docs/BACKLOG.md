@@ -130,6 +130,7 @@ RG-A01–RG-A29).
 | [#21](https://github.com/digitaleflex/macaisse/issues/21) | Remplacé par D2/D4 (conserver l'issue comme suivi de migration) | P1 | M/L | D2 |
 | [#22](https://github.com/digitaleflex/macaisse/issues/22) | **D8** anti-bruteforce (`429` + `Retry-After`) + journal 90 j | P1 | M | D1 |
 | à ouvrir | **D9** step-up sur actions sensibles (`401 STEP_UP_REQUIRED`) | P2 | S/M | D1 |
+| à ouvrir | ~~**RG-A03** encaissement sans contact téléphonique~~ ✅ **client livré** (modale au moment d'encaisser) ; reste le refus serveur sur `POST /sales` | P1 | S | backend |
 | à ouvrir | **D7** passkeys (opt-in, après récupération vérifiée) | P3 | M | D3 |
 | [#4](https://github.com/digitaleflex/macaisse/issues/4) | Durcir la migration du store auth (devient sans objet avec D1) | P2 | S | front |
 | [#10](https://github.com/digitaleflex/macaisse/issues/10) | Ne plus afficher un succès quand le chargement échoue | ✅ livré | S | front |

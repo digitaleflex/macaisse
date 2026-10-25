@@ -27,6 +27,7 @@ Légende : ✔ implémenté et fonctionnel · ◐ simulé (UI + toast, aucun eff
 | Vérification e-mail (démo) | Bandeau persistant + modale de code à 6 chiffres (code `000000` en démo), renvoi avec délai de 30 s, grâce de 72 h sans blocage de la caisse | `features/auth/VerifyEmailBanner.tsx`, `domain/password.ts` |
 | Mise en route | **2 étapes** (nom du commerce → coordonnées) à la première ouverture, « Plus tard » possible ; `business.onboardedAt` renseigné côté serveur | `features/onboarding/OnboardingModal.tsx`, `store/onboarding.ts` |
 | Checklist d'accueil | Premier article / première vente / premier vendeur ; disparaît quand tout est fait ; états vides qui créent réellement l'article | `features/accueil/SetupChecklist.tsx`, `features/stock/StockView.tsx` |
+| Contact obligatoire pour vendre | Sans téléphone (commerce ou compte), l'encaissement ouvre une modale qui enregistre le numéro sur le commerce — jamais de blocage de la caisse (RG-A03) | `features/ventes/PhoneRequiredModal.tsx`, `domain/sales.ts` |
 | Reprise de session | `restoreSession()` au démarrage, écran splash + écran d'erreur avec *Réessayer* / *Se déconnecter* | `app/App.tsx`, `store/auth.ts` |
 
 > **Cible arrêtée** (non implémentée) : inscription en **1 champ** (OTP téléphone),

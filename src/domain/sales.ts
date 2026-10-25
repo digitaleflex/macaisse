@@ -17,6 +17,16 @@ export interface CartTotals {
   itemCount: number;
 }
 
+/**
+ * RG-A03 — un ticket ne doit pas sortir sans contact téléphonique.
+ * Le contact peut venir du commerce (reçu) ou du compte : une seule adresse
+ * valide suffit. Le serveur applique la même règle, cette fonction sert à
+ * bloquer l'encaissement **avant** d'ouvrir le paiement.
+ */
+export function hasContactPhone(...phones: (string | null | undefined)[]): boolean {
+  return phones.some((phone) => (phone ?? '').trim().length > 0);
+}
+
 /** Total d'un panier et nombre d'articles (somme des quantités). */
 export function cartTotals(lines: CartLine[]): CartTotals {
   return lines.reduce<CartTotals>(

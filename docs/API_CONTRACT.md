@@ -250,7 +250,7 @@ structurantes pour le backend :
 | DELETE | `/products/:id` | — | `204` | manager |
 | POST | `/products/:id/restock` | `{ quantity }` | `Product` | manager |
 | GET | `/sales` | — | `SaleTransaction[]` | cashier |
-| POST | `/sales` | `{ sale, lines: CartLine[], credit?: ClientCredit }` | `SaleTransaction` (le serveur décrémente le stock et crée la créance) | cashier |
+| POST | `/sales` | `{ sale, lines: CartLine[], credit?: ClientCredit }` | `SaleTransaction` (le serveur décrémente le stock et crée la créance) · `422 CONTACT_PHONE_REQUIRED` si le commerce n'a aucun téléphone (RG-A03) | cashier |
 | GET | `/expenses` | — | `Expense[]` | manager |
 | POST | `/expenses` | `Expense` | `Expense` | manager |
 | DELETE | `/expenses/:id` | — | `204` | manager |

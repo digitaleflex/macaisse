@@ -5,6 +5,7 @@ import {
   cartTotals,
   completeSale,
   dailyRevenue,
+  hasContactPhone,
   removeFromCart,
   setCartQuantity,
 } from '../sales';
@@ -41,6 +42,17 @@ function makeSale(overrides: Partial<SaleTransaction>): SaleTransaction {
 
 const lait = makeProduct({ id: 'p1', name: 'Lait', price: 1000, stock: 10 });
 const riz = makeProduct({ id: 'p2', name: 'Riz', price: 4500, stock: 2, unit: 'sac' });
+
+describe('hasContactPhone — RG-A03', () => {
+  it('accepte un contact sur le commerce ou sur le compte', () => {
+    expect(hasContactPhone('+221 77 123 45 67', '')).toBe(true);
+    expect(hasContactPhone('', '+221 77 123 45 67')).toBe(true);
+  });
+
+  it('refuse quand aucun contact n’est renseigné', () => {
+    expect(hasContactPhone('', '  ', null, undefined)).toBe(false);
+  });
+});
 
 describe('cartTotals', () => {
   it('calcule le sous-total et le nombre d’articles', () => {
