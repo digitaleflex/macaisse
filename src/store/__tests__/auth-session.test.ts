@@ -52,4 +52,22 @@ describe('session — déconnexion', () => {
     expect(useAuthStore.getState().expiresAt).toBeNull();
     expect(useAuthStore.getState().memberships).toHaveLength(0);
   });
+
+  it('purge les collections métier locales, sans toucher aux préférences (RG-A13)', async () => {
+    await login({ email: 'mamadou@boutique-etoile.sn', password: DEMO_PASSWORD });
+    // L'ouverture de l'organisation a créé les clés cloisonnées : on en ajoute
+    // une lisible (nom de client) pour vérifier qu'elle disparaît vraiment.
+    localStorage.setItem('ma-caisse/org-etoile/products', '[{"name":"Lait"}]');
+    localStorage.setItem('ma-caisse/ui', '{"tab":"ventes"}');
+    localStorage.setItem('ma-caisse/mock-auth-db', '{"accounts":[]}');
+
+    await logout();
+
+    expect(localStorage.getItem('ma-caisse/org-etoile/products')).toBeNull();
+    expect(localStorage.getItem('ma-caisse/org-etoile/sales')).toBeNull();
+    expect(localStorage.getItem('ma-caisse/products')).toBeNull();
+    // Les préférences d'affichage survivent (elles sont réécrites par le store UI).
+    expect(localStorage.getItem('ma-caisse/ui')).not.toBeNull();
+    expect(localStorage.getItem('ma-caisse/mock-auth-db')).toBe('{"accounts":[]}');
+  });
 });

@@ -7,6 +7,7 @@ import { t } from '@/content';
 import { canAccessTab } from '@/domain/permissions';
 import { api, isApiError, setActiveOrganization } from '@/services';
 import { scopeStoresToOrganization } from './tenantScope';
+import { purgeLocalBusinessData } from './localData';
 import { useAuthStore } from './useAuthStore';
 import { useCartStore } from './useCartStore';
 import { useCreditsStore } from './useCreditsStore';
@@ -156,8 +157,11 @@ export async function reloadOrganization(): Promise<boolean> {
 }
 
 /**
- * Déconnexion : les données locales restent rangées sous la clé de leur
- * organisation ; seuls le jeton, la session et le contexte sont effacés.
+ * Déconnexion : invalidation serveur, puis **purge locale** (RG-A13).
+ *
+ * Sur un poste partagé, aucune donnée métier ne doit survivre : les collections
+ * sont effacées du stockage local et remises à vide en mémoire, sinon le
+ * caissier suivant lit les ventes et les clients du précédent.
  */
 export async function logout(): Promise<void> {
   try {
@@ -171,7 +175,16 @@ export async function logout(): Promise<void> {
   useUiStore.getState().closeModal();
   useUiStore.getState().closeReceipt();
   useTeamStore.getState().reset();
+  // Données métier : on vide d'abord l'état mémoire (ce qui réécrit les clés
+  // avec des collections vides), puis on supprime les clés — l'ordre inverse
+  // laisserait réapparaître un blob après la purge.
+  useProductsStore.getState().setProducts([]);
+  useSalesStore.setState({ sales: [] });
+  useExpensesStore.getState().setExpenses([]);
+  useCreditsStore.setState({ credits: [] });
+  useNotificationsStore.getState().clear();
   // Le panier est cloisonné par organisation, pas par utilisateur : sur un poste
   // partagé, le caissier suivant ne doit pas retrouver la vente du précédent.
   useCartStore.getState().clear();
+  purgeLocalBusinessData();
 }
