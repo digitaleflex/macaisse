@@ -2,7 +2,7 @@ import { lazy, Suspense, useEffect, type ComponentType } from 'react';
 import type { TabType } from '@/types';
 import { t } from '@/content';
 import { canAccessTab } from '@/domain/permissions';
-import { LoginScreen } from '@/features/auth';
+import { LoginScreen, VerifyEmailBanner } from '@/features/auth';
 import { ReceiptModal } from '@/features/ventes';
 import { DepensesModal } from '@/features/depenses';
 import { ExportModal } from '@/features/export';
@@ -159,6 +159,7 @@ export default function App() {
       <Sidebar />
       <div className="lg:pl-[264px] flex flex-col min-h-dvh">
         <Topbar />
+        <VerifyEmailBanner />
         <main id="main" className="flex-1 w-full max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 pt-5 sm:pt-7 pb-28 lg:pb-10">
           <Suspense fallback={<ViewFallback />}>
             <View key={`${session.business.id}-${tab}`} />

@@ -5,7 +5,7 @@ Périmètre : connexion, inscription, reprise de session, multi-organisation,
 rôles, invitations, déconnexion.
 
 Voir aussi : [`AUTH_DECISIONS.md`](AUTH_DECISIONS.md) (**décisions
-normatives D1–D9 et règles RG-A01–RG-A26**, priment sur ce document),
+normatives D1–D9 et règles RG-A01–RG-A29**, priment sur ce document),
 [`ARCHITECTURE_AUDIT.md`](ARCHITECTURE_AUDIT.md),
 [`API_CONTRACT.md`](API_CONTRACT.md) (routes d'auth).
 
@@ -55,7 +55,7 @@ Démarrage : restoreSession() ─► api.auth.me() ─► même activation
 |---|---|---|---|---|
 | A1 | **critique** | Jeton en `localStorage`, sans TTL, sans refresh ni `httpOnly` → vol par XSS valable indéfiniment | `store/useAuthStore.ts` (`persist`) | **décidé D1** — cookie `HttpOnly` + refresh rotatif |
 | A2 | ~~critique~~ ✅ **corrigé** | La connexion n'active plus rien ; `requireMembership` exige `status === 'active'` (sinon `403 INVITATION_PENDING`) ; acceptation explicite via `POST /auth/invitations/:orgId/accept` | `adapters/mockApi.ts`, `store/auth.ts` | [#20](https://github.com/digitaleflex/macaisse/issues/20) fermée |
-| A3 | majeur | Pas de mot de passe oublié, pas de vérification d'e-mail, pas de MFA ; mot de passe = 8 caractères côté client | `features/auth/LoginScreen.tsx:26` | **décidé D2/D4** — OTP téléphone, mot de passe optionnel à 12 caractères, récupération par OTP |
+| A3 | 🟡 **partiel** | Vérification d'e-mail **livrée** en démo (OTP 10 min, grâce 72 h) et mot de passe porté à 12 caractères avec liste noire ; restent le **mot de passe oublié** (D4) et la MFA | `features/auth/VerifyEmailBanner.tsx`, `domain/password.ts` | **D4/backend** |
 | A4 | majeur | Aucune limitation des tentatives, aucun journal de connexion | absent | **décidé D8** — RG-A19, RG-A20 |
 | A5 | 🟡 **partiel** | Statut vérifié et acceptation explicite ✔ ; restent le jeton signé, l'expiration et la révocation côté serveur | `types/index.ts` (`Invitation`) | [#20](https://github.com/digitaleflex/macaisse/issues/20) (suite backend) |
 | A6 | majeur | `logout()` laisse toutes les collections métier en `localStorage` (poste partagé) | `store/auth.ts` | **décidé RG-A13** — purge obligatoire à la déconnexion |
@@ -80,7 +80,7 @@ Les questions ouvertes de la version précédente de cette section sont
 | Transport : access court + refresh cookie, ou session cookie complète ? | Session **cookie `HttpOnly`** + access 15 min + refresh rotatif, CSRF obligatoire | D1, RG-A10 |
 | Durée de vie | 30 j glissant / 90 j absolu (personnel) ; 90 j / 180 j (appareil enrôlé) | RG-A11 |
 | Invitations | Inchangé : jeton signé, 7 j, acceptation explicite | [API_CONTRACT](API_CONTRACT.md) |
-| Vérification d'e-mail obligatoire ? | **Non** : l'identité est le **téléphone** ; l'e-mail est facultatif et vérifié s'il est fourni | D2, RG-A01/RG-A02 |
+| Vérification d'e-mail obligatoire ? | **Différée** : OTP 6 chiffres (TTL 10 min), le compte reste utilisable, seules les fonctions e-mail sont bloquées après **72 h** | RG-A27, RG-A28 |
 | Politique de mot de passe | Optionnel, **12 caractères**, liste noire, sans complexité imposée | D4 |
 | Anti-bruteforce | `429` + `Retry-After`, quotas par identifiant et par IP, journal 90 j | D8, RG-A19/RG-A20 |
 | `401` vs `403` | `401 UNAUTHENTICATED` déconnecte · `401 STEP_UP_REQUIRED` et `403` ne déconnectent pas | RG-A12 |

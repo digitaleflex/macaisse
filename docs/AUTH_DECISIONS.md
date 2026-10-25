@@ -308,6 +308,16 @@ Identifiants stables : **RG-Axx**, cités par `API_CONTRACT.md` et par les tests
 | **RG-A25** | **Séparation des usages** : le numéro et le template d'authentification ne servent **jamais** au marketing ni aux notifications produit. Les messages de service (reçus, alertes) utilisent un template `utility` distinct et sont comptés séparément. |
 | **RG-A26** | **Changement de numéro** : exige la vérification de l'**ancien** numéro (OTP) **et** du nouveau, plus un step-up (D9). Impossible depuis un appareil enrôlé par un caissier. L'ancien numéro reçoit une notification du changement. |
 
+### 3.7 Vérification d'e-mail et mot de passe
+
+| # | Règle |
+|---|---|
+| **RG-A27** | **Vérification e-mail par code** : 6 chiffres, TTL **10 min**, usage unique, 5 essais, renvoi possible après **60 s**, **3 envois par adresse et par heure**, réponse constante quelle que soit l'existence du compte (RG-A09). L'**OTP est retenu plutôt que le magic link** : même écran que l'OTP téléphone (D2), aucun lien consommé par les filtres anti-spam, aucun problème de changement d'appareil. Le magic link reste réservé à la **récupération** (D5), TTL 15 min. |
+| **RG-A28** | **Délai de grâce de 72 h** : le compte est actif dès l'inscription et **la connexion, la caisse et les ventes ne sont jamais bloquées** par une adresse non vérifiée. Après 72 h, seules les fonctions qui dépendent réellement de l'e-mail sont désactivées : récupération de mot de passe, envoi de reçus/exports par e-mail, invitations par e-mail, souscription payante. Un bandeau permanent affiche la **date limite** (pas de compte à rebours). |
+| **RG-A29** | **Mot de passe** : **12 à 64 caractères**, **aucune composition imposée**, espaces/accents/emoji acceptés, blocage des mots de passe courants (liste noire + Pwned Passwords côté serveur), interdiction de recopier l'e-mail, le nom ou le nom du commerce, **aucune expiration ni rotation**, hash **Argon2id**, **aucune question secrète**, **pas de champ de confirmation** (le bouton « afficher » suffit). |
+
+
+
 ---
 
 ## 4. Ce que cela change dans le code

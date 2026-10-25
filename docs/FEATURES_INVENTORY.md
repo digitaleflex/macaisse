@@ -24,6 +24,7 @@ Légende : ✔ implémenté et fonctionnel · ◐ simulé (UI + toast, aucun eff
 | Inscription | **2 champs** : e-mail + mot de passe (12 car. min) ; nom, commerce, téléphone, ville et activité sont collectés après l'ouverture (RG-A04). Espace créé sous « Mon commerce » | idem |
 | Connexion 1 clic | 4 comptes de démonstration listés (mot de passe `demo1234`) | `mocks/fixtures/accounts.ts` |
 | Google (démo) | Bouton « Continuer avec Google » avec le **logo « G » officiel** (SVG inline, non recoloré) : identité simulée, espace « Mon commerce » créé au premier accès (production = PKCE serveur, `501` en `http`) | `features/auth/GoogleButton.tsx`, `ui/GoogleMark.tsx`, `adapters/mockApi.ts` |
+| Vérification e-mail (démo) | Bandeau persistant + modale de code à 6 chiffres (code `000000` en démo), renvoi avec délai de 30 s, grâce de 72 h sans blocage de la caisse | `features/auth/VerifyEmailBanner.tsx`, `domain/password.ts` |
 | Reprise de session | `restoreSession()` au démarrage, écran splash + écran d'erreur avec *Réessayer* / *Se déconnecter* | `app/App.tsx`, `store/auth.ts` |
 
 > **Cible arrêtée** (non implémentée) : inscription en **1 champ** (OTP téléphone),

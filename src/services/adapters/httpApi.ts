@@ -1,6 +1,7 @@
 import type {
   AuthResult,
   ClientCredit,
+  EmailChallenge,
   Expense,
   Invitation,
   NotificationItem,
@@ -38,6 +39,8 @@ export function createHttpApi(http: HttpClient): Api {
           )
         ),
       me: () => http.get<AuthResult>(ENDPOINTS.me),
+      requestEmailVerification: () => http.post<EmailChallenge>(ENDPOINTS.emailVerifyRequest),
+      verifyEmail: (input) => http.post<AuthResult>(ENDPOINTS.emailVerifyConfirm, input),
       logout: () => http.post<void>(ENDPOINTS.logout),
       demoAccounts: () => Promise.resolve([]),
       invitations: () => http.get<Invitation[]>(ENDPOINTS.invitations),

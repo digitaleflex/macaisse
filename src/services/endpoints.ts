@@ -11,6 +11,8 @@ export const ENDPOINTS = {
   refresh: '/auth/refresh',
   me: '/auth/me',
   logout: '/auth/logout',
+  emailVerifyRequest: '/auth/email/verify/request',
+  emailVerifyConfirm: '/auth/email/verify/confirm',
   invitations: '/auth/invitations',
   acceptInvitation: (orgId: string) => `/auth/invitations/${enc(orgId)}/accept`,
 

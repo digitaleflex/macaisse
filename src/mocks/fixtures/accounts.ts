@@ -38,6 +38,8 @@ export const MOCK_ACCOUNTS: MockAccount[] = [
     phone: '+221 77 482 19 02',
     email: 'mamadou@boutique-etoile.sn',
     password: DEMO_PASSWORD,
+    emailVerified: true,
+    emailVerificationDueAt: null,
   },
   {
     id: 'u-awa',
@@ -47,6 +49,8 @@ export const MOCK_ACCOUNTS: MockAccount[] = [
     phone: '+221 76 220 41 87',
     email: 'awa@boutique-etoile.sn',
     password: DEMO_PASSWORD,
+    emailVerified: true,
+    emailVerificationDueAt: null,
   },
   {
     id: 'u-koffi',
@@ -56,6 +60,8 @@ export const MOCK_ACCOUNTS: MockAccount[] = [
     phone: '+225 07 58 33 21 10',
     email: 'koffi@superette-baobab.ci',
     password: DEMO_PASSWORD,
+    emailVerified: true,
+    emailVerificationDueAt: null,
   },
   {
     id: 'u-fatou',
@@ -65,6 +71,8 @@ export const MOCK_ACCOUNTS: MockAccount[] = [
     phone: '+225 05 44 18 90 02',
     email: 'fatou@superette-baobab.ci',
     password: DEMO_PASSWORD,
+    emailVerified: true,
+    emailVerificationDueAt: null,
   },
 ];
 

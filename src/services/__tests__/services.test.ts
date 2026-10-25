@@ -143,9 +143,38 @@ describe('createMockApi — multi-organisation', () => {
       firstName: 'Awa',
       lastName: 'Ndiaye',
     });
+    // Google fournit une adresse déjà vérifiée (RG-A02).
+    expect(google.user.emailVerified).toBe(true);
     await expect(api.auth.login({ email: google.user.email, password: '' })).rejects.toMatchObject({
       status: 401,
     });
+  });
+
+  it('vérifie l’adresse e-mail par code à usage unique (RG-A27)', async () => {
+    const api = createMockApi();
+    const signup = await api.auth.signup({
+      firstName: '',
+      lastName: '',
+      email: 'aicha@test.sn',
+      phone: '',
+      password: 'motdepasse-solide-2026',
+      organizationName: '',
+      activity: '',
+      city: '',
+    });
+    expect(signup.user.emailVerified).toBe(false);
+    expect(signup.user.emailVerificationDueAt).not.toBeNull();
+
+    // Sans code demandé, rien ne peut être validé.
+    await expect(api.auth.verifyEmail({ code: '123456' })).rejects.toMatchObject({ status: 400 });
+
+    const challenge = await api.auth.requestEmailVerification();
+    expect(challenge.expiresIn).toBe(600);
+    await expect(api.auth.verifyEmail({ code: '123456' })).rejects.toMatchObject({ status: 401 });
+
+    const verified = await api.auth.verifyEmail({ code: '000000' });
+    expect(verified.user.emailVerified).toBe(true);
+    expect(verified.user.emailVerificationDueAt).toBeNull();
   });
 
   it('rejette un identifiant inconnu par une ApiError 404', async () => {

@@ -3,6 +3,7 @@ import type {
   CartLine,
   DemoAccount,
   ClientCredit,
+  EmailChallenge,
   Expense,
   GoogleIdentity,
   NotificationItem,
@@ -38,6 +39,10 @@ export interface AuthRepository {
   googleSignIn(identity: GoogleIdentity): Promise<AuthResult>;
   /** Reprise de session à partir du cookie courant. */
   me(): Promise<AuthResult>;
+  /** Envoie un code à usage unique à l'adresse du compte (TTL 10 min, RG-A27). */
+  requestEmailVerification(): Promise<EmailChallenge>;
+  /** Vérifie le code et marque l'adresse comme prouvée. */
+  verifyEmail(input: { code: string }): Promise<AuthResult>;
   logout(): Promise<void>;
   /** Comptes proposés sur l'écran de connexion (vide hors démo). */
   demoAccounts(): Promise<DemoAccount[]>;

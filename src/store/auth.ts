@@ -2,7 +2,7 @@
 // connexion, inscription, reprise de session, changement d'espace, déconnexion.
 // Seul module autorisé à modifier le contexte `services/tenant`.
 
-import type { AuthResult, DemoAccount, GoogleIdentity, Invitation, LoginInput, SignupInput } from '@/types';
+import type { AuthResult, DemoAccount, EmailChallenge, GoogleIdentity, Invitation, LoginInput, SignupInput } from '@/types';
 import { t } from '@/content';
 import { canAccessTab } from '@/domain/permissions';
 import { api, isApiError, setActiveOrganization } from '@/services';
@@ -128,6 +128,17 @@ export async function restoreSession(): Promise<void> {
     if (isApiError(error) && (error.status === 401 || error.status === 403)) await logout();
     else useSessionStore.getState().setStatus('error', errorMessage(error, t.auth.errors.generic));
   }
+}
+
+/** Envoie (ou renvoie) le code de vérification de l'adresse du compte courant. */
+export async function requestEmailVerification(): Promise<EmailChallenge> {
+  return api.auth.requestEmailVerification();
+}
+
+/** Confirme le code de vérification et met à jour le profil connecté. */
+export async function verifyEmail(code: string): Promise<void> {
+  const result = await api.auth.verifyEmail({ code });
+  useAuthStore.getState().setAuth(result);
 }
 
 export async function switchOrganization(organizationId: string): Promise<boolean> {

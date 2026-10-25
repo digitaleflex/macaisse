@@ -6,7 +6,7 @@ d'issue orpheline (25 issues → 8 jalons).
 
 Sources : [`ARCHITECTURE_AUDIT.md`](ARCHITECTURE_AUDIT.md) (constats C1, M*, m*),
 [`AUTH_REVIEW.md`](AUTH_REVIEW.md) (A1–A13),
-[`AUTH_DECISIONS.md`](AUTH_DECISIONS.md) (D1–D9, RG-A01–RG-A26),
+[`AUTH_DECISIONS.md`](AUTH_DECISIONS.md) (D1–D9, RG-A01–RG-A29),
 [`FEATURES_INVENTORY.md`](FEATURES_INVENTORY.md) (manques produit).
 
 Légende : **P0** bloquant · **P1** fiabilité/exploitation · **P2** dette · **R** roadmap.
@@ -114,7 +114,7 @@ qu'un compte peut être corrigé ou supprimé (RGPD).
 **Objectif** — une session volée expire, un compte perdu se récupère, la caisse
 fonctionne hors ligne, et un poste partagé ne laisse rien derrière lui.
 Décisions et règles : [`AUTH_DECISIONS.md`](AUTH_DECISIONS.md) (D1–D9,
-RG-A01–RG-A26).
+RG-A01–RG-A29).
 
 | # | Sujet | Prio | Effort | Dépend |
 |---|---|---|---|---|
@@ -123,6 +123,7 @@ RG-A01–RG-A26).
 | à ouvrir | **D3** Google (démo livrée) : production = ID client Google + échange PKCE serveur, rattachement e-mail ↔ téléphone | P1 | S/M | #19 |
 | à ouvrir | **D2 palier 1** OTP WhatsApp **conversation initiée** (0 FCFA) : `/auth/otp/*`, quotas, non-révélation | **P0** | L | #19, numéro WhatsApp + lien `wa.me` |
 | à ouvrir | **D4** mot de passe optionnel (12 car., liste noire) + reset par OTP | P1 | M | D2 |
+| à ouvrir | **RG-A27/A28** vérification e-mail : OTP 10 min, grâce de 72 h non bloquante — **front livré en démo** | P1 | S | backend e-mail |
 | à ouvrir | **RG-A04** onboarding 3 étapes + états vides actionnables | P1 | M | front |
 | [#23](https://github.com/digitaleflex/macaisse/issues/23) | **RG-A13** purge des collections locales au logout | P1 | S/M | front |
 | à ouvrir | **D6** PIN caissier + appareil enrôlé + écran de verrouillage | P1 | L | #19, #17 |

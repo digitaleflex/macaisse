@@ -119,6 +119,8 @@ restent cloisonnées par organisation (`localStorage['ma-caisse/<orgId>/…']`).
 | POST | `/auth/password/change` | `{ currentPassword, password }` | `204` · `401 STEP_UP_REQUIRED` |
 | POST | `/auth/password/reset/request` | `{ email }` | `202` (réponse constante, RG-A09) |
 | POST | `/auth/password/reset/confirm` | `{ token, password }` | `204` |
+| POST | `/auth/email/verify/request` | — | `{ email, expiresIn: 600, sentAt }` · `429 EMAIL_RATE_LIMITED` |
+| POST | `/auth/email/verify/confirm` | `{ code }` | `AuthResult` (`emailVerified: true`) · `400 EMAIL_CODE_MISSING` · `401 INVALID_EMAIL_CODE` · `410 EMAIL_CODE_EXPIRED` |
 | GET | `/auth/events` | — | `AuthEvent[]` (10 dernières connexions, RG-A20) |
 
 ### Invitations (inchangé)
@@ -163,12 +165,19 @@ n'introduisent aucune règle nouvelle.
 ```jsonc
 // AuthResult — plus de champ "token" (D1)
 { "user": { "id": "u-mamadou", "firstName": "Mamadou", "lastName": "Konaté",
-            "phone": "+221771234567", "email": "mamadou@exemple.sn" },
+            "phone": "+221771234567", "email": "mamadou@exemple.sn",
+            "emailVerified": false,
+            "emailVerificationDueAt": "2026-10-28T18:00:00Z" },
   "memberships": [
     { "organizationId": "org-etoile", "organizationName": "Boutique Étoile", "city": "Dakar Plateau", "role": "owner" },
     { "organizationId": "org-baobab", "organizationName": "Supérette Le Baobab", "city": "Abidjan", "role": "manager" } ],
   "expiresAt": "2026-10-25T18:15:00Z" }
 ```
+
+> `emailVerified` / `emailVerificationDueAt` : une adresse non prouvée laisse le
+> compte **pleinement utilisable** (connexion, caisse, ventes) pendant **72 h**.
+> Passé ce délai, seules les fonctions dépendant de l'e-mail sont refusées
+> (RG-A28). Google pose directement `emailVerified: true`.
 
 ### Règles d'authentification (normatives)
 
@@ -193,6 +202,11 @@ structurantes pour le backend :
 7. **Budget** : 20 OTP par organisation et par mois civil, alerte à 80 %,
    `429 OTP_BUDGET_EXCEEDED` à 100 %, plafond global et mode dégradé au-delà
    (RG-A24). Modèle de coût : [`AUTH_DECISIONS.md`](AUTH_DECISIONS.md) §7.
+8. **Vérification e-mail** : OTP 6 chiffres, TTL 10 min, 3 envois/h/adresse ;
+   le compte reste utilisable, seules les fonctions dépendant de l'e-mail sont
+   bloquées après **72 h** (RG-A27, RG-A28).
+9. **Mot de passe** : 12–64 caractères, aucune composition imposée, listes noires
+   serveur, Argon2id, jamais de question secrète (RG-A29).
 
 ### Règles d'invitation (normatives)
 
@@ -257,17 +271,18 @@ l'interface ne peut pas réagir correctement (rejouer, annuler, déconnecter).
 
 | Statut | `code` attendu | Sens | Réaction client |
 |---|---|---|---|
+| `400` | `EMAIL_CODE_MISSING`, `VALIDATION_ERROR` | requête incomplète (aucun code demandé, champ manquant) | redemander un code / corriger le champ |
 | `401` | `UNAUTHENTICATED` | cookie absent, expiré ou invalide | déconnexion immédiate |
 | `401` | `STEP_UP_REQUIRED` | session valide, action sensible : réauthentification < 5 min requise (RG-A12) | modale de réauthentification, **pas** de déconnexion |
-| `401` | `INVALID_CREDENTIALS`, `INVALID_OTP` | échec du facteur présenté | message, compteur de tentatives |
+| `401` | `INVALID_CREDENTIALS`, `INVALID_OTP`, `INVALID_EMAIL_CODE` | échec du facteur présenté | message, compteur de tentatives |
 | `403` | `FORBIDDEN` | session valide, non-membre de `:orgId`, ou rôle insuffisant | toast + retour à la caisse, **pas** de déconnexion |
 | `403` | `INVITATION_PENDING` | appartenance non acceptée | écran d'acceptation d'invitation |
 | `404` | `NOT_FOUND` | ressource inexistante dans cette organisation | toast, rafraîchissement de la collection |
 | `409` | `INSUFFICIENT_STOCK`, `DUPLICATE`, `CONFLICT` | état serveur incompatible avec la mutation | toast + rechargement de la ressource |
-| `410` | `OTP_EXPIRED` | code expiré (TTL 5 min, RG-A07) | proposer un renvoi |
+| `410` | `OTP_EXPIRED`, `EMAIL_CODE_EXPIRED` | code expiré (5 min téléphone / 10 min e-mail, RG-A07, RG-A27) | proposer un renvoi |
 | `422` | `VALIDATION_ERROR`, `OWNER_LOCKED`, `CREDIT_OVERPAYMENT`, `DEVICE_LIMIT`, `WEAK_PIN` | règle métier violée, requête bien formée | toast, aucune reprise automatique |
 | `423` | `PIN_LOCKED` | 5 échecs PIN, verrouillage 15 min (RG-A16) | message + déblocage par le propriétaire |
-| `429` | `OTP_RATE_LIMITED`, `OTP_LOCKED`, `OTP_BUDGET_EXCEEDED`, `RATE_LIMITED` | quota d'envoi, de tentatives ou budget mensuel de l'organisation atteint (RG-A08, RG-A19, RG-A24) | respecter `Retry-After`, afficher le délai ; pour le budget, proposer une autre méthode de connexion |
+| `429` | `OTP_RATE_LIMITED`, `OTP_LOCKED`, `OTP_BUDGET_EXCEEDED`, `EMAIL_RATE_LIMITED`, `RATE_LIMITED` | quota d'envoi, de tentatives ou budget mensuel atteint (RG-A08, RG-A19, RG-A24, RG-A27) | respecter `Retry-After`, afficher le délai ; pour le budget, proposer une autre méthode de connexion |
 | `5xx` | `SERVER_ERROR` | panne | toast + rejeu possible (voir idempotence) |
 
 Règles associées :

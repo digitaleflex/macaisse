@@ -1,6 +1,7 @@
 import type {
   AuthResult,
   ClientCredit,
+  EmailChallenge,
   Expense,
   Membership,
   NotificationItem,
@@ -58,6 +59,11 @@ const AUTH_DB_KEY = 'ma-caisse/mock-auth-db';
  */
 const SESSION_KEY = 'ma-caisse/mock-session';
 const SESSION_TTL_MS = 15 * 60 * 1000;
+/** Délai de grâce pour vérifier l'e-mail (RG-A28) : 72 h. */
+const EMAIL_GRACE_MS = 72 * 60 * 60 * 1000;
+/** Durée de vie du code e-mail (RG-A27) : 10 min. */
+const EMAIL_CODE_TTL_MS = 10 * 60 * 1000;
+const DEMO_EMAIL_CODE = '000000';
 
 interface MockSession {
   userId: string;
@@ -109,6 +115,8 @@ export function createMockApi({ latencyMs = 0, persist = false }: MockApiOptions
   const auth = loadAuthDb(persist);
   const orgData = new Map<string, OrgDb>();
   let session = loadSession(persist);
+  /** Code de vérification e-mail simulé (un seul à la fois, comme côté serveur). */
+  let emailChallenge: { email: string; code: string; expiresAt: number } | null = null;
 
   const saveAuth = () => {
     if (!persist) return;
@@ -302,6 +310,9 @@ export function createMockApi({ latencyMs = 0, persist = false }: MockApiOptions
             phone: input.phone.trim(),
             email,
             password: input.password,
+            // RG-A27/A28 : adresse non prouvée, 72 h pour la vérifier.
+            emailVerified: false,
+            emailVerificationDueAt: new Date(Date.now() + EMAIL_GRACE_MS).toISOString(),
           };
           auth.accounts.push(account);
           createOwnerOrganization(account, {
@@ -329,6 +340,9 @@ export function createMockApi({ latencyMs = 0, persist = false }: MockApiOptions
             phone: '',
             email,
             password: '',
+            // Google fournit une adresse déjà vérifiée (RG-A02).
+            emailVerified: true,
+            emailVerificationDueAt: null,
           };
           auth.accounts.push(account);
           createOwnerOrganization(account, {
@@ -341,6 +355,40 @@ export function createMockApi({ latencyMs = 0, persist = false }: MockApiOptions
           return authResult(account);
         }),
       me: () => respond(() => authResult(currentAccount())),
+      requestEmailVerification: () =>
+        respond<EmailChallenge>(() => {
+          const account = currentAccount();
+          // Idempotent : un compte déjà vérifié n'a rien à faire, mais ne casse pas.
+          emailChallenge = account.emailVerified
+            ? null
+            : { email: account.email, code: DEMO_EMAIL_CODE, expiresAt: Date.now() + EMAIL_CODE_TTL_MS };
+          return {
+            email: account.email,
+            expiresIn: EMAIL_CODE_TTL_MS / 1000,
+            sentAt: new Date().toISOString(),
+          };
+        }),
+      verifyEmail: ({ code }) =>
+        respond(() => {
+          const account = currentAccount();
+          if (account.emailVerified) return authResult(account);
+          const active = emailChallenge;
+          if (!active || active.email !== account.email) {
+            fail(t.auth.errors.emailCodeMissing, 400, 'EMAIL_CODE_MISSING');
+          }
+          if (active.expiresAt <= Date.now()) {
+            emailChallenge = null;
+            fail(t.auth.errors.emailCodeExpired, 410, 'EMAIL_CODE_EXPIRED');
+          }
+          if (code.trim() !== active.code) {
+            fail(t.auth.errors.emailCodeInvalid, 401, 'INVALID_EMAIL_CODE');
+          }
+          account.emailVerified = true;
+          account.emailVerificationDueAt = null;
+          emailChallenge = null;
+          saveAuth();
+          return authResult(account);
+        }),
       logout: () =>
         respond(() => {
           closeSession();
@@ -423,6 +471,9 @@ export function createMockApi({ latencyMs = 0, persist = false }: MockApiOptions
               phone: '',
               email,
               password: DEMO_PASSWORD,
+              // L'e-mail saisi par le propriétaire n'est pas prouvé par l'invité.
+              emailVerified: false,
+              emailVerificationDueAt: new Date(Date.now() + EMAIL_GRACE_MS).toISOString(),
             };
             auth.accounts.push(account);
           }

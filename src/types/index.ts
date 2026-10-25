@@ -141,6 +141,13 @@ export interface UserProfile {
   role: string;
   phone: string;
   email: string;
+  /** Adresse e-mail prouvée par OTP (ou par le fournisseur d'identité Google). */
+  emailVerified: boolean;
+  /**
+   * Fin du délai de grâce de 72 h pour vérifier l'e-mail (ISO 8601).
+   * `null` quand l'adresse est déjà vérifiée (RG-A27/RG-A28).
+   */
+  emailVerificationDueAt: string | null;
 }
 
 export interface BusinessProfile {
@@ -243,6 +250,14 @@ export interface SignupInput {
   organizationName: string;
   activity: string;
   city: string;
+}
+
+/** Code de vérification envoyé à l'adresse du compte (RG-A27). */
+export interface EmailChallenge {
+  email: string;
+  /** Durée de vie du code, en secondes (600 = 10 min). */
+  expiresIn: number;
+  sentAt: string;
 }
 
 /** Compte de démonstration proposé sur l'écran de connexion (mode `mock` uniquement). */

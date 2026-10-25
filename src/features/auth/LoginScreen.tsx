@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import type { DemoAccount, GoogleIdentity, SignupInput } from '@/types';
 import { t } from '@/content';
 import { isDemoMode } from '@/config/env';
+import { validatePassword, type PasswordIssue } from '@/domain/password';
 import { isApiError } from '@/services';
 import { login, loadDemoAccounts, signInWithGoogle, signup } from '@/store/auth';
 import { useUiStore } from '@/store/useUiStore';
@@ -24,8 +25,15 @@ type Mode = 'login' | 'signup';
 type FieldKey = 'email' | 'password';
 type FieldErrors = Partial<Record<FieldKey, string>>;
 
-/** Longueur minimale (D4) : la longueur remplace la complexité imposée. */
-const MIN_PASSWORD = 12;
+/** Message affiché pour le premier manquement détecté (RG-A29). */
+const PASSWORD_MESSAGE: Record<PasswordIssue, string> = {
+  too_short: t.auth.errors.passwordShort,
+  too_long: t.auth.errors.passwordLong,
+  common: t.auth.errors.passwordCommon,
+  contains_identity: t.auth.errors.passwordIdentity,
+  repeated: t.auth.errors.passwordRepeated,
+};
+
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /** Profil volontairement vide : complété par l'onboarding (RG-A04). */
@@ -132,7 +140,10 @@ export function LoginScreen() {
     const next: FieldErrors = {};
     if (!EMAIL_PATTERN.test(email.trim())) next.email = t.auth.errors.emailInvalid;
     if (password.length === 0) next.password = t.auth.errors.required;
-    else if (mode === 'signup' && password.length < MIN_PASSWORD) next.password = t.auth.errors.passwordShort;
+    else if (mode === 'signup') {
+      const [issue] = validatePassword(password, { email });
+      if (issue !== undefined) next.password = PASSWORD_MESSAGE[issue];
+    }
     setErrors(next);
     return Object.keys(next).length === 0;
   };
