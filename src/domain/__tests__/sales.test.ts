@@ -194,3 +194,61 @@ describe('dailyRevenue', () => {
     expect(series.map((p) => p.value)).toEqual([500, 0, 1000]);
   });
 });
+
+describe('completeSale — règlement partiel', () => {
+  const lait = makeProduct({ price: 1500, stock: 10 });
+  const lignes: CartLine[] = [
+    { productId: 'p1', name: 'Lait', price: 1500, quantity: 2, unit: 'brique' },
+  ];
+
+  it('borne le crédit au sous-total de la vente', () => {
+    const { sale } = completeSale({
+      lines: lignes,
+      products: [lait],
+      paymentMethod: 'Crédit Partiel',
+      clientName: 'M. Ba Ousmane',
+      creditAmount: 999999,
+      date: new Date(2024, 0, 15),
+    });
+    expect(sale.amount).toBe(3000);
+    expect(sale.remainingAmount).toBe(3000);
+    expect(sale.status).toBe('Partiel');
+  });
+
+  it('arrondit le crédit au franc CFA entier', () => {
+    const { sale } = completeSale({
+      lines: lignes,
+      products: [lait],
+      paymentMethod: 'Crédit Partiel',
+      clientName: 'Awa',
+      creditAmount: 1499.6,
+      date: new Date(2024, 0, 15),
+    });
+    expect(sale.remainingAmount).toBe(1500);
+  });
+
+  it('refuse un règlement à crédit sans nom de client', () => {
+    expect(() =>
+      completeSale({
+        lines: lignes,
+        products: [lait],
+        paymentMethod: 'Crédit Partiel',
+        creditAmount: 1000,
+        date: new Date(2024, 0, 15),
+      })
+    ).toThrow(/nom du client/);
+  });
+
+  it('ignore un crédit négatif', () => {
+    const { sale } = completeSale({
+      lines: lignes,
+      products: [lait],
+      paymentMethod: 'Espèces',
+      clientName: 'Awa',
+      creditAmount: -500,
+      date: new Date(2024, 0, 15),
+    });
+    expect(sale.remainingAmount).toBeUndefined();
+    expect(sale.status).toBe('Validé');
+  });
+});

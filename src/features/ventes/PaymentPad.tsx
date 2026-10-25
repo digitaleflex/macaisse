@@ -60,6 +60,10 @@ export function PaymentPad({ open, total, onClose, onValidate }: PaymentPadProps
       return;
     }
     const trimmed = clientName.trim();
+    if (isCredit && trimmed.length === 0) {
+      showToast(t.pos.payment.clientRequired, 'error');
+      return;
+    }
     onValidate({
       paymentMethod: method,
       clientName: trimmed.length > 0 ? trimmed : undefined,

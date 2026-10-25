@@ -123,9 +123,14 @@ export function completeSale(input: CompleteSaleInput): CompleteSaleResult {
     return { ...product, stock, status: computeStockStatus(stock, product.minStockAlert) };
   });
 
-  const normalizedCredit = Math.max(0, creditAmount);
-  const status: SaleStatus = normalizedCredit > 0 ? 'Partiel' : 'Validé';
   const trimmedClient = clientName?.trim();
+  // Le crédit est borné au sous-total et arrondi au franc : un reste dû ne peut
+  // jamais dépasser la vente, et aucun montant fractionnaire n'entre en état.
+  const normalizedCredit = Math.min(subtotal, Math.max(0, Math.round(creditAmount)));
+  if (normalizedCredit > 0 && !trimmedClient) {
+    throw new Error('Une vente à crédit nécessite le nom du client.');
+  }
+  const status: SaleStatus = normalizedCredit > 0 ? 'Partiel' : 'Validé';
 
   const sale: SaleTransaction = {
     id: createId('sale'),

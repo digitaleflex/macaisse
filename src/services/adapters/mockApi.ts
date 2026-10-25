@@ -337,15 +337,32 @@ export function createMockApi({ latencyMs = 0, persist = false }: MockApiOptions
     },
     sales: {
       list: () => respond(() => db().sales),
-      create: ({ sale, lines }) =>
+      create: ({ sale, lines, credit }) =>
         respond(() => {
           const data = db();
+          // Le serveur applique la même règle que le domaine client : un stock
+          // insuffisant est un refus (409), jamais une décrémentation bornée.
+          for (const line of lines) {
+            const product =
+              data.products.find((item) => item.id === line.productId) ??
+              fail(t.auth.errors.notFound, 404, 'NOT_FOUND');
+            if (line.quantity > product.stock) {
+              fail(
+                `Stock insuffisant pour « ${product.name} » : ${product.stock} disponible(s).`,
+                409,
+                'INSUFFICIENT_STOCK'
+              );
+            }
+          }
           for (const line of lines) {
             data.products = data.products.map((p) =>
-              p.id === line.productId ? { ...p, stock: Math.max(0, p.stock - line.quantity) } : p
+              p.id === line.productId ? { ...p, stock: p.stock - line.quantity } : p
             );
           }
           data.sales = [sale, ...data.sales];
+          // Transaction unique : la créance d'un règlement partiel est écrite
+          // avec la vente, sinon elle n'existerait que dans le navigateur.
+          if (credit) data.credits = [credit, ...data.credits];
           return sale;
         }),
     },

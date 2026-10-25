@@ -11,6 +11,7 @@
 // suffit. Les sélecteurs primitifs (booléen, nombre, chaîne) sont toujours sûrs.
 
 import { createJSONStorage, type PersistOptions } from 'zustand/middleware';
+import { env, type ApiMode } from '@/config/env';
 import type {
   Category,
   CreditStatus,
@@ -58,6 +59,15 @@ export function persistOptions<T, U>(
     partialize,
     migrate,
   };
+}
+
+/**
+ * Repli de réhydratation d'une collection de démonstration. En mode `http`, une
+ * organisation réelle ne doit JAMAIS voir réapparaître les fixtures : un blob
+ * absent ou illisible donne une collection vide, pas la démo.
+ */
+export function seedFallback<T>(seed: readonly T[], mode: ApiMode = env.apiMode): T[] {
+  return mode === 'http' ? [] : seed.map((item) => item);
 }
 
 // ---------------------------------------------------------------------------

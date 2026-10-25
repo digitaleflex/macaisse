@@ -38,10 +38,13 @@ VITE_API_TIMEOUT_MS=15000
   `/auth/login` et `/auth/signup`. Un `401` déconnecte l'utilisateur côté client.
 - Identifiants des entités métier **générés par le client** (`product-<uuid>`…) :
   le serveur les accepte tels quels (création idempotente).
-- Erreurs : statut ≠ 2xx et corps `{ "message": "Texte lisible en français" }`
-  (affiché tel quel).
+- Erreurs : statut ≠ 2xx et corps `{ "message": "Texte lisible en français", "code": "CODE_METIER" }`.
+  Le `message` est affiché tel quel ; le `code` sert au client à décider d'un rejeu
+  (voir [Sémantique des erreurs](#sémantique-des-erreurs)).
 - Mutations **optimistes** : l'UI applique puis appelle l'API ; un échec est
-  signalé par un toast.
+  signalé par un toast. **Tant que le serveur n'offre pas la sémantique décrite
+  ci-dessous, aucune annulation locale n'est possible** : c'est le prérequis
+  n°1 côté backend.
 
 ## Parcours client
 
@@ -90,7 +93,7 @@ VITE_API_TIMEOUT_MS=15000
 | DELETE | `/products/:id` | — | `204` | manager |
 | POST | `/products/:id/restock` | `{ quantity }` | `Product` | manager |
 | GET | `/sales` | — | `SaleTransaction[]` | cashier |
-| POST | `/sales` | `{ sale, lines: CartLine[] }` | `SaleTransaction` (le serveur décrémente le stock) | cashier |
+| POST | `/sales` | `{ sale, lines: CartLine[], credit?: ClientCredit }` | `SaleTransaction` (le serveur décrémente le stock et crée la créance) | cashier |
 | GET | `/expenses` | — | `Expense[]` | manager |
 | POST | `/expenses` | `Expense` | `Expense` | manager |
 | DELETE | `/expenses/:id` | — | `204` | manager |
@@ -104,6 +107,72 @@ VITE_API_TIMEOUT_MS=15000
 
 > Pour un caissier, le serveur peut omettre `costPrice` des produits renvoyés ;
 > le client ne l'affiche pas.
+
+## Sémantique des erreurs (normative)
+
+Le client distingue quatre familles ; le backend DOIT les respecter, sinon
+l'interface ne peut pas réagir correctement (rejouer, annuler, déconnecter).
+
+| Statut | `code` attendu | Sens | Réaction client |
+|---|---|---|---|
+| `401` | `UNAUTHENTICATED` | jeton absent, expiré ou invalide | déconnexion immédiate |
+| `403` | `FORBIDDEN` | jeton valide, non-membre de `:orgId`, ou rôle insuffisant | toast + retour à la caisse |
+| `404` | `NOT_FOUND` | ressource inexistante dans cette organisation | toast, rafraîchissement de la collection |
+| `409` | `INSUFFICIENT_STOCK`, `DUPLICATE`, `CONFLICT` | état serveur incompatible avec la mutation | toast + rechargement de la ressource |
+| `422` | `VALIDATION_ERROR`, `OWNER_LOCKED`, `CREDIT_OVERPAYMENT` | règle métier violée, requête bien formée | toast, aucune reprise automatique |
+| `5xx` | `SERVER_ERROR` | panne | toast + rejeu possible (voir idempotence) |
+
+Règles associées :
+
+1. **Aucune mutation silencieuse.** Un refus doit être un statut ≠ 2xx : le
+   serveur ne « corrige » jamais une valeur (pas de stock borné à 0, pas de
+   crédit plafonné sans le dire).
+2. `message` est en **français**, destiné à l'utilisateur final, sans détail
+   technique. Les détails vont dans un champ optionnel `details`.
+3. Un `409`/`422` n'est jamais rejoué automatiquement par le client : il remonte
+   à l'utilisateur. Seuls `5xx` et erreurs réseau (`status: 0`, `TIMEOUT`,
+   `NETWORK`) sont rejouables.
+
+## Idempotence, concurrence, transaction
+
+- **Identifiants générés par le client** (`product-…`, `sale-…`, `credit-…`) :
+  `POST` sur un identifiant déjà connu du même propriétaire renvoie **`200` avec
+  la ressource existante** (et non `409`), ce qui rend le rejeu sûr.
+- **Vente + créance = une transaction.** `POST /orgs/:orgId/sales` reçoit
+  `{ sale, lines, credit? }` : le serveur décrémente le stock, enregistre la
+  vente **et** la créance dans la même transaction, ou refuse tout (`409`
+  `INSUFFICIENT_STOCK`). Aucune route `POST /credits` séparée pour un règlement
+  partiel de caisse.
+- **Concurrence** : chaque ressource métier expose `updatedAt` (ISO 8601). Les
+  `PATCH`/`DELETE` peuvent le renvoyer dans un en-tête `If-Unmodified-Since` ;
+  en cas d'écart → `409 CONFLICT`. Objectif : deux caissiers ne doivent pas
+  écraser silencieusement le stock de l'autre.
+- **Numérotation des ventes** : `sale.saleNumber` est proposé par le client
+  (`V-YYYYMMDD-NNNN`) mais **le serveur reste l'arbitre** : si le numéro est déjà
+  pris dans l'organisation, il répond `409 DUPLICATE` et le client régénère.
+
+## Montants, dates et fuseau
+
+- Montants : **entiers FCFA**, jamais de décimales, jamais de chaînes. Le client
+  arrondit déjà côté domaine (`roundMontant`) ; le serveur rejette `422
+  VALIDATION_ERROR` sur un non-entier ou un négatif.
+- Dates : `YYYY-MM-DD`, heures `HH:MM`, **dans le fuseau du commerce** (champ
+  `business.timezone` à ajouter côté serveur ; par défaut `Africa/Dakar`, UTC+0).
+- Le client horodate ses fichiers exportés en heure locale ; le serveur doit
+  fournir `serverTime` dans `GET /orgs/:orgId/session` pour permettre un
+  rapprochement de caisse fiable.
+
+## Statut de `mockApi` (à lire avant d'implémenter)
+
+`src/services/adapters/mockApi.ts` est la **spécification exécutable** du
+contrat : les mêmes scénarios y sont joués que côté serveur. Deux précisions
+pour éviter les malentendus :
+
+- En mode `mock`, l'application **n'appelle pas** ses dépôts métier : les stores
+  persistés font foi (`syncRemote` sort tôt). Les dépôts métier de `mockApi`
+  servent aux **tests de contrat** (`src/services/__tests__/contract.test.ts`).
+- Ils DOIVENT donc rester alignés sur ce document : un écart entre `mockApi` et
+  le serveur est un bug de contrat, pas un détail de démo.
 
 ## Mode démo
 

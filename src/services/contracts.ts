@@ -57,6 +57,12 @@ export interface ProductsRepository {
 export interface CreateSalePayload {
   sale: SaleTransaction;
   lines: CartLine[];
+  /**
+   * Créance créée par la vente (règlement partiel). Le serveur DOIT l'enregistrer
+   * dans la même transaction que la vente : c'est la seule façon de garantir
+   * qu'un encaissement à crédit ne se transforme pas en créance fantôme.
+   */
+  credit?: ClientCredit;
 }
 
 export interface SalesRepository {

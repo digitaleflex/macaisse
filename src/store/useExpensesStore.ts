@@ -16,6 +16,7 @@ import {
   migrateList,
   PERSIST_NAMES,
   persistOptions,
+  seedFallback,
 } from './storeUtils';
 
 export type ExpenseInput = Omit<Expense, 'id'>;
@@ -30,7 +31,7 @@ export interface ExpensesState {
 export const useExpensesStore = create<ExpensesState>()(
   persist(
     (set) => ({
-      expenses: SEED_EXPENSES.map((expense) => ({ ...expense })),
+      expenses: seedFallback(SEED_EXPENSES).map((expense) => ({ ...expense })),
 
       addExpense: (input) => {
         const expense: Expense = { ...input, id: createId('expense') };
@@ -49,7 +50,7 @@ export const useExpensesStore = create<ExpensesState>()(
       PERSIST_NAMES.expenses,
       (state) => ({ expenses: state.expenses }),
       (persisted) => ({
-        expenses: migrateList(persisted, 'expenses', toExpense, SEED_EXPENSES),
+        expenses: migrateList(persisted, 'expenses', toExpense, seedFallback(SEED_EXPENSES)),
       })
     )
   )

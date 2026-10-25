@@ -1,7 +1,56 @@
 // Règles métier des crédits clients : échéances, statut, paiements, synthèse.
 
 import type { ClientCredit, CreditStatus } from '../types';
-import { fullDaysBetween, parseDate } from './dates';
+import { addDays, fullDaysBetween, parseDate, toIsoDate } from './dates';
+
+/** Échéance par défaut d'un crédit né d'une vente au comptoir (en jours). */
+export const DEFAULT_CREDIT_TERM_DAYS = 30;
+
+/** Civilités ignorées lors du calcul des initiales. */
+const CIVILITIES = /^(m|mme|mlle|mr|mrs|dr)\.?$/i;
+
+/** Initiales d'affichage (« M. Ba Ousmane » → « BO »), repli « CL ». */
+export function initialsFrom(name: string): string {
+  const initials = name
+    .split(/\s+/)
+    .filter((word) => word.length > 0 && !CIVILITIES.test(word))
+    .map((word) => word.charAt(0))
+    .join('')
+    .toUpperCase()
+    .slice(0, 2);
+  return initials.length > 0 ? initials : 'CL';
+}
+
+export interface CreditFromSaleInput {
+  clientName: string;
+  amount: number;
+  date: Date;
+  /** Commerce ou repère saisi par le caissier (« Client comptoir » par défaut). */
+  place: string;
+}
+
+/**
+ * Créance issue d'une vente au comptoir : échéance à 30 jours, montants entiers
+ * en FCFA. Le téléphone reste vide : il n'est pas saisi à la caisse.
+ */
+export function creditFromSale({
+  clientName,
+  amount,
+  date,
+  place,
+}: CreditFromSaleInput): Omit<ClientCredit, 'id' | 'status' | 'daysLate'> {
+  const name = clientName.trim();
+  const total = Math.max(0, Math.round(amount));
+  return {
+    clientName: name,
+    initials: initialsFrom(name),
+    shopOrLocation: place,
+    phone: '',
+    remainingAmount: total,
+    totalInitial: total,
+    dueDate: toIsoDate(addDays(date, DEFAULT_CREDIT_TERM_DAYS)),
+  };
+}
 
 /** Nombre de jours de retard (0 si le crédit n'est pas échu). */
 export function daysLate(dueDate: string, now: Date = new Date()): number {

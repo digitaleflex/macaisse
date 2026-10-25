@@ -17,6 +17,7 @@ import {
   migrateList,
   PERSIST_NAMES,
   persistOptions,
+  seedFallback,
 } from './storeUtils';
 
 export interface ProductsState {
@@ -51,7 +52,7 @@ function sanitizeProduct(product: Product): Product {
 export const useProductsStore = create<ProductsState>()(
   persist(
     (set, get) => ({
-      products: SEED_PRODUCTS.map(sanitizeProduct),
+      products: seedFallback(SEED_PRODUCTS).map(sanitizeProduct),
 
       addProduct: (input) => {
         const product = sanitizeProduct({ ...input, id: createId('product') });
@@ -112,7 +113,7 @@ export const useProductsStore = create<ProductsState>()(
       PERSIST_NAMES.products,
       (state) => ({ products: state.products }),
       (persisted) => ({
-        products: migrateList(persisted, 'products', toProduct, SEED_PRODUCTS),
+        products: migrateList(persisted, 'products', toProduct, seedFallback(SEED_PRODUCTS)),
       })
     )
   )

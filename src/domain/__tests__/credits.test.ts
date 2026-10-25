@@ -3,9 +3,12 @@ import type { ClientCredit } from '../../types';
 import {
   applyPayment,
   computeCreditStatus,
+  creditFromSale,
   creditProgress,
   creditSummary,
   daysLate,
+  DEFAULT_CREDIT_TERM_DAYS,
+  initialsFrom,
 } from '../credits';
 
 function makeCredit(overrides: Partial<ClientCredit>): ClientCredit {
@@ -139,5 +142,38 @@ describe('creditSummary', () => {
       settled: 0,
       count: 0,
     });
+  });
+});
+
+describe('initialsFrom', () => {
+  it('ignore les civilités et garde deux initiales', () => {
+    expect(initialsFrom('M. Ba Ousmane')).toBe('BO');
+    expect(initialsFrom('Mme Fatou Diop')).toBe('FD');
+  });
+
+  it('gère un nom simple et un nom vide', () => {
+    expect(initialsFrom('Awa')).toBe('A');
+    expect(initialsFrom('   ')).toBe('CL');
+  });
+});
+
+describe('creditFromSale', () => {
+  it('crée une créance à échéance 30 jours, montants entiers', () => {
+    const credit = creditFromSale({
+      clientName: 'Koffi Mensah',
+      amount: 1234.6,
+      date: new Date(2024, 0, 15),
+      place: 'Client comptoir',
+    });
+    expect(credit).toMatchObject({
+      clientName: 'Koffi Mensah',
+      initials: 'KM',
+      shopOrLocation: 'Client comptoir',
+      phone: '',
+      remainingAmount: 1235,
+      totalInitial: 1235,
+      dueDate: '2024-02-14',
+    });
+    expect(DEFAULT_CREDIT_TERM_DAYS).toBe(30);
   });
 });

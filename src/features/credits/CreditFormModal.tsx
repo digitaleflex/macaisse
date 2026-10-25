@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import type { CreditInput } from '@/store/useCreditsStore';
 import { t } from '@/content';
 import { addDays, toIsoDate } from '@/domain/dates';
+import { DEFAULT_CREDIT_TERM_DAYS, initialsFrom } from '@/domain/credits';
 import { Button, Input, Modal } from '@/ui';
 
 /** Enregistrement d'un nouveau crédit client (création déléguée au parent). */
@@ -12,26 +13,13 @@ export interface CreditFormModalProps {
 }
 
 const DEFAULT_AMOUNT = 30000;
-const DEFAULT_TERM_DAYS = 30;
-
-function initialsOf(name: string): string {
-  return (
-    name
-      .split(/\s+/)
-      .filter((word) => word.length > 0 && !/^(m\.|mme|mlle)$/i.test(word))
-      .map((word) => word[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2) || 'CL'
-  );
-}
 
 export function CreditFormModal({ open, onClose, onSubmit }: CreditFormModalProps) {
   const [clientName, setClientName] = useState('');
   const [phone, setPhone] = useState<string>(t.credits.form.defaultPhonePrefix);
   const [place, setPlace] = useState('');
   const [amount, setAmount] = useState<number>(DEFAULT_AMOUNT);
-  const [dueDate, setDueDate] = useState(() => toIsoDate(addDays(new Date(), DEFAULT_TERM_DAYS)));
+  const [dueDate, setDueDate] = useState(() => toIsoDate(addDays(new Date(), DEFAULT_CREDIT_TERM_DAYS)));
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -39,11 +27,11 @@ export function CreditFormModal({ open, onClose, onSubmit }: CreditFormModalProp
     if (name.length === 0 || amount <= 0) return;
     onSubmit({
       clientName: name,
-      initials: initialsOf(name),
+      initials: initialsFrom(name),
       shopOrLocation: place.trim() || t.credits.form.defaultPlace,
       phone: phone.trim(),
-      remainingAmount: amount,
-      totalInitial: amount,
+      remainingAmount: Math.round(amount),
+      totalInitial: Math.round(amount),
       dueDate,
     });
   };

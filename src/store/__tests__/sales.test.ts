@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { CartLine, Product, SaleTransaction } from '@/types';
 import { useCartStore } from '../useCartStore';
+import { useCreditsStore } from '../useCreditsStore';
 import { useProductsStore } from '../useProductsStore';
 import { selectRevenueSeries, selectTodaySales, useSalesStore } from '../useSalesStore';
 
@@ -133,5 +134,50 @@ describe('sélecteurs de ventes', () => {
 
     const series = selectRevenueSeries(3)(useSalesStore.getState());
     expect(series).toHaveLength(3);
+  });
+});
+
+describe('completeSale — vente à crédit', () => {
+  beforeEach(() => {
+    useProductsStore.setState({ products: [makeProduct({ price: 1000, stock: 10 })] });
+    useCartStore.setState({ lines: [line({ quantity: 2 })] });
+    useCreditsStore.setState({ credits: [] });
+    useSalesStore.setState({ sales: [], sequence: 0 });
+  });
+
+  it('crée la créance correspondante dans le store des crédits', () => {
+    const sale = useSalesStore.getState().completeSale({
+      paymentMethod: 'Crédit Partiel',
+      clientName: 'M. Ba Ousmane',
+      creditAmount: 2000,
+    });
+
+    expect(sale.remainingAmount).toBe(2000);
+    expect(sale.status).toBe('Partiel');
+
+    const credits = useCreditsStore.getState().credits;
+    expect(credits).toHaveLength(1);
+    expect(credits[0]).toMatchObject({
+      clientName: 'M. Ba Ousmane',
+      initials: 'BO',
+      remainingAmount: 2000,
+      totalInitial: 2000,
+      status: 'En attente',
+    });
+  });
+
+  it('ne crée aucune créance pour une vente soldée', () => {
+    useSalesStore.getState().completeSale({ paymentMethod: 'Espèces' });
+    expect(useCreditsStore.getState().credits).toHaveLength(0);
+  });
+
+  it('vide le panier et décrémente le stock dans le même mouvement', () => {
+    useSalesStore.getState().completeSale({
+      paymentMethod: 'Crédit Partiel',
+      clientName: 'Awa',
+      creditAmount: 1000,
+    });
+    expect(useCartStore.getState().lines).toHaveLength(0);
+    expect(useProductsStore.getState().products[0]?.stock).toBe(8);
   });
 });

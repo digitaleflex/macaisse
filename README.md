@@ -10,7 +10,7 @@ simulées persistées localement) et se branche sur un **backend REST** sans
 modifier une ligne d'interface.
 
 > État : frontend complet, aucune dépendance backend dans ce dépôt.
-> `bun run lint` ✔ · `bun run test` → 19 fichiers / 146 tests ✔ · `bun run build` ✔
+> `bun run lint` ✔ · `bun run test` → 21 fichiers / 165 tests ✔ · `bun run build` ✔
 
 ---
 
@@ -232,7 +232,7 @@ docs/
 
 ```bash
 bun run lint   # tsc strict + eslint --max-warnings 0
-bun run test   # 19 fichiers, 146 tests
+bun run test   # 21 fichiers, 165 tests
 ```
 
 - **`src/domain/__tests__/`** — règles métier pures (stock, ventes, crédits,

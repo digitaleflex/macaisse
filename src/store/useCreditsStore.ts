@@ -18,6 +18,7 @@ import {
   migrateList,
   PERSIST_NAMES,
   persistOptions,
+  seedFallback,
 } from './storeUtils';
 
 /** Entrée de création : le statut et le retard sont dérivés par le domaine. */
@@ -25,7 +26,12 @@ export type CreditInput = Omit<ClientCredit, 'id' | 'status' | 'daysLate'>;
 
 export interface CreditsState {
   credits: ClientCredit[];
-  addCredit: (input: CreditInput) => void;
+  /**
+   * Ajoute une créance et renvoie l'objet créé (identifiant et statut inclus).
+   * `options.remote === false` : insertion locale seule, utilisée par une vente
+   * qui transmet déjà la créance au serveur (évite un double POST).
+   */
+  addCredit: (input: CreditInput, options?: { remote?: boolean }) => ClientCredit;
   /** Rejette (exception française) un montant ≤ 0 ou un sur-paiement. */
   payCredit: (id: string, amount: number) => void;
   markSettled: (id: string) => void;
@@ -35,9 +41,9 @@ export interface CreditsState {
 export const useCreditsStore = create<CreditsState>()(
   persist(
     (set, get) => ({
-      credits: SEED_CREDITS.map((credit) => ({ ...credit })),
+      credits: seedFallback(SEED_CREDITS).map((credit) => ({ ...credit })),
 
-      addCredit: (input) => {
+      addCredit: (input, options = {}) => {
         const late = daysLate(input.dueDate);
         const credit: ClientCredit = {
           ...input,
@@ -46,7 +52,10 @@ export const useCreditsStore = create<CreditsState>()(
         };
         if (late > 0) credit.daysLate = late;
         set((state) => ({ credits: [credit, ...state.credits] }));
-        syncRemote((api) => api.credits.create(credit), 'Crédit non synchronisé.');
+        if (options.remote !== false) {
+          syncRemote((api) => api.credits.create(credit), 'Crédit non synchronisé.');
+        }
+        return credit;
       },
 
       payCredit: (id, amount) => {
@@ -79,7 +88,7 @@ export const useCreditsStore = create<CreditsState>()(
       PERSIST_NAMES.credits,
       (state) => ({ credits: state.credits }),
       (persisted) => ({
-        credits: migrateList(persisted, 'credits', toCredit, SEED_CREDITS),
+        credits: migrateList(persisted, 'credits', toCredit, seedFallback(SEED_CREDITS)),
       })
     )
   )

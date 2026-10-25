@@ -223,6 +223,7 @@ export const fr = {
       change: 'Monnaie à rendre',
       creditRemaining: 'Reste dû par le client',
       creditRequired: 'Veuillez saisir le montant à crédit.',
+      clientRequired: 'Un règlement à crédit nécessite le nom du client.',
       erase: 'Effacer',
       confirm: 'Valider la vente',
       success: (number: string) => `Vente ${number} validée — reçu généré.`,

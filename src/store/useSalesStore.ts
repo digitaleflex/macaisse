@@ -6,11 +6,14 @@ import { persist } from 'zustand/middleware';
 import type { PaymentMethod, SaleTransaction, SeriesPoint } from '@/types';
 import { nextSaleNumber } from '@/domain/ids';
 import { isSameDay, parseDate } from '@/domain/dates';
+import { creditFromSale } from '@/domain/credits';
 import { completeSale as buildSale } from '@/domain/sales';
 import { dailyRevenueSeries } from '@/domain/finances';
+import { t } from '@/content';
 import { SEED_SALES } from '@/mocks';
 import { syncRemote } from '@/services';
 import { useCartStore } from './useCartStore';
+import { useCreditsStore } from './useCreditsStore';
 import { useProductsStore } from './useProductsStore';
 import {
   coerceId,
@@ -22,6 +25,7 @@ import {
   migrateList,
   PERSIST_NAMES,
   persistOptions,
+  seedFallback,
 } from './storeUtils';
 
 export interface CompleteSaleActionInput {
@@ -45,7 +49,7 @@ export interface SalesState {
 export const useSalesStore = create<SalesState>()(
   persist(
     (set, get) => ({
-      sales: SEED_SALES.map((sale) => ({ ...sale })),
+      sales: seedFallback(SEED_SALES).map((sale) => ({ ...sale })),
       sequence: 0,
 
       completeSale: (input) => {
@@ -65,11 +69,30 @@ export const useSalesStore = create<SalesState>()(
           saleNumber: nextSaleNumber(sequence, now),
         });
 
+        // Règlement partiel : la créance naît de la vente, dans le même mouvement.
+        // Elle est transmise au serveur avec la vente (transaction unique) d'où
+        // l'insertion locale sans synchronisation propre.
+        const credit =
+          sale.remainingAmount !== undefined && sale.remainingAmount > 0
+            ? useCreditsStore.getState().addCredit(
+                creditFromSale({
+                  clientName: sale.clientName ?? '',
+                  amount: sale.remainingAmount,
+                  date: now,
+                  place: t.credits.form.defaultPlace,
+                }),
+                { remote: false }
+              )
+            : undefined;
+
         // Écriture atomique du stock (un seul set).
         useProductsStore.getState().setProducts(updatedProducts);
         useCartStore.getState().clear();
         set((state) => ({ sales: [sale, ...state.sales], sequence }));
-        syncRemote((api) => api.sales.create({ sale, lines }), 'Vente non synchronisée.');
+        syncRemote(
+          (api) => api.sales.create(credit ? { sale, lines, credit } : { sale, lines }),
+          'Vente non synchronisée.'
+        );
 
         return sale;
       },
@@ -81,7 +104,7 @@ export const useSalesStore = create<SalesState>()(
         const record = isRecord(persisted) ? persisted : {};
         const rawSequence = coerceNumber(record.sequence, 0);
         return {
-          sales: migrateList(persisted, 'sales', toSale, SEED_SALES),
+          sales: migrateList(persisted, 'sales', toSale, seedFallback(SEED_SALES)),
           sequence: rawSequence >= 0 ? Math.trunc(rawSequence) : 0,
         };
       }

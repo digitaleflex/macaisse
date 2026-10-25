@@ -18,6 +18,7 @@ import {
   migrateList,
   PERSIST_NAMES,
   persistOptions,
+  seedFallback,
 } from './storeUtils';
 
 /** Entrée de création : `id`, `time` et `read` sont générés par défaut. */
@@ -37,7 +38,7 @@ export interface NotificationsState {
 export const useNotificationsStore = create<NotificationsState>()(
   persist(
     (set) => ({
-      notifications: SEED_NOTIFICATIONS.map((notification) => ({ ...notification })),
+      notifications: seedFallback(SEED_NOTIFICATIONS).map((notification) => ({ ...notification })),
 
       push: (input) =>
         set((state) => ({
@@ -77,7 +78,7 @@ export const useNotificationsStore = create<NotificationsState>()(
       PERSIST_NAMES.notifications,
       (state) => ({ notifications: state.notifications }),
       (persisted) => ({
-        notifications: migrateList(persisted, 'notifications', toNotification, SEED_NOTIFICATIONS),
+        notifications: migrateList(persisted, 'notifications', toNotification, seedFallback(SEED_NOTIFICATIONS)),
       })
     )
   )

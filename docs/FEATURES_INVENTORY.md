@@ -6,7 +6,7 @@ Périmètre : `src/` uniquement (le dépôt ne contient aucun backend).
 **Chiffres clés** — 8 fichiers d'app `(622 l)`, 54 fichiers de features `(4 778 l)`,
 19 fichiers `ui/` `(1 222 l)`, 21 fichiers `store/` `(2 244 l)`, 9 fichiers
 `services/` `(944 l)`, 16 fichiers `domain/` `(1 486 l)`, ~13 400 lignes de `src/`.
-Tests : **19 fichiers / 146 tests**.
+Tests : **21 fichiers / 165 tests**.
 
 Légende : ✔ implémenté et fonctionnel · ◐ simulé (UI + toast, aucun effet réel) ·
 ✗ absent du code.
@@ -302,7 +302,7 @@ chiffres `.font-num`).
 
 - **Cœur métier réellement fonctionnel** : POS, stock, crédits, dépenses, bilan,
   export comptable, équipe/rôles, multi-organisation — le tout persisté par
-  organisation et couvert par 146 tests.
+  organisation et couvert par 165 tests.
 - **Surface « démonstration »** : impression, WhatsApp, scan, inventaire tournant,
   clôture, réglages POS, facturation — visibles volontairement, sans effet réel et
   sans mensonge (toasts explicites).

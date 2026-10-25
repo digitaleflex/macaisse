@@ -1,13 +1,23 @@
 # Audit d'architecture — Ma Caisse (frontend)
 
 État audité : commit **`c80b925`** (`main`), ~13 400 lignes dans `src/`,
-19 fichiers / 146 tests, `tsc --noEmit` + ESLint `--max-warnings 0` verts,
+21 fichiers / 165 tests, `tsc --noEmit` + ESLint `--max-warnings 0` verts,
 aucun backend dans le dépôt.
 
 Méthode : lecture du code de `src/` + vérification par `grep`/lecture ciblée de
 **chaque** constat (aucun constat n'est repris d'une doc ou d'une supposition).
 Les affirmations du rapport d'audit initial qui se sont révélées fausses sont
 listées en [§6](#6-corrections-apportées-au-rapport-initial).
+
+## 0. Suivi des corrections (post-audit)
+
+| Constat | Statut | Détail |
+|---|---|---|
+| **C2** — vente à crédit sans créance | ✅ **corrigé** | `creditAmount` borné au sous-total et arrondi, nom client obligatoire, créance créée dans le même flux et transmise au serveur dans `POST /sales` (`{ sale, lines, credit? }`). Tests : domaine, store, contrat |
+| **M2** — seeds de démo en mode `http` | ✅ **corrigé** | `seedFallback()` : plus aucune fixture en état initial ni en repli de migration dès que `VITE_API_MODE=http` |
+| **M1** — `mockApi` métier « fantôme » | 🟡 **cadré** | Statut documenté dans `API_CONTRACT.md` (spécification exécutable, non appelée en mode démo) + parité partielle testée (`services/__tests__/contract.test.ts`) : payload vente+créance, `409` stock, `403` hors organisation |
+| **C1** — réconciliation `http` sans rollback | ⏳ **en attente backend** | Prérequis contractuels désormais écrits : codes d'erreur normatifs, idempotence, transaction vente+créance, `updatedAt` |
+| M3, M4, M6–M9, §4 | ⏳ ouvert | Voir plan d'action §7 |
 
 ---
 
