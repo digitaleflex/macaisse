@@ -20,8 +20,8 @@ Légende : ✔ implémenté et fonctionnel · ◐ simulé (UI + toast, aucun eff
 | Élément | Détail | Fichier |
 |---|---|---|
 | Écran | Deux onglets *Se connecter* / *Créer un compte*, panneau marketing (3 arguments) | `features/auth/LoginScreen.tsx` (247 l) |
-| Connexion | e-mail + mot de passe, erreurs typées (`invalidCredentials`, `sessionExpired`, `forbidden`…) | idem |
-| Inscription | 8 champs : prénom, nom, e-mail, téléphone, mot de passe, nom du commerce, activité, ville | idem |
+| Connexion | e-mail + mot de passe affichable, erreurs **par champ**, `autoComplete`, erreurs API typées (`invalidCredentials`, `sessionExpired`, `forbidden`…) | idem |
+| Inscription | **5 champs** : prénom, nom, e-mail, mot de passe (12 car. min), nom du commerce — téléphone, ville et activité sont différés (RG-A04) | idem |
 | Connexion 1 clic | 4 comptes de démonstration listés (mot de passe `demo1234`) | `mocks/fixtures/accounts.ts` |
 | Google (démo) | « Continuer avec Google » : identité simulée, espace « Mon commerce » créé au premier accès (production = PKCE serveur, `501` en `http`) | `features/auth/LoginScreen.tsx`, `adapters/mockApi.ts` |
 | Reprise de session | `restoreSession()` au démarrage, écran splash + écran d'erreur avec *Réessayer* / *Se déconnecter* | `app/App.tsx`, `store/auth.ts` |

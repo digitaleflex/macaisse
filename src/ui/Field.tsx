@@ -45,9 +45,11 @@ export interface InputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 
   hint?: ReactNode;
   icon?: string;
   suffix?: ReactNode;
+  /** Contrôle interactif à droite du champ (ex. afficher/masquer le mot de passe). */
+  action?: ReactNode;
 }
 
-export function Input({ label, error, hint, icon, suffix, required, className, id, name, ...rest }: InputProps) {
+export function Input({ label, error, hint, icon, suffix, action, required, className, id, name, ...rest }: InputProps) {
   const generated = useId();
   const inputId = id ?? name ?? generated;
   return (
@@ -63,12 +65,16 @@ export function Input({ label, error, hint, icon, suffix, required, className, i
           className={cn(
             CONTROL,
             icon ? 'pl-10' : 'pl-3.5',
-            suffix ? 'pr-14' : 'pr-3.5',
+            action ? 'pr-12' : suffix ? 'pr-14' : 'pr-3.5',
             error !== undefined ? 'border-rose-300' : 'border-line hover:border-line-strong'
           )}
         />
-        {suffix && (
-          <span className="absolute right-3.5 text-xs font-semibold text-slate-400 pointer-events-none">{suffix}</span>
+        {action ? (
+          <span className="absolute right-1.5 flex items-center">{action}</span>
+        ) : (
+          suffix && (
+            <span className="absolute right-3.5 text-xs font-semibold text-slate-400 pointer-events-none">{suffix}</span>
+          )
         )}
       </div>
     </FieldShell>

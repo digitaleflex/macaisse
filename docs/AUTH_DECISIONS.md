@@ -318,7 +318,7 @@ Identifiants stables : **RG-Axx**, cités par `API_CONTRACT.md` et par les tests
 | Transport | `src/services/http/httpClient.ts`, `services/tenant.ts` | `credentials: 'include'`, suppression du Bearer, en-tête CSRF |
 | Persistance | `src/store/useAuthStore.ts:32-41` | `token` retiré du `partialize` (les écarts A1 et A9 disparaissent) |
 | Orchestration | `src/store/auth.ts:95-115` | `login`/`signup` remplacés par `requestOtp`/`verifyOtp` ; `restoreSession` s'appuie sur `GET /auth/me` + cookie |
-| Écran d'accès | `src/features/auth/LoginScreen.tsx` | 2 étapes (téléphone → code), bouton Google, lien « J'ai déjà un compte » ; suppression des 8 champs |
+| Écran d'accès | `src/features/auth/LoginScreen.tsx` | ✅ 5 champs + Google + mot de passe affichable + erreurs par champ ; reste D2 (téléphone → code) |
 | Onboarding | `src/features/accueil/*` | checklist 3 étapes + état vide actionnable (l'écart « atterrissage vide » de la revue UX) |
 | Verrouillage caisse | nouveau `src/features/auth/LockScreen.tsx` | PIN, changement d'utilisateur, verrouillage d'inactivité |
 | Contrat | `src/services/contracts.ts`, `endpoints.ts`, `mockApi.ts`, `httpApi.ts` | nouveaux endpoints §2 de `API_CONTRACT.md` ; `mockApi` = spécification exécutable, donc OTP et PIN simulés |

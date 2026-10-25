@@ -63,8 +63,8 @@ Démarrage : restoreSession() ─► api.auth.me() ─► même activation
 | A8 | mineur | Profil non éditable, pas de suppression de compte | `AuthRepository` | [#24](https://github.com/digitaleflex/macaisse/issues/24) |
 | A9 | mineur | Migration du store auth sans coercition (jeton/profil arbitraires) | `store/useAuthStore.ts:33,40` | [#4](https://github.com/digitaleflex/macaisse/issues/4) ; disparaît avec D1 (plus de jeton persisté) |
 | A10 | mineur | `403` traité comme une session expirée à la reprise | `restoreSession` | **décidé RG-A12** — `403` et `STEP_UP_REQUIRED` ne déconnectent pas |
-| A11 | majeur (UX) | Les champs d'inscription n'ont aucun `autoComplete` : pas de gestionnaire de mots de passe, aucune saisie assistée sur mobile | `features/auth/LoginScreen.tsx:185-197` | [#21](https://github.com/digitaleflex/macaisse/issues/21) |
-| A12 | majeur (UX) | Mot de passe saisi **une seule fois**, sans révélation ni confirmation, et sans récupération possible → une faute de frappe perd le compte | `features/auth/LoginScreen.tsx:191` | **supprimé par D2/D4** (plus de mot de passe à l'inscription) |
+| A11 | ~~majeur (UX)~~ ✅ **corrigé** | `autoComplete` renseigné sur les deux formulaires (gestionnaires de mots de passe, saisie assistée) | `features/auth/LoginScreen.tsx` | livré |
+| A12 | 🟡 **partiel** | Mot de passe **affichable** et minimum porté à **12 caractères** avec consigne ; la récupération par OTP reste à livrer (D4) | `features/auth/LoginScreen.tsx`, `content/fr.ts` | D4 / [#21](https://github.com/digitaleflex/macaisse/issues/21) |
 | A13 | majeur (UX) | Après inscription, espace vide sans onboarding : les états vides renvoient « Afficher tous les articles » / « Réinitialiser » sur un catalogue vide | `content/fr.ts:189-191,303-304` | **décidé RG-A04** — onboarding 3 étapes + états vides actionnables |
 
 ---
