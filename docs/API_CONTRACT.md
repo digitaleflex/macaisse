@@ -63,6 +63,8 @@ VITE_API_TIMEOUT_MS=15000
 | POST | `/auth/signup` | `SignupInput` (compte + commerce) | `AuthResult` — crée l'organisation, l'utilisateur en est `owner` ; `409` si e-mail déjà utilisé |
 | GET | `/auth/me` | — | `AuthResult` (jeton inchangé) |
 | POST | `/auth/logout` | — | `204` |
+| GET | `/auth/invitations` | — | `Invitation[]` — invitations reçues, en attente d'acceptation |
+| POST | `/auth/invitations/:orgId/accept` | — | `AuthResult` (appartenance passée à `active`) · `404 INVITATION_NOT_FOUND` |
 
 ```jsonc
 // AuthResult
@@ -71,6 +73,27 @@ VITE_API_TIMEOUT_MS=15000
   "memberships": [
     { "organizationId": "org-etoile", "organizationName": "Boutique Étoile", "city": "Dakar Plateau", "role": "owner" },
     { "organizationId": "org-baobab", "organizationName": "Supérette Le Baobab", "city": "Abidjan", "role": "manager" } ] }
+```
+
+### Règles d'invitation (normatives)
+
+1. **Une invitation n'ouvre aucun accès.** Une appartenance `status: "invited"` ne
+   figure pas dans `AuthResult.memberships` et **toute** route métier répond
+   `403 INVITATION_PENDING` (y compris `GET /orgs/:orgId/session`).
+2. **La connexion n'active rien.** Accepter une invitation est un acte explicite
+   (`POST /auth/invitations/:orgId/accept`) ; un même utilisateur peut avoir
+   plusieurs invitations en attente et les accepter séparément.
+3. `GET /auth/invitations` ne renvoie que les invitations de l'utilisateur du
+   jeton, jamais celles d'un collègue.
+4. L'acceptation est idempotente : ré-accepter une invitation déjà active renvoie
+   `200` avec l'`AuthResult` courant (pas d'erreur).
+5. Une invitation doit expirer (7 jours) et pouvoir être révoquée par un
+   propriétaire — voir l'issue #20 pour le jeton signé et l'envoi d'e-mail.
+
+```jsonc
+// Invitation
+{ "organizationId": "org-baobab", "organizationName": "Supérette Le Baobab",
+  "city": "Abidjan", "role": "cashier", "status": "invited", "invitedAt": "2026-10-18" }
 ```
 
 ## Routes — organisation et équipe

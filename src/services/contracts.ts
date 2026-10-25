@@ -8,6 +8,7 @@ import type {
   Product,
   SaleTransaction,
   InviteMemberInput,
+  Invitation,
   LoginInput,
   Role,
   Session,
@@ -33,6 +34,13 @@ export interface AuthRepository {
   logout(): Promise<void>;
   /** Comptes proposés sur l'écran de connexion (vide hors démo). */
   demoAccounts(): Promise<DemoAccount[]>;
+  /** Invitations reçues par l'utilisateur connecté, en attente d'acceptation. */
+  invitations(): Promise<Invitation[]>;
+  /**
+   * Accepte explicitement une invitation : l'appartenance passe de `invited` à
+   * `active` et le résultat d'auth renvoyé contient la nouvelle liste.
+   */
+  acceptInvitation(organizationId: string): Promise<AuthResult>;
 }
 
 export interface SessionRepository {

@@ -1,11 +1,11 @@
-import { useEffect, useRef, useState } from 'react';
-import type { Membership } from '@/types';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import type { Invitation, Membership } from '@/types';
 import { t } from '@/content';
-import { switchOrganization } from '@/store/auth';
+import { acceptInvitation, loadInvitations, switchOrganization } from '@/store/auth';
 import { selectCurrentOrganizationId, selectMemberships, useAuthStore } from '@/store/useAuthStore';
 import { useCurrentSession } from '@/store/useSessionStore';
 import { useUiStore } from '@/store/useUiStore';
-import { Avatar, Badge, Icon, cn } from '@/ui';
+import { Avatar, Badge, Button, Icon, cn } from '@/ui';
 
 function initialsOf(name: string): string {
   return name
@@ -26,6 +26,79 @@ function useSwitch() {
   };
 }
 
+/** Invitations reçues, acceptables explicitement (jamais d'accès implicite). */
+function PendingInvitations({ onSelected }: { onSelected?: () => void }) {
+  const showToast = useUiStore((state) => state.showToast);
+  const [invitations, setInvitations] = useState<Invitation[]>([]);
+  const [pending, setPending] = useState<string | null>(null);
+
+  const refresh = useCallback(() => {
+    let alive = true;
+    loadInvitations()
+      .then((list) => {
+        if (alive) setInvitations(list);
+      })
+      .catch(() => undefined);
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  useEffect(() => refresh(), [refresh]);
+
+  if (invitations.length === 0) return null;
+
+  const accept = async (invitation: Invitation) => {
+    setPending(invitation.organizationId);
+    try {
+      onSelected?.();
+      await acceptInvitation(invitation.organizationId);
+      showToast(t.org.accepted(invitation.organizationName), 'success');
+      setInvitations((previous) =>
+        previous.filter((item) => item.organizationId !== invitation.organizationId)
+      );
+    } catch {
+      showToast(t.org.acceptFailed, 'error');
+    } finally {
+      setPending(null);
+    }
+  };
+
+  return (
+    <div className="mt-3">
+      <div className="text-xs font-semibold uppercase tracking-wider text-slate-500 px-1 mb-2">
+        {t.org.pendingInvitations}
+      </div>
+      <ul className="flex flex-col gap-1.5">
+        {invitations.map((invitation) => (
+          <li
+            key={invitation.organizationId}
+            className="flex items-center gap-3 p-3 rounded-2xl border border-dashed border-line bg-amber-50/40"
+          >
+            <Icon name="mail" size={20} className="text-amber-600" />
+            <span className="flex-1 min-w-0">
+              <span className="block text-sm font-semibold text-ink-900 truncate">
+                {invitation.organizationName}
+              </span>
+              <span className="block text-xs text-slate-500 truncate">
+                {invitation.city} · {t.roles[invitation.role]}
+              </span>
+            </span>
+            <Button
+              variant="brand"
+              size="sm"
+              disabled={pending === invitation.organizationId}
+              onClick={() => void accept(invitation)}
+            >
+              {t.org.acceptInvitation}
+            </Button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 /** Liste des espaces de l'utilisateur (modales, mobile). */
 export function OrgList({ onSelected }: { onSelected?: () => void }) {
   const memberships = useAuthStore(selectMemberships);
@@ -33,6 +106,7 @@ export function OrgList({ onSelected }: { onSelected?: () => void }) {
   const select = useSwitch();
 
   return (
+    <>
     <ul className="flex flex-col gap-1.5">
       {memberships.map((membership) => {
         const active = membership.organizationId === currentId;
@@ -59,6 +133,8 @@ export function OrgList({ onSelected }: { onSelected?: () => void }) {
         );
       })}
     </ul>
+    <PendingInvitations onSelected={onSelected} />
+    </>
   );
 }
 

@@ -52,10 +52,10 @@ Démarrage : restoreSession() ─► api.auth.me() ─► même activation
 | # | Sévérité | Constat | Preuve | Issue |
 |---|---|---|---|---|
 | A1 | **critique** | Jeton en `localStorage`, sans TTL, sans refresh ni `httpOnly` → vol par XSS valable indéfiniment | `store/useAuthStore.ts` (`persist`) | [#19](https://github.com/digitaleflex/macaisse/issues/19) |
-| A2 | **critique (mock)** | La connexion active **toutes** les invitations en attente ; `requireMembership` ignore `status` | `adapters/mockApi.ts:139-145,189` | [#20](https://github.com/digitaleflex/macaisse/issues/20) |
+| A2 | ~~critique~~ ✅ **corrigé** | La connexion n'active plus rien ; `requireMembership` exige `status === 'active'` (sinon `403 INVITATION_PENDING`) ; acceptation explicite via `POST /auth/invitations/:orgId/accept` | `adapters/mockApi.ts`, `store/auth.ts` | [#20](https://github.com/digitaleflex/macaisse/issues/20) fermée |
 | A3 | majeur | Pas de mot de passe oublié, pas de vérification d'e-mail, pas de MFA ; mot de passe = 8 caractères côté client | `features/auth/LoginScreen.tsx:26` | [#21](https://github.com/digitaleflex/macaisse/issues/21) |
 | A4 | majeur | Aucune limitation des tentatives, aucun journal de connexion | absent | [#22](https://github.com/digitaleflex/macaisse/issues/22) |
-| A5 | majeur | Invitations sans jeton signé, sans expiration, sans refus | `types/index.ts` (`status`) | [#20](https://github.com/digitaleflex/macaisse/issues/20) |
+| A5 | 🟡 **partiel** | Statut vérifié et acceptation explicite ✔ ; restent le jeton signé, l'expiration et la révocation côté serveur | `types/index.ts` (`Invitation`) | [#20](https://github.com/digitaleflex/macaisse/issues/20) (suite backend) |
 | A6 | majeur | `logout()` laisse toutes les collections métier en `localStorage` (poste partagé) | `store/auth.ts` | [#23](https://github.com/digitaleflex/macaisse/issues/23) |
 | A7 | mineur | Échec d'activation : l'appelant affiche quand même un succès | `store/auth.ts:55-58` | [#10](https://github.com/digitaleflex/macaisse/issues/10) |
 | A8 | mineur | Profil non éditable, pas de suppression de compte | `AuthRepository` | [#24](https://github.com/digitaleflex/macaisse/issues/24) |

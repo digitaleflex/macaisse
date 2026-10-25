@@ -1,12 +1,17 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { t } from '@/content';
+import { addDays, toIsoDate } from '@/domain/dates';
 import { exportToCSV, type ExportFilterType } from '@/lib/export';
 import { useExpensesStore } from '@/store/useExpensesStore';
 import { useSalesStore } from '@/store/useSalesStore';
 import { useCurrentSession, usePermission } from '@/store/useSessionStore';
 import { useUiStore } from '@/store/useUiStore';
-import { Button, EmptyState, Icon, Modal } from '@/ui';
+import { Button, EmptyState, Icon, Modal, SegmentedControl } from '@/ui';
 import { ExportOptions, type ExportFormat } from './ExportOptions';
+
+type ExportPeriod = 'all' | '7d' | '30d';
+
+const PERIOD_DAYS: Record<Exclude<ExportPeriod, 'all'>, number> = { '7d': 7, '30d': 30 };
 
 /** Modale globale d'export comptable (pilotée par `useUiStore.modal === 'export'`). */
 export function ExportModal() {
@@ -21,23 +26,54 @@ export function ExportModal() {
 
   const [format, setFormat] = useState<ExportFormat>('PDF');
   const [filterType, setFilterType] = useState<ExportFilterType>('all');
+  const [period, setPeriod] = useState<ExportPeriod>('all');
   const [isExporting, setIsExporting] = useState(false);
 
-  const totalSales = sales.reduce((sum, sale) => sum + sale.amount, 0);
-  const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
-  const totalRecords = (filterType === 'expenses' ? 0 : sales.length) + (filterType === 'sales' ? 0 : expenses.length);
-  const hasAnyData = sales.length > 0 || expenses.length > 0;
+  const now = useMemo(() => new Date(), []);
+  // La période est appliquée aux compteurs ET au fichier : ce que l'on voit est
+  // ce qui est exporté (issue #9).
+  const range = useMemo(() => {
+    if (period === 'all') return {};
+    return { from: addDays(now, -(PERIOD_DAYS[period] - 1)), to: now };
+  }, [period, now]);
+
+  const scopedSales = useMemo(() => {
+    if (period === 'all') return sales;
+    const fromKey = range.from ? toIsoDate(range.from) : '';
+    const toKey = range.to ? toIsoDate(range.to) : '';
+    return sales.filter((sale) => sale.date >= fromKey && sale.date <= toKey);
+  }, [sales, period, range]);
+
+  const scopedExpenses = useMemo(() => {
+    if (period === 'all') return expenses;
+    const fromKey = range.from ? toIsoDate(range.from) : '';
+    const toKey = range.to ? toIsoDate(range.to) : '';
+    return expenses.filter((expense) => expense.date >= fromKey && expense.date <= toKey);
+  }, [expenses, period, range]);
+
+  const totalSales = scopedSales.reduce((sum, sale) => sum + sale.amount, 0);
+  const totalExpenses = scopedExpenses.reduce((sum, expense) => sum + expense.amount, 0);
+  const totalRecords =
+    (filterType === 'expenses' ? 0 : scopedSales.length) +
+    (filterType === 'sales' ? 0 : scopedExpenses.length);
+  const hasAnyData = scopedSales.length > 0 || scopedExpenses.length > 0;
+
+  const periodOptions = [
+    { value: 'all', label: t.exportModal.periodAll },
+    { value: '7d', label: t.periods['7d'] },
+    { value: '30d', label: t.periods['30d'] },
+  ];
 
   const handleDownload = async () => {
     setIsExporting(true);
     try {
       if (format === 'CSV') {
-        exportToCSV(filterType, sales, expenses);
+        exportToCSV(filterType, sales, expenses, range);
         showToast(t.exportModal.csvDone, 'success');
       } else {
         // jsPDF est chargé uniquement au moment de l'export.
         const { exportToPDF } = await import('@/lib/export/pdf');
-        exportToPDF(filterType, sales, expenses, business);
+        exportToPDF(filterType, sales, expenses, business, range);
         showToast(t.exportModal.pdfDone, 'success');
       }
       window.setTimeout(() => {
@@ -77,6 +113,13 @@ export function ExportModal() {
         </>
       }
     >
+      <SegmentedControl
+        label={t.exportModal.period}
+        value={period}
+        onChange={(value) => setPeriod(value === '7d' || value === '30d' ? value : 'all')}
+        options={periodOptions}
+      />
+
       {hasAnyData ? (
         <ExportOptions
           format={format}

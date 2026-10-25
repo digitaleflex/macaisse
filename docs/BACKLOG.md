@@ -75,8 +75,9 @@ négatif n'entre en état.
 |---|---|---|---|---|
 | [#9](https://github.com/digitaleflex/macaisse/issues/9) | Respecter la période + dater en heure locale | P1 | S/M | front |
 
-**Fini quand** un export déclenché depuis un bilan filtré ne contient que la
-période affichée, avec un nom de fichier en heure locale.
+✅ **Livré** — `buildAccountingRows(sales, expenses, filterType, { from, to })`,
+période appliquée avant le filtre de type, sélecteur 7 j / 30 j / tout dans la
+modale, nom de fichier en date locale, 6 tests dédiés.
 
 ---
 
@@ -90,12 +91,14 @@ période affichée, avec un nom de fichier en heure locale.
 | [#20](https://github.com/digitaleflex/macaisse/issues/20) | Cycle de vie des invitations (jeton, expiration, `status`) | P1 | M | contrat |
 | [#24](https://github.com/digitaleflex/macaisse/issues/24) | Édition de profil et suppression de compte | P2 | M | backend |
 
+✅ **#20 livré (partie front/mock)** — `requireMembership` exige
+`status === 'active'` (`403 INVITATION_PENDING`), la connexion n'active plus
+rien, `GET /auth/invitations` + `POST /auth/invitations/:orgId/accept` sont
+implémentés (mock + http), et le sélecteur d'espace affiche les invitations à
+accepter. Restent côté backend : jeton signé, expiration 7 j, révocation, e-mail.
+
 **Fini quand** une invitation ne donne accès qu'après acceptation explicite, et
 qu'un compte peut être corrigé ou supprimé (RGPD).
-
-> **#20 est corrigeable en mock dès maintenant** : `requireMembership` doit
-> exiger `status === 'active'` et la connexion ne doit plus activer toutes les
-> invitations d'un utilisateur.
 
 ---
 

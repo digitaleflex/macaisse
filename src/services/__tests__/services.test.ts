@@ -68,7 +68,7 @@ describe('createMockApi — multi-organisation', () => {
     await expect(api.products.list()).rejects.toMatchObject({ status: 403 });
   });
 
-  it('réserve la gestion de l’équipe au propriétaire et active les invitations à la connexion', async () => {
+  it('réserve la gestion de l’équipe au propriétaire et exige une acceptation explicite', async () => {
     const api = createMockApi();
     await loginAs(api, 'awa@boutique-etoile.sn');
     await expect(
@@ -79,8 +79,20 @@ describe('createMockApi — multi-organisation', () => {
     const invited = await api.team.invite('org-etoile', { firstName: 'Ibou', lastName: 'Sarr', email: 'ibou@test.sn', role: 'cashier' });
     expect(invited.status).toBe('invited');
 
+    // La connexion n'active plus l'invitation : l'accès reste fermé.
     const ibou = await loginAs(api, 'ibou@test.sn');
-    expect(ibou.memberships).toEqual([expect.objectContaining({ organizationId: 'org-etoile', role: 'cashier' })]);
+    expect(ibou.memberships).toEqual([]);
+    setActiveOrganization('org-etoile');
+    await expect(api.products.list()).rejects.toMatchObject({ status: 403 });
+
+    // L'acceptation est un acte explicite.
+    const accepted = await api.auth.acceptInvitation('org-etoile');
+    setAuthToken(accepted.token);
+    expect(accepted.memberships).toEqual([
+      expect.objectContaining({ organizationId: 'org-etoile', role: 'cashier' }),
+    ]);
+    setActiveOrganization('org-etoile');
+    expect(await api.products.list()).toBeInstanceOf(Array);
   });
 
   it('crée une organisation vide à l’inscription', async () => {

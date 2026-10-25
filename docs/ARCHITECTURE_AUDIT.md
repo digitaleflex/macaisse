@@ -21,6 +21,7 @@ listées en [§6](#6-corrections-apportées-au-rapport-initial).
 | **M4** — premier écran monolithique | ✅ **corrigé** | Vues en `React.lazy` + `Suspense`, `jsPDF` chargé à la demande : l'entrée passe de **421 kB à 349 kB** et le PDF (422 kB) n'est plus téléchargé qu'à l'export |
 | **M5** — `services/` dépendait de `ui/` | ✅ **corrigé** | `setErrorReporter()` injecté dans `main.tsx` : la couche réseau ne connaît plus les toasts |
 | **M8** — duplication métier + sélecteurs morts | ✅ **corrigé** | `marginPercent` / `marginRatePercent` / `creditRows` / `activeCredits` / `overdueCredits` dans `domain/` et consommés par 5 écrans ; 10 sélecteurs morts (et leurs tests) supprimés |
+| **m12** — export ignorait la période | ✅ **corrigé** | `buildAccountingRows(..., { from, to })` : la période est appliquée avant le filtre de type, la modale d'export propose 7 j / 30 j / tout, et le nom de fichier suit la date locale |
 | **m15** — frontières non outillées | ✅ **corrigé** | `no-restricted-imports` par lane dans `eslint.config.js` (ui, domain, store, services, lib, mocks, features) ; violation vérifiée par test manuel |
 | **M6** — écrans appelant `services/` | ✅ **corrigé** | `store/useTeamStore.ts` (membres, invitation, rôle, retrait) + `loadDemoAccounts()` dans `auth` ; `isDemoMode` remplace `api.mode` dans les écrans |
 | **M7** — notifications jamais générées | ✅ **corrigé** | Crédit ouvert et rupture de stock publiés par `useSalesStore`, crédit soldé par `useCreditsStore` ; déduplication des non-lues |

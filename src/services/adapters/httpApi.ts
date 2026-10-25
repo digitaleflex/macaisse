@@ -2,6 +2,7 @@ import type {
   AuthResult,
   ClientCredit,
   Expense,
+  Invitation,
   NotificationItem,
   Product,
   SaleTransaction,
@@ -24,6 +25,9 @@ export function createHttpApi(http: HttpClient): Api {
       me: () => http.get<AuthResult>(ENDPOINTS.me),
       logout: () => http.post<void>(ENDPOINTS.logout),
       demoAccounts: () => Promise.resolve([]),
+      invitations: () => http.get<Invitation[]>(ENDPOINTS.invitations),
+      acceptInvitation: (orgId) =>
+        http.post<AuthResult>(ENDPOINTS.acceptInvitation(orgId)),
     },
     session: {
       get: (orgId) => http.get<Session>(ENDPOINTS.session(orgId)),

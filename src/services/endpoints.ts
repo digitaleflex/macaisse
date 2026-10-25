@@ -10,6 +10,8 @@ export const ENDPOINTS = {
   signup: '/auth/signup',
   me: '/auth/me',
   logout: '/auth/logout',
+  invitations: '/auth/invitations',
+  acceptInvitation: (orgId: string) => `/auth/invitations/${enc(orgId)}/accept`,
 
   session: (orgId: string) => `${org(orgId)}/session`,
   members: (orgId: string) => `${org(orgId)}/members`,

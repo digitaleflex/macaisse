@@ -2,7 +2,8 @@ import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import type { BusinessProfile, Expense, SaleTransaction } from '@/types';
 import { t } from '@/content';
-import { buildAccountingRows, type ExportFilterType } from './accounting';
+import { toIsoDate } from '@/domain/dates';
+import { buildAccountingRows, type ExportFilterType, type ExportRange } from './accounting';
 
 /**
  * Exporte un rapport comptable officiel au format PDF avec jsPDF et autoTable.
@@ -15,6 +16,7 @@ export function exportToPDF(
   sales: readonly SaleTransaction[],
   expenses: readonly Expense[],
   business: BusinessProfile,
+  range: ExportRange = {},
 ): void {
   const d = t.documents;
   const doc = new jsPDF({
@@ -23,7 +25,7 @@ export function exportToPDF(
     format: 'a4',
   });
 
-  const entries = buildAccountingRows(sales, expenses, filterType);
+  const entries = buildAccountingRows(sales, expenses, filterType, range);
   const totalSales = entries.reduce((sum, e) => sum + e.creditAmount, 0);
   const totalExpenses = entries.reduce((sum, e) => sum + e.debitAmount, 0);
   const soldeNet = totalSales - totalExpenses;
@@ -208,7 +210,7 @@ export function exportToPDF(
     );
   }
 
-  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayStr = toIsoDate(new Date());
   const filename = d.pdfFile(business.name.replace(/\s+/g, '_'), todayStr);
   doc.save(filename);
 }

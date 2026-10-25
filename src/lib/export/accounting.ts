@@ -1,5 +1,6 @@
 import type { Expense, SaleTransaction } from '@/types';
 import { t } from '@/content';
+import { toIsoDate } from '@/domain/dates';
 
 /** Périmètre de données exportable (journal complet, ventes seules ou dépenses seules). */
 export type ExportFilterType = 'all' | 'sales' | 'expenses';
@@ -18,16 +19,37 @@ export interface AccountingEntry {
   status: string;
 }
 
-/** Normalise et combine ventes et dépenses en écritures comptables (fonction pure). */
+/** Bornes de période d'un export (incluses, en date locale). */
+export interface ExportRange {
+  from?: Date;
+  to?: Date;
+}
+
+/** Vrai si la date ISO tombe dans la période (bornes optionnelles). */
+function inRange(date: string, fromKey: string | null, toKey: string | null): boolean {
+  if (fromKey !== null && date < fromKey) return false;
+  if (toKey !== null && date > toKey) return false;
+  return true;
+}
+
+/**
+ * Normalise et combine ventes et dépenses en écritures comptables (fonction pure).
+ * La période est appliquée AVANT le filtre de type : l'export correspond
+ * exactement à ce que l'utilisateur voit à l'écran.
+ */
 export function buildAccountingRows(
   sales: readonly SaleTransaction[],
   expenses: readonly Expense[],
   filterType: ExportFilterType = 'all',
+  range: ExportRange = {},
 ): AccountingEntry[] {
   const entries: AccountingEntry[] = [];
+  const fromKey = range.from ? toIsoDate(range.from) : null;
+  const toKey = range.to ? toIsoDate(range.to) : null;
 
   if (filterType === 'all' || filterType === 'sales') {
     sales.forEach((s) => {
+      if (!inRange(s.date, fromKey, toKey)) return;
       entries.push({
         date: s.date,
         time: s.time || '--:--',
@@ -45,6 +67,7 @@ export function buildAccountingRows(
 
   if (filterType === 'all' || filterType === 'expenses') {
     expenses.forEach((e) => {
+      if (!inRange(e.date, fromKey, toKey)) return;
       entries.push({
         date: e.date,
         time: e.time || '--:--',
@@ -61,4 +84,15 @@ export function buildAccountingRows(
   }
 
   return entries;
+}
+
+/**
+ * Nom de fichier de l'export comptable, daté en **heure locale** (le reste de
+ * l'application l'est aussi ; `toISOString` produisait un décalage d'un jour).
+ */
+export function accountingFileName(
+  filterType: ExportFilterType,
+  date: Date = new Date(),
+): string {
+  return `${t.documents.filePrefix[filterType]}_${toIsoDate(date)}`;
 }

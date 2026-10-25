@@ -82,13 +82,16 @@ export function BilanView() {
   const growth = stats.previous > 0 ? ((stats.revenue - stats.previous) / stats.previous) * 100 : null;
   const periodLabel = PERIOD_OPTIONS.find((option) => option.value === period)?.label ?? '';
 
+  // L'export reprend exactement la période affichée à l'écran (issue #9).
+  const exportRange = useMemo(() => ({ from, to: now }), [from, now]);
+
   const handleExportCSV = () => {
-    exportToCSV('all', sales, expenses);
+    exportToCSV('all', sales, expenses, exportRange);
     showToast(t.bilan.exports.csvDone, 'success');
   };
   const handleExportPDF = async () => {
     const { exportToPDF } = await import('@/lib/export/pdf');
-    exportToPDF('all', sales, expenses, business);
+    exportToPDF('all', sales, expenses, business, exportRange);
     showToast(t.bilan.exports.pdfDone, 'success');
   };
 

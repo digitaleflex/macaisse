@@ -116,7 +116,9 @@ export function createMockApi({ latencyMs = 0, persist = false }: MockApiOptions
 
   const membershipsOf = (userId: string): Membership[] =>
     auth.memberships
-      .filter((m) => m.userId === userId && auth.organizations[m.organizationId])
+      // Une invitation non acceptée ne donne aucun accès : elle n'apparaît pas
+      // dans les appartenances (elle est exposée par `invitations()`).
+      .filter((m) => m.userId === userId && m.status === 'active' && auth.organizations[m.organizationId])
       .map((m) => ({
         organizationId: m.organizationId,
         organizationName: auth.organizations[m.organizationId].business.name,
@@ -138,10 +140,14 @@ export function createMockApi({ latencyMs = 0, persist = false }: MockApiOptions
 
   const requireMembership = (orgId: string): MockMembership => {
     const account = currentAccount();
-    return (
-      auth.memberships.find((m) => m.userId === account.id && m.organizationId === orgId) ??
-      fail(t.auth.errors.forbidden, 403, 'FORBIDDEN')
+    const membership = auth.memberships.find(
+      (m) => m.userId === account.id && m.organizationId === orgId
     );
+    if (!membership) fail(t.auth.errors.forbidden, 403, 'FORBIDDEN');
+    if (membership.status !== 'active') {
+      fail(t.auth.errors.invitationPending, 403, 'INVITATION_PENDING');
+    }
+    return membership;
   };
 
   const requireOwner = (orgId: string): void => {
@@ -185,9 +191,8 @@ export function createMockApi({ latencyMs = 0, persist = false }: MockApiOptions
         respond(() => {
           const account = auth.accounts.find((a) => a.email.toLowerCase() === email.trim().toLowerCase());
           if (!account || account.password !== password) fail(t.auth.errors.invalidCredentials, 401, 'INVALID_CREDENTIALS');
-          // Première connexion d'un membre invité : l'invitation devient active.
-          auth.memberships = auth.memberships.map((m) => (m.userId === account.id ? { ...m, status: 'active' } : m));
-          saveAuth();
+          // Aucune activation implicite : accepter une invitation est un acte
+          // explicite (`acceptInvitation`), sinon l'invité accède sans consentir.
           return authResult(account);
         }),
       signup: (input) =>
@@ -227,6 +232,31 @@ export function createMockApi({ latencyMs = 0, persist = false }: MockApiOptions
         }),
       me: () => respond(() => authResult(currentAccount())),
       logout: () => respond(() => undefined),
+      invitations: () =>
+        respond(() =>
+          auth.memberships
+            .filter((m) => m.userId === currentAccount().id && m.status === 'invited')
+            .map((m) => ({
+              organizationId: m.organizationId,
+              organizationName: auth.organizations[m.organizationId].business.name,
+              city: auth.organizations[m.organizationId].business.city,
+              role: m.role,
+              invitedAt: m.joinedAt,
+            }))
+        ),
+      acceptInvitation: (orgId) =>
+        respond(() => {
+          const account = currentAccount();
+          const membership = auth.memberships.find(
+            (m) => m.userId === account.id && m.organizationId === orgId && m.status === 'invited'
+          );
+          if (!membership) fail(t.auth.errors.invitationNotFound, 404, 'INVITATION_NOT_FOUND');
+          auth.memberships = auth.memberships.map((m) =>
+            m === membership ? { ...m, status: 'active' } : m
+          );
+          saveAuth();
+          return authResult(account);
+        }),
       demoAccounts: () =>
         respond(() =>
           MOCK_ACCOUNTS.map((seed) => {
@@ -237,7 +267,12 @@ export function createMockApi({ latencyMs = 0, persist = false }: MockApiOptions
               fullName: `${account.firstName} ${account.lastName}`,
               initials: `${account.firstName[0]}${account.lastName[0]}`,
               organizations: auth.memberships
-                .filter((m) => m.userId === account.id && auth.organizations[m.organizationId])
+                .filter(
+                  (m) =>
+                    m.userId === account.id &&
+                    m.status === 'active' &&
+                    auth.organizations[m.organizationId]
+                )
                 .map((m) => ({ name: auth.organizations[m.organizationId].business.name, role: m.role })),
             };
           })

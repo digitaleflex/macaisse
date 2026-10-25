@@ -200,6 +200,12 @@ export interface Membership {
   role: Role;
 }
 
+/** Invitation en attente d'acceptation pour l'utilisateur connecté. */
+export interface Invitation extends Membership {
+  /** Date d'envoi de l'invitation (ISO). */
+  invitedAt: string;
+}
+
 /** Résultat d'une authentification (connexion, inscription, reprise de session). */
 export interface AuthResult {
   token: string;

@@ -501,6 +501,8 @@ export const fr = {
 
   exportModal: {
     title: 'Export comptable',
+    period: 'Période exportée',
+    periodAll: 'Tout l’historique',
     subtitle: 'Écritures pour votre comptabilité externe',
     format: 'Format',
     pdf: 'Rapport PDF',
@@ -666,6 +668,9 @@ export const fr = {
     restoring: 'Reprise de votre session…',
     errors: {
       invalidCredentials: 'E-mail ou mot de passe incorrect.',
+      invitationPending:
+        'Votre invitation à cet espace est en attente : acceptez-la avant d’y accéder.',
+      invitationNotFound: 'Cette invitation n’existe plus ou a déjà été acceptée.',
       emailTaken: 'Un compte existe déjà avec cette adresse e-mail.',
       sessionExpired: 'Votre session a expiré, reconnectez-vous.',
       forbidden: 'Vous n’avez pas accès à cette organisation.',
@@ -679,6 +684,10 @@ export const fr = {
 
   org: {
     switcher: 'Changer d’espace',
+    pendingInvitations: 'Invitations en attente',
+    acceptInvitation: 'Accepter',
+    accepted: (name: string) => `Invitation acceptée — espace « ${name} » ouvert.`,
+    acceptFailed: 'Impossible d’accepter cette invitation.',
     yourSpaces: 'Vos espaces',
     current: 'Actuel',
     switched: (name: string) => `Espace « ${name} » ouvert.`,

@@ -281,7 +281,7 @@ bun run test:coverage                                 # couverture + seuils
 
 ### Couverture mesurée (base de référence)
 
-`bun run test:coverage` → **65,1 % lignes · 62,8 % fonctions · 58,1 % branches**
+`bun run test:coverage` → **65,5 % lignes · 62,8 % fonctions · 59,5 % branches**
 (23 fichiers, 175 tests). Seuils bloquants dans `vitest.config.ts` :
 `lines ≥ 63`, `functions ≥ 60`, `branches ≥ 55`. Une baisse fait échouer la CI.
 
@@ -289,19 +289,19 @@ bun run test:coverage                                 # couverture + seuils
 |---|---:|---:|---:|---|
 | `domain/` | **98,7** | 100 | 92,1 | socle métier : exemplaire, à maintenir |
 | `config/` | 100 | 100 | 82,4 | référentiels couverts |
-| `store/` | 82,2 | 84,1 | **58,7** | bon, mais branches d'orchestration à couvrir |
+| `store/` | 81,7 | 83,3 | **58,7** | bon, mais branches d'orchestration à couvrir |
 | `app/` | 77,0 | 65,5 | 79,4 | shell couvert par le smoke |
 | `ui/` | 75,0 | 73,6 | 73,0 | primitives, tests ponctuels |
-| `services/` | 66,2 | 51,2 | 63,7 | **`httpApi` à 17 %** : chemin de prod sous-testé |
+| `services/` | 67,2 | 52,8 | 69,2 | invitations couvertes ; `httpApi` reste à 17 % |
 | `content/` | 58,2 | 55,8 | 77,8 | textes, peu de logique |
-| `features/` | **57,2** | 52,9 | **44,6** | écrans : couverts par le smoke seulement |
-| `lib/` | **1,3** | 0 | 0 | exports CSV/PDF **non testés** |
+| `features/` | **56,1** | 51,7 | **43,4** | écrans : couverts par le smoke seulement |
+| `lib/` | **15,9** | 31,8 | 45,8 | journaux comptables testés ; `pdf.ts` et `ai/` non |
 
 ### Zones à couvrir en priorité (avant les jalons concernés)
 
 | Manque | Fichiers | Jalon / issue |
 |---|---|---|
-| Journaux comptables et CSV | `lib/export/accounting.ts`, `csv.ts` | export période (#9) |
+| Export PDF réel | `lib/export/pdf.ts` (0 %) | impression/PDF (#15) |
 | Chemin HTTP réel | `services/adapters/httpApi.ts` (17 %) | parité contrat (#2) |
 | Orchestration de session | `store/auth.ts` (branches 41,9 %) | 401/403, purge locale (#10, #19, #23) |
 | Vente / dépenses / notifications | `useSalesStore`, `useExpensesStore`, `useNotificationsStore` | crédits (#8, #14) |

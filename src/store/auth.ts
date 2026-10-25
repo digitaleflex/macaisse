@@ -2,7 +2,7 @@
 // connexion, inscription, reprise de session, changement d'espace, déconnexion.
 // Seul module autorisé à modifier le contexte `services/tenant`.
 
-import type { AuthResult, DemoAccount, LoginInput, SignupInput } from '@/types';
+import type { AuthResult, DemoAccount, Invitation, LoginInput, SignupInput } from '@/types';
 import { t } from '@/content';
 import { canAccessTab } from '@/domain/permissions';
 import { api, isApiError, setActiveOrganization, setAuthToken } from '@/services';
@@ -77,6 +77,19 @@ async function applyAuth(result: AuthResult): Promise<void> {
 /** Comptes proposés sur l'écran de connexion (vide hors mode démo). */
 export async function loadDemoAccounts(): Promise<DemoAccount[]> {
   return api.auth.demoAccounts();
+}
+
+/** Invitations en attente pour l'utilisateur connecté. */
+export async function loadInvitations(): Promise<Invitation[]> {
+  return api.auth.invitations();
+}
+
+/**
+ * Accepte une invitation puis ouvre l'espace concerné. L'acceptation est
+ * explicite : sans elle, l'appartenance reste `invited` et l'accès est refusé.
+ */
+export async function acceptInvitation(organizationId: string): Promise<void> {
+  await applyAuth(await api.auth.acceptInvitation(organizationId));
 }
 
 export async function login(input: LoginInput): Promise<void> {

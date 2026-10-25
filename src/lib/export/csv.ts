@@ -1,6 +1,6 @@
 import type { Expense, SaleTransaction } from '@/types';
 import { t } from '@/content';
-import { buildAccountingRows, type ExportFilterType } from './accounting';
+import { accountingFileName, buildAccountingRows, type ExportFilterType, type ExportRange } from './accounting';
 
 /**
  * Échappe une cellule CSV (séparateur `;`, guillemets et sauts de ligne).
@@ -38,8 +38,9 @@ export function exportToCSV(
   filterType: ExportFilterType,
   sales: readonly SaleTransaction[],
   expenses: readonly Expense[],
+  range: ExportRange = {},
 ): string {
-  const entries = buildAccountingRows(sales, expenses, filterType);
+  const entries = buildAccountingRows(sales, expenses, filterType, range);
 
   const headers = t.documents.csvHeaders;
 
@@ -81,11 +82,8 @@ export function exportToCSV(
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
 
-  const todayStr = new Date().toISOString().slice(0, 10);
-  const prefix = t.documents.filePrefix[filterType];
-
   link.href = url;
-  link.setAttribute('download', `${prefix}_${todayStr}.csv`);
+  link.setAttribute('download', `${accountingFileName(filterType)}.csv`);
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
