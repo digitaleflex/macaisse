@@ -27,7 +27,7 @@ listées en [§6](#6-corrections-apportées-au-rapport-initial).
 | **M9** — double rendu de `StockView` | ✅ **corrigé** | `useMediaQuery` : tableau **ou** cartes, un seul DOM monté |
 | **m1** — modale persistée | ✅ **corrigé** | `modal` sorti du `partialize` (état transitoire) |
 | **m8 / m9 / m10** | ✅ **corrigé** | Options POS inertes désactivées et badgées « Bientôt » (`deductionAutoStock` supprimée : la déduction n'a jamais été optionnelle) ; clôture persistée par jour (`registerClosedAt`) ; piège de focus (Tab) dans `useOverlay` |
-| Reste ouvert | ⏳ | **C1** (réconciliation `http`, en attente backend), **m4** (confirmations de suppression), **m5/m6** (validations silencieuses, montants), **M2 seeds** résiduel côté `services`, m11 (gardes de rôle du mock), m12 (période d'export), m13 (code IA mort), m14, m16, m17 |
+| Reste ouvert | ⏳ | **C1** (réconciliation `http`, en attente backend), **m4** (confirmations de suppression), **m5/m6** (validations silencieuses, montants), m11 (gardes de rôle du mock), m12 (période d'export), m13 (code IA mort), m14, m16, m17 → voir le backlog d'issues en [§9](#9-backlog-github) |
 
 ---
 
@@ -210,3 +210,33 @@ bun run lint && bun run test
 Voir aussi : [`FEATURES_INVENTORY.md`](FEATURES_INVENTORY.md) (inventaire
 fonctionnel), [`ARCHITECTURE.md`](../ARCHITECTURE.md) (règles de couches),
 [`API_CONTRACT.md`](API_CONTRACT.md) (contrat backend).
+
+---
+
+## 9. Backlog GitHub
+
+Chaque constat ouvert est tracé par une issue (aucun ne reste uniquement dans ce document).
+Labels : `bug`, `tech-debt`, `enhancement`, `audit`, `data-integrity`, `blocked`.
+
+| Issue | Constat | Priorité | Dépendance |
+|---|---|---|---|
+| [#1](https://github.com/digitaleflex/macaisse/issues/1) — Réconciliation des mutations optimistes | **C1** | **P0** | backend (contrat prêt) |
+| [#2](https://github.com/digitaleflex/macaisse/issues/2) — Parité mock/http + gardes de rôle | **M1**, m11 | P2 | — |
+| [#3](https://github.com/digitaleflex/macaisse/issues/3) — Supprimer `decrementStock` | m2 | P2 | — |
+| [#4](https://github.com/digitaleflex/macaisse/issues/4) — Durcir la migration du store auth | m3 | P2 | — |
+| [#5](https://github.com/digitaleflex/macaisse/issues/5) — Confirmation avant suppression | m4 | P1 | — |
+| [#6](https://github.com/digitaleflex/macaisse/issues/6) — Validations silencieuses | m5 | P1 | — |
+| [#7](https://github.com/digitaleflex/macaisse/issues/7) — Montants entiers et positifs | m6 | P1 | — |
+| [#8](https://github.com/digitaleflex/macaisse/issues/8) — Toast de règlement de crédit | m7 | P1 | — |
+| [#9](https://github.com/digitaleflex/macaisse/issues/9) — Période d'export + date locale | m12 | P1 | — |
+| [#10](https://github.com/digitaleflex/macaisse/issues/10) — Succès affiché malgré un échec | m16 | P1 | — |
+| [#11](https://github.com/digitaleflex/macaisse/issues/11) — Vider le panier au logout | m17 | P1 | — |
+| [#12](https://github.com/digitaleflex/macaisse/issues/12) — Module IA mort + template | m13 | P2 | — |
+| [#13](https://github.com/digitaleflex/macaisse/issues/13) — Mot de passe démo dupliqué | m14 | P2 | — |
+| [#14](https://github.com/digitaleflex/macaisse/issues/14) — Notifier les échéances de crédit | suite M7 | P2 | — |
+| [#15](https://github.com/digitaleflex/macaisse/issues/15) — Impression réelle du ticket | inventaire | roadmap | cible thermique |
+| [#16](https://github.com/digitaleflex/macaisse/issues/16) — Scan code-barres réel | inventaire | roadmap | modèle produit |
+| [#17](https://github.com/digitaleflex/macaisse/issues/17) — Mode hors ligne réel | inventaire | roadmap | **avec #1** |
+| [#18](https://github.com/digitaleflex/macaisse/issues/18) — Annulation / remboursement | inventaire | roadmap | contrat API |
+
+Ordre conseillé : **#1** dès que le backend répond, puis les P1 (#5–#11), puis les P2.
