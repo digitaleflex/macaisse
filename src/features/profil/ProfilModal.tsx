@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { t } from '@/content';
 import { parseDate } from '@/domain/dates';
 import { OrgList } from '@/features/organisation';
-import { api } from '@/services';
+import { isDemoMode } from '@/config/env';
 import { logout, reloadOrganization } from '@/store/auth';
 import { selectMemberships, useAuthStore } from '@/store/useAuthStore';
 import { useCurrentSession, usePermission } from '@/store/useSessionStore';
@@ -26,7 +26,7 @@ export function ProfilModal() {
   const canBill = usePermission('billing.manage');
   const canManageTeam = usePermission('team.manage');
   const [syncing, setSyncing] = useState(false);
-  const live = api.mode === 'http';
+  const live = !isDemoMode;
 
   const handleSync = async () => {
     if (!live) {

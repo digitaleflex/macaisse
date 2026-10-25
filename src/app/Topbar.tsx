@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { t } from '@/content';
 import { OrgList } from '@/features/organisation';
-import { api } from '@/services';
+import { isDemoMode } from '@/config/env';
 import { selectMemberships, useAuthStore } from '@/store/useAuthStore';
 import { selectUnreadCount, useNotificationsStore } from '@/store/useNotificationsStore';
 import { useCurrentSession } from '@/store/useSessionStore';
@@ -50,7 +50,7 @@ export function Topbar() {
         </div>
 
         <div className="flex items-center gap-1.5 sm:gap-2">
-          {api.mode === 'mock' && (
+          {isDemoMode && (
             <span className="hidden sm:flex">
               <Badge tone="info" icon="science">
                 {t.app.demoBadge}

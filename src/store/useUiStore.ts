@@ -5,12 +5,14 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { CartLine, SaleTransaction, TabType } from '@/types';
+import { toIsoDate } from '@/domain/dates';
 // Exception de couche assumée (contrat `toastBus`) : le store publie des toasts
 // sans connaître le rendu, et `ToastHost` ne dépend pas du store.
 // eslint-disable-next-line no-restricted-imports
 import { pushToast, type ToastTone } from '@/ui/toastBus';
 import {
   coerceBoolean,
+  coerceString,
   isRecord,
   isTabType,
   PERSIST_NAMES,
@@ -30,14 +32,18 @@ export interface ReceiptState {
   items: CartLine[];
 }
 
+/**
+ * Préférences du point de vente. Les trois options ci-dessous sont **persistées
+ * mais pas encore branchées** (marquées « Bientôt » dans l'interface) : ne pas
+ * les présenter comme actives. La déduction de stock, elle, est toujours
+ * appliquée à l'encaissement — ce n'est pas une option.
+ */
 export interface UiPreferences {
-  /** Déduction automatique du stock à l'encaissement. */
-  deductionAutoStock: boolean;
-  /** Alertes SMS en cas de rupture. */
+  /** Alerte SMS en cas de rupture (à brancher sur un service d'envoi). */
   alertesSmsRupture: boolean;
-  /** Imprimante thermique Bluetooth connectée. */
+  /** Impression via imprimante thermique Bluetooth (à brancher). */
   imprimanteBluetooth: boolean;
-  /** Bip sonore au scan. */
+  /** Bip sonore au scan (à brancher sur le lecteur). */
   bipSonoreScan: boolean;
 }
 
@@ -52,6 +58,8 @@ export interface UiState {
   receipt: ReceiptState | null;
   isOnline: boolean;
   preferences: UiPreferences;
+  /** Date (ISO) de la dernière clôture de caisse ; `null` = caisse ouverte. */
+  registerClosedAt: string | null;
   setTab: (tab: TabType) => void;
   openModal: (modal: UiModal) => void;
   closeModal: () => void;
@@ -65,27 +73,15 @@ export interface UiState {
   /** À appeler une fois dans un `useEffect` de l'app ; renvoie le nettoyage. */
   initOnlineListener: () => () => void;
   updatePreferences: (patch: Partial<UiPreferences>) => void;
+  /** Clôture / réouverture de la caisse du jour (persistée). */
+  toggleRegisterClosed: () => void;
 }
 
 const DEFAULT_PREFERENCES: UiPreferences = {
-  deductionAutoStock: true,
-  alertesSmsRupture: true,
-  imprimanteBluetooth: true,
-  bipSonoreScan: true,
+  alertesSmsRupture: false,
+  imprimanteBluetooth: false,
+  bipSonoreScan: false,
 };
-
-const UI_MODAL_SET: ReadonlySet<string> = new Set([
-  'depenses',
-  'export',
-  'profil',
-  'abonnement',
-  'notifications',
-  'equipe',
-]);
-
-function isUiModal(value: unknown): value is UiModal {
-  return typeof value === 'string' && UI_MODAL_SET.has(value);
-}
 
 function readOnline(): boolean {
   return typeof navigator !== 'undefined' ? navigator.onLine : true;
@@ -97,6 +93,7 @@ export const useUiStore = create<UiState>()(
       tab: 'accueil',
       modal: null,
       receipt: null,
+      registerClosedAt: null,
       isOnline: readOnline(),
       preferences: { ...DEFAULT_PREFERENCES },
 
@@ -134,18 +131,26 @@ export const useUiStore = create<UiState>()(
 
       updatePreferences: (patch) =>
         set((state) => ({ preferences: { ...state.preferences, ...patch } })),
+
+      toggleRegisterClosed: () => {
+        const today = toIsoDate(new Date());
+        set((state) => ({ registerClosedAt: state.registerClosedAt === today ? null : today }));
+      },
     }),
-    // Seuls `tab` et `modal` sont persistés ; `isOnline` et `receipt` (transitoires)
+    // Seuls `tab` et `registerClosedAt` sont persistés ; `isOnline` et `receipt` (transitoires)
     // restent hors du `partialize` — le reçu ne doit JAMAIS être écrit dans
     // localStorage.
-    persistOptions<UiState, { tab: TabType; modal: UiModal | null }>(
+    // `modal` et `receipt` sont transitoires : les persister rouvrait une modale
+    // après reconnexion (constat m1 de l'audit).
+    persistOptions<UiState, { tab: TabType; registerClosedAt: string | null }>(
       PERSIST_NAMES.ui,
-      (state) => ({ tab: state.tab, modal: state.modal }),
+      (state) => ({ tab: state.tab, registerClosedAt: state.registerClosedAt }),
       (persisted) => {
-        if (!isRecord(persisted)) return { tab: 'accueil', modal: null };
+        if (!isRecord(persisted)) return { tab: 'accueil', registerClosedAt: null };
+        const closedAt = coerceString(persisted.registerClosedAt);
         return {
           tab: isTabType(persisted.tab) ? persisted.tab : 'accueil',
-          modal: isUiModal(persisted.modal) ? persisted.modal : null,
+          registerClosedAt: /^\d{4}-\d{2}-\d{2}$/.test(closedAt) ? closedAt : null,
         };
       }
     )

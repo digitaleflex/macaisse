@@ -1,7 +1,7 @@
 # Audit d'architecture — Ma Caisse (frontend)
 
 État audité : commit **`c80b925`** (`main`), ~13 400 lignes dans `src/`,
-21 fichiers / 165 tests, `tsc --noEmit` + ESLint `--max-warnings 0` verts,
+23 fichiers / 175 tests, `tsc --noEmit` + ESLint `--max-warnings 0` verts,
 aucun backend dans le dépôt.
 
 Méthode : lecture du code de `src/` + vérification par `grep`/lecture ciblée de
@@ -22,7 +22,12 @@ listées en [§6](#6-corrections-apportées-au-rapport-initial).
 | **M5** — `services/` dépendait de `ui/` | ✅ **corrigé** | `setErrorReporter()` injecté dans `main.tsx` : la couche réseau ne connaît plus les toasts |
 | **M8** — duplication métier + sélecteurs morts | ✅ **corrigé** | `marginPercent` / `marginRatePercent` / `creditRows` / `activeCredits` / `overdueCredits` dans `domain/` et consommés par 5 écrans ; 10 sélecteurs morts (et leurs tests) supprimés |
 | **m15** — frontières non outillées | ✅ **corrigé** | `no-restricted-imports` par lane dans `eslint.config.js` (ui, domain, store, services, lib, mocks, features) ; violation vérifiée par test manuel |
-| M6–M7, M9, §4 | ⏳ ouvert | Voir plan d'action §7 |
+| **M6** — écrans appelant `services/` | ✅ **corrigé** | `store/useTeamStore.ts` (membres, invitation, rôle, retrait) + `loadDemoAccounts()` dans `auth` ; `isDemoMode` remplace `api.mode` dans les écrans |
+| **M7** — notifications jamais générées | ✅ **corrigé** | Crédit ouvert et rupture de stock publiés par `useSalesStore`, crédit soldé par `useCreditsStore` ; déduplication des non-lues |
+| **M9** — double rendu de `StockView` | ✅ **corrigé** | `useMediaQuery` : tableau **ou** cartes, un seul DOM monté |
+| **m1** — modale persistée | ✅ **corrigé** | `modal` sorti du `partialize` (état transitoire) |
+| **m8 / m9 / m10** | ✅ **corrigé** | Options POS inertes désactivées et badgées « Bientôt » (`deductionAutoStock` supprimée : la déduction n'a jamais été optionnelle) ; clôture persistée par jour (`registerClosedAt`) ; piège de focus (Tab) dans `useOverlay` |
+| Reste ouvert | ⏳ | **C1** (réconciliation `http`, en attente backend), **m4** (confirmations de suppression), **m5/m6** (validations silencieuses, montants), **M2 seeds** résiduel côté `services`, m11 (gardes de rôle du mock), m12 (période d'export), m13 (code IA mort), m14, m16, m17 |
 
 ---
 

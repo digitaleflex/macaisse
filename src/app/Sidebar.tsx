@@ -2,7 +2,7 @@ import { t } from '@/content';
 import { can, type Permission } from '@/domain/permissions';
 import { formatFCFA } from '@/domain/money';
 import { OrgSwitcher } from '@/features/organisation';
-import { api } from '@/services';
+import { isDemoMode } from '@/config/env';
 import { logout } from '@/store/auth';
 import { selectCartItemCount, useCartStore } from '@/store/useCartStore';
 import { selectUnreadCount, useNotificationsStore } from '@/store/useNotificationsStore';
@@ -34,7 +34,7 @@ export function Sidebar() {
       <div className="px-5 pt-6 pb-4 flex items-center gap-2.5">
         <BrandMark className="size-8" />
         <span className="font-display font-extrabold text-white text-[17px] tracking-tight">{t.app.name}</span>
-        {api.mode === 'mock' && (
+        {isDemoMode && (
           <span className="ml-auto text-[10px] font-bold uppercase tracking-wider text-zest-400/80">{t.app.demoBadge}</span>
         )}
       </div>

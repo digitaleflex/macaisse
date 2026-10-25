@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { CartLine, Product } from '@/types';
 import { useCartStore } from '../useCartStore';
+import { t } from '@/content';
 import { useCreditsStore } from '../useCreditsStore';
+import { useNotificationsStore } from '../useNotificationsStore';
 import { useProductsStore } from '../useProductsStore';
 import { useSalesStore } from '../useSalesStore';
 
@@ -140,5 +142,48 @@ describe('completeSale — vente à crédit', () => {
     });
     expect(useCartStore.getState().lines).toHaveLength(0);
     expect(useProductsStore.getState().products[0]?.stock).toBe(8);
+  });
+});
+
+describe('completeSale — notifications métier', () => {
+  beforeEach(() => {
+    useProductsStore.setState({ products: [makeProduct({ price: 1000, stock: 2 })] });
+    useCartStore.setState({ lines: [line({ quantity: 1 })] });
+    useCreditsStore.setState({ credits: [] });
+    useNotificationsStore.setState({ notifications: [] });
+    useSalesStore.setState({ sales: [], sequence: 0 });
+  });
+
+  it('publie une notification quand un règlement partiel ouvre un crédit', () => {
+    useSalesStore.getState().completeSale({
+      paymentMethod: 'Crédit Partiel',
+      clientName: 'M. Ba Ousmane',
+      creditAmount: 500,
+    });
+
+    const [notification] = useNotificationsStore.getState().notifications;
+    expect(notification?.title).toBe(t.notifications.feed.creditCreated('M. Ba Ousmane'));
+    expect(notification?.type).toBe('info');
+    expect(notification?.relatedTab).toBe('credits');
+  });
+
+  it('publie une alerte quand la vente épuise le stock', () => {
+    useCartStore.setState({ lines: [line({ quantity: 2 })] });
+    useSalesStore.getState().completeSale({ paymentMethod: 'Espèces' });
+
+    const titles = useNotificationsStore.getState().notifications.map((n) => n.title);
+    expect(titles).toContain(t.notifications.feed.stockOut('Lait demi-écrémé'));
+  });
+
+  it('ne duplique pas une alerte de rupture déjà non lue', () => {
+    useCartStore.setState({ lines: [line({ quantity: 2 })] });
+    useSalesStore.getState().completeSale({ paymentMethod: 'Espèces' });
+    // Deuxième vente impossible (stock à 0) : on republie directement la même alerte.
+    useNotificationsStore.getState().push({
+      title: t.notifications.feed.stockOut('Lait demi-écrémé'),
+      type: 'alert',
+    });
+    const titles = useNotificationsStore.getState().notifications.map((n) => n.title);
+    expect(titles.filter((title) => title === t.notifications.feed.stockOut('Lait demi-écrémé'))).toHaveLength(1);
   });
 });

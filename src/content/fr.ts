@@ -536,6 +536,7 @@ export const fr = {
       smsAlerts: { label: 'Alertes SMS de rupture', hint: 'Prévenir quand le stock est bas' },
       printer: { label: 'Imprimante thermique Bluetooth', hint: 'Démo — aucun appareil appairé' },
       beep: { label: 'Bip sonore au scan', hint: 'Confirmation audio à chaque lecture' },
+      soon: 'Bientôt',
     },
     backup: 'Sauvegarde & sécurité',
     cloud: 'Synchronisation serveur',
@@ -566,6 +567,14 @@ export const fr = {
   },
 
   notifications: {
+    feed: {
+      stockOut: (name: string) => `Rupture : ${name}`,
+      stockOutText: 'Article épuisé — à réapprovisionner.',
+      creditCreated: (name: string) => `Crédit ouvert : ${name}`,
+      creditCreatedText: (amount: string) => `${amount} à recouvrer.`,
+      creditSettled: (name: string) => `Crédit soldé : ${name}`,
+      creditSettledText: 'La créance est intégralement réglée.',
+    },
     title: 'Notifications',
     markAll: 'Tout marquer comme lu',
     unread: (n: number) => plural(n, 'non lue', 'non lues'),

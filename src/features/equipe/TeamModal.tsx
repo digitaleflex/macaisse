@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import type { InviteMemberInput, Role, TeamMember } from '@/types';
+import { isDemoMode } from '@/config/env';
 import { t } from '@/content';
 import { parseDate } from '@/domain/dates';
-import { api, isApiError } from '@/services';
 import { DEMO_INVITE_PASSWORD } from '@/config/reference';
+import { isApiError } from '@/services';
 import { useCurrentSession, usePermission } from '@/store/useSessionStore';
+import { useTeamStore } from '@/store/useTeamStore';
 import { selectModal, useUiStore } from '@/store/useUiStore';
 import { Avatar, Badge, Button, EmptyState, IconButton, Input, Modal, Select, Skeleton } from '@/ui';
 
@@ -32,7 +34,13 @@ export function TeamModal() {
   const { business, user } = useCurrentSession();
   const canManage = usePermission('team.manage');
 
-  const [members, setMembers] = useState<TeamMember[] | null>(null);
+  const members = useTeamStore((state) => state.members);
+  const status = useTeamStore((state) => state.status);
+  const load = useTeamStore((state) => state.load);
+  const inviteMember = useTeamStore((state) => state.invite);
+  const updateMemberRole = useTeamStore((state) => state.updateRole);
+  const removeMember = useTeamStore((state) => state.remove);
+
   const [showInvite, setShowInvite] = useState(false);
   const [invite, setInvite] = useState<InviteMemberInput>(EMPTY_INVITE);
   const [pending, setPending] = useState(false);
@@ -44,28 +52,20 @@ export function TeamModal() {
 
   useEffect(() => {
     if (!open) return;
-    let alive = true;
-    api.team
-      .list(business.id)
-      .then((list) => {
-        if (alive) setMembers(list);
-      })
-      .catch(fail);
-    return () => {
-      alive = false;
-    };
-  }, [open, business.id, fail]);
+    void load(business.id);
+  }, [open, business.id, load]);
 
   const handleInvite = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setPending(true);
     try {
-      const member = await api.team.invite(business.id, invite);
-      setMembers((previous) => [...(previous ?? []), member]);
+      const member = await inviteMember(business.id, invite);
       setInvite(EMPTY_INVITE);
       setShowInvite(false);
       showToast(
-        api.mode === 'mock' ? t.team.invitedDemo(member.email, DEMO_INVITE_PASSWORD) : t.team.invited(member.email),
+        isDemoMode
+          ? t.team.invitedDemo(member.email, DEMO_INVITE_PASSWORD)
+          : t.team.invited(member.email),
         'success'
       );
     } catch (error) {
@@ -77,8 +77,7 @@ export function TeamModal() {
 
   const handleRole = async (member: TeamMember, role: Role) => {
     try {
-      const updated = await api.team.updateRole(business.id, member.userId, role);
-      setMembers((previous) => previous?.map((m) => (m.userId === updated.userId ? updated : m)) ?? null);
+      await updateMemberRole(business.id, member.userId, role);
       showToast(t.team.roleUpdated(`${member.firstName} ${member.lastName}`, t.roles[role]), 'success');
     } catch (error) {
       fail(error);
@@ -87,8 +86,7 @@ export function TeamModal() {
 
   const handleRemove = async (member: TeamMember) => {
     try {
-      await api.team.remove(business.id, member.userId);
-      setMembers((previous) => previous?.filter((m) => m.userId !== member.userId) ?? null);
+      await removeMember(business.id, member.userId);
       showToast(t.team.removed(`${member.firstName} ${member.lastName}`));
     } catch (error) {
       fail(error);
@@ -105,7 +103,9 @@ export function TeamModal() {
       size="xl"
     >
       <div className="flex items-center justify-between gap-3">
-        <span className="text-sm text-slate-500">{members ? t.team.members(members.length) : ''}</span>
+        <span className="text-sm text-slate-500">
+          {status === 'ready' ? t.team.members(members.length) : status === 'error' ? t.team.loadError : ''}
+        </span>
         {canManage && !showInvite && (
           <Button variant="primary" icon="person_add" onClick={() => setShowInvite(true)}>
             {t.team.invite}
@@ -144,7 +144,7 @@ export function TeamModal() {
         </form>
       )}
 
-      {members === null ? (
+      {status === 'loading' || status === 'idle' ? (
         <div className="space-y-2">
           <Skeleton className="h-16" />
           <Skeleton className="h-16" />

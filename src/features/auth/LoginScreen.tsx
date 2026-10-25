@@ -1,8 +1,8 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import type { DemoAccount, SignupInput } from '@/types';
 import { t } from '@/content';
-import { api, isApiError } from '@/services';
-import { login, signup } from '@/store/auth';
+import { isApiError } from '@/services';
+import { login, loadDemoAccounts, signup } from '@/store/auth';
 import { useUiStore } from '@/store/useUiStore';
 import { Avatar, Badge, BrandMark, Button, Icon, Input, SegmentedControl } from '@/ui';
 
@@ -72,8 +72,7 @@ export function LoginScreen() {
 
   useEffect(() => {
     let alive = true;
-    api.auth
-      .demoAccounts()
+    loadDemoAccounts()
       .then((accounts) => {
         if (alive) setDemoAccounts(accounts);
       })

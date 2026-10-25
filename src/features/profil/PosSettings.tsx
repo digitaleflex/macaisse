@@ -1,10 +1,13 @@
 import { t } from '@/content';
 import { selectPreferences, useUiStore, type UiPreferences } from '@/store/useUiStore';
-import { Icon, Switch } from '@/ui';
+import { Badge, Icon, Switch } from '@/ui';
 
-/** Préférences du point de vente — persistées via `useUiStore.preferences`. */
+/**
+ * Préférences du point de vente. Ces réglages ne sont pas encore reliés à un
+ * effet réel : l'interrupteur est donc désactivé et badgé « Bientôt » plutôt que
+ * de laisser croire qu'ils agissent.
+ */
 const ROWS: { key: keyof UiPreferences; icon: string; content: { label: string; hint: string } }[] = [
-  { key: 'deductionAutoStock', icon: 'inventory_2', content: t.profile.settings.autoStock },
   { key: 'alertesSmsRupture', icon: 'sms', content: t.profile.settings.smsAlerts },
   { key: 'imprimanteBluetooth', icon: 'print', content: t.profile.settings.printer },
   { key: 'bipSonoreScan', icon: 'volume_up', content: t.profile.settings.beep },
@@ -24,13 +27,17 @@ export function PosSettings() {
               <Icon name={row.icon} size={19} />
             </span>
             <div className="flex-1 min-w-0">
-              <div className="text-sm font-semibold text-ink-900">{row.content.label}</div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-semibold text-ink-900">{row.content.label}</span>
+                <Badge tone="neutral">{t.profile.settings.soon}</Badge>
+              </div>
               <div className="text-xs text-slate-500">{row.content.hint}</div>
             </div>
             <Switch
               checked={preferences[row.key]}
               onChange={(checked) => updatePreferences({ [row.key]: checked })}
-              label={row.content.label}
+              label={`${row.content.label} — ${t.profile.settings.soon}`}
+              disabled
             />
           </li>
         ))}

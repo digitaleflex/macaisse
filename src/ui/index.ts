@@ -2,6 +2,7 @@
  * Primitives UI partagées (« ui/ ») — aucune connaissance métier.
  */
 export { cn } from './cn';
+export { useMediaQuery } from './useMediaQuery';
 export { Icon, type IconProps } from './Icon';
 export { Spinner, type SpinnerProps, type SpinnerSize } from './Spinner';
 export {

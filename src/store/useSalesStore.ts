@@ -8,10 +8,12 @@ import { nextSaleNumber } from '@/domain/ids';
 import { creditFromSale } from '@/domain/credits';
 import { completeSale as buildSale } from '@/domain/sales';
 import { t } from '@/content';
+import { formatFCFA } from '@/domain/money';
 import { SEED_SALES } from '@/mocks';
 import { syncRemote } from '@/services';
 import { useCartStore } from './useCartStore';
 import { useCreditsStore } from './useCreditsStore';
+import { useNotificationsStore } from './useNotificationsStore';
 import { useProductsStore } from './useProductsStore';
 import {
   coerceId,
@@ -86,6 +88,30 @@ export const useSalesStore = create<SalesState>()(
         // Écriture atomique du stock (un seul set).
         useProductsStore.getState().setProducts(updatedProducts);
         useCartStore.getState().clear();
+
+        // Événements métier : on ne notifie que les transitions (pas chaque vente).
+        const notifications = useNotificationsStore.getState();
+        if (credit) {
+          notifications.push({
+            title: t.notifications.feed.creditCreated(sale.clientName ?? ''),
+            description: t.notifications.feed.creditCreatedText(
+              formatFCFA(sale.remainingAmount ?? 0)
+            ),
+            type: 'info',
+            relatedTab: 'credits',
+          });
+        }
+        for (const updated of updatedProducts) {
+          const before = products.find((product) => product.id === updated.id);
+          if (before && before.stock > 0 && updated.stock === 0) {
+            notifications.push({
+              title: t.notifications.feed.stockOut(updated.name),
+              description: t.notifications.feed.stockOutText,
+              type: 'alert',
+              relatedTab: 'stock',
+            });
+          }
+        }
         set((state) => ({ sales: [sale, ...state.sales], sequence }));
         syncRemote(
           (api) => api.sales.create(credit ? { sale, lines, credit } : { sale, lines }),

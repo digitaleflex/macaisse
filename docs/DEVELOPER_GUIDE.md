@@ -39,7 +39,7 @@ Commandes à connaître :
 | Commande | Quand |
 |---|---|
 | `bun run lint` | Avant chaque commit — `tsc` strict + ESLint `--max-warnings 0` |
-| `bun run test` | Avant chaque commit — 165 tests, ~60 s |
+| `bun run test` | Avant chaque commit — 175 tests, ~60 s |
 | `bun run test:watch` | Pendant le développement d'une règle métier |
 | `bun run build` | Avant de pousser une PR qui touche au bundling ou aux imports |
 

@@ -41,17 +41,25 @@ export const useNotificationsStore = create<NotificationsState>()(
       notifications: seedFallback(SEED_NOTIFICATIONS).map((notification) => ({ ...notification })),
 
       push: (input) =>
-        set((state) => ({
-          notifications: [
-            {
-              ...input,
-              id: createId('notif'),
-              time: input.time ?? t.notifications.justNow,
-              read: input.read ?? false,
-            },
-            ...state.notifications,
-          ],
-        })),
+        set((state) => {
+          // Un même événement non lu ne doit pas empiler les doublons (rupture
+          // constatée à chaque vente, par exemple).
+          const duplicate = state.notifications.some(
+            (notification) => !notification.read && notification.title === input.title
+          );
+          if (duplicate) return {};
+          return {
+            notifications: [
+              {
+                ...input,
+                id: createId('notif'),
+                time: input.time ?? t.notifications.justNow,
+                read: input.read ?? false,
+              },
+              ...state.notifications,
+            ],
+          };
+        }),
 
       markAllRead: () => {
         set((state) => ({

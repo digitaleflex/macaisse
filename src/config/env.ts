@@ -42,3 +42,9 @@ export function readEnv(raw: RawEnv = readRaw()): AppEnv {
 }
 
 export const env: AppEnv = readEnv();
+
+/**
+ * Mode démonstration : l'affichage (badge « Démo », textes d'invitation…) en
+ * dépend. Les écrans lisent cette constante au lieu d'importer `services/`.
+ */
+export const isDemoMode = env.apiMode === 'mock';

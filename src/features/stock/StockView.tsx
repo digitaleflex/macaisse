@@ -4,6 +4,7 @@ import { t } from '@/content';
 import { STOCK_STATUS_TONE } from '@/config/reference';
 import { filterProducts, marginPercent, sortProducts } from '@/domain/stock';
 import { formatFCFA } from '@/domain/money';
+import { useMediaQuery } from '@/ui';
 import {
   productsWithStatus,
   retailValueOf,
@@ -137,6 +138,8 @@ function StockLevel({ product }: { product: Product }) {
 }
 
 export function StockView() {
+  // Un seul rendu monté : tableau sur grand écran, cartes sur mobile.
+  const isDesktop = useMediaQuery('(min-width: 768px)');
   const rawProducts = useProductsStore((state) => state.products);
   const addProduct = useProductsStore((state) => state.addProduct);
   const updateProduct = useProductsStore((state) => state.updateProduct);
@@ -317,7 +320,8 @@ export function StockView() {
         ) : (
           <>
             {/* Tableau (≥ md) */}
-            <table id="inventory-list" className="hidden md:table w-full text-sm">
+            {isDesktop && (
+            <table id="inventory-list" className="w-full text-sm">
               <thead>
                 <tr className="text-left text-xs font-semibold text-slate-500 border-b border-line bg-slate-50/70">
                   <th className="px-5 py-3 font-semibold">{t.stock.table.product}</th>
@@ -386,9 +390,11 @@ export function StockView() {
                 ))}
               </tbody>
             </table>
+            )}
 
             {/* Cartes (< md) */}
-            <ul className="md:hidden divide-y divide-line">
+            {!isDesktop && (
+            <ul className="divide-y divide-line">
               {visibleProducts.map((product) => (
                 <li key={product.id} className="stock-item p-4 flex flex-col gap-3">
                   <div className="flex items-start gap-3">
@@ -436,6 +442,7 @@ export function StockView() {
                 </li>
               ))}
             </ul>
+            )}
           </>
         )}
       </Card>

@@ -2,7 +2,7 @@
 // connexion, inscription, reprise de session, changement d'espace, déconnexion.
 // Seul module autorisé à modifier le contexte `services/tenant`.
 
-import type { AuthResult, LoginInput, SignupInput } from '@/types';
+import type { AuthResult, DemoAccount, LoginInput, SignupInput } from '@/types';
 import { t } from '@/content';
 import { canAccessTab } from '@/domain/permissions';
 import { api, isApiError, setActiveOrganization, setAuthToken } from '@/services';
@@ -14,6 +14,7 @@ import { useNotificationsStore } from './useNotificationsStore';
 import { useProductsStore } from './useProductsStore';
 import { useSalesStore } from './useSalesStore';
 import { useSessionStore } from './useSessionStore';
+import { useTeamStore } from './useTeamStore';
 import { useUiStore } from './useUiStore';
 
 function errorMessage(error: unknown, fallback: string): string {
@@ -43,6 +44,7 @@ export async function activateOrganization(organizationId: string): Promise<void
   session.setStatus('loading');
   try {
     setActiveOrganization(organizationId);
+    useTeamStore.getState().reset();
     await scopeStoresToOrganization(organizationId);
     const loaded = await api.session.get(organizationId);
     await loadCollections();
@@ -70,6 +72,11 @@ async function applyAuth(result: AuthResult): Promise<void> {
   const organizationId = pickOrganization(result);
   if (organizationId) await activateOrganization(organizationId);
   else useSessionStore.getState().setStatus('error', t.auth.noOrgText);
+}
+
+/** Comptes proposés sur l'écran de connexion (vide hors mode démo). */
+export async function loadDemoAccounts(): Promise<DemoAccount[]> {
+  return api.auth.demoAccounts();
 }
 
 export async function login(input: LoginInput): Promise<void> {
@@ -121,4 +128,5 @@ export async function logout(): Promise<void> {
   useSessionStore.getState().clear();
   useUiStore.getState().closeModal();
   useUiStore.getState().closeReceipt();
+  useTeamStore.getState().reset();
 }

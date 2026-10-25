@@ -6,7 +6,7 @@ Périmètre : `src/` uniquement (le dépôt ne contient aucun backend).
 **Chiffres clés** — 8 fichiers d'app `(622 l)`, 54 fichiers de features `(4 778 l)`,
 19 fichiers `ui/` `(1 222 l)`, 21 fichiers `store/` `(2 244 l)`, 9 fichiers
 `services/` `(944 l)`, 16 fichiers `domain/` `(1 486 l)`, ~13 400 lignes de `src/`.
-Tests : **21 fichiers / 165 tests**.
+Tests : **23 fichiers / 175 tests**.
 
 Légende : ✔ implémenté et fonctionnel · ◐ simulé (UI + toast, aucun effet réel) ·
 ✗ absent du code.
@@ -106,7 +106,7 @@ Fichiers : `BilanView`, `RevenueChart`, `CashFlowChart`, `ChannelSplit`, `Expens
 |---|---|---|---|
 | `depenses` | Sidebar « Dépenses », action rapide accueil | Liste du mois + total + formulaire (motif, montant, catégorie, justificatif, mode) + suppression | global (`useUiStore`) |
 | `export` | Sidebar, bilan, action rapide | Format CSV/PDF, périmètre (complet / ventes / dépenses), compteurs d'écritures, recettes/charges/solde, téléchargement | global |
-| `profil` | Topbar/sidebar avatar | Commerce (NINEA, tél, e-mail), 4 préférences POS, synchronisation serveur, sauvegarde | global |
+| `profil` | Topbar/sidebar avatar | Commerce (NINEA, tél, e-mail), 3 réglages POS (désactivés, « Bientôt »), synchronisation serveur, sauvegarde | global |
 | `abonnement` | Sidebar | Plan actif, cycle mensuel/annuel, factures, mention démo | global |
 | `notifications` | Cloche (avec compteur) | Drawer : liste, non lues, *Tout marquer comme lu* | global (drawer) |
 | `equipe` | Sidebar « Équipe » | Membres, invitation, changement de rôle (hiérarchie), retrait, encart rôles | global |
@@ -169,19 +169,21 @@ Permissions appliquées dans la sidebar : Dépenses (`expenses.manage`), Export
 
 ### C.8 Profil / paramètres POS — ◐
 
-- 4 préférences persistées : déduction auto du stock, alertes SMS de rupture,
-  imprimante thermique Bluetooth, bip au scan.
-- **Aucune de ces préférences n'est branchée à un effet réel** (aucun code ne lit
-  `deductionAutoStock`, `alertesSmsRupture`, `imprimanteBluetooth`, `bipSonoreScan`
-  en dehors du panneau de réglages).
+- 3 préférences persistées : alertes SMS de rupture, imprimante thermique
+  Bluetooth, bip au scan.
+- **Aucune n'est branchée à un effet réel** : les interrupteurs sont **désactivés
+  et badgés « Bientôt »** (plus de promesse trompeuse). La déduction automatique
+  du stock, elle, n'est pas une option : elle est toujours appliquée.
 - Synchronisation serveur : bouton *Synchroniser* → `reloadOrganization()` (réel en
   mode `http`, toast d'indisponibilité en démo).
 
 ### C.9 Notifications — ◐
 
 - Liste, non lues, marquage individuel/global, lien vers l'onglet concerné.
-- **Aucune génération automatique** : les notifications proviennent des fixtures ;
-  aucun code n'en crée lors d'une rupture de stock, d'un crédit en retard, etc.
+- **Génération métier** : crédit ouvert et rupture de stock (à l'encaissement),
+  crédit soldé (au règlement). Les alertes de même titre déjà non lues ne sont
+  pas dupliquées. Les crédits **échus** ne sont pas encore notifiés (calcul
+  possible, événement planifié absent).
 
 ### C.10 Export — ✔
 
@@ -276,13 +278,13 @@ chiffres `.font-num`).
 | Rappel WhatsApp d'un crédit | ◐ Bouton désactivé « non disponible », aucun envoi | `features/credits/CreditDetailCard.tsx:91` |
 | Reçu WhatsApp à l'encaissement crédit | ✗ Explicitement annoncé indisponible | `content/fr.ts:415-416` |
 | Inventaire tournant | ◐ Toast, aucun historique enregistré | `features/stock/StockView.tsx:461` |
-| Clôture de caisse | ◐ État local `useState`, perdu au rechargement | `features/accueil/AccueilView.tsx:50` |
-| Alertes SMS de rupture | ✗ Simple interrupteur sans effet | `store/useUiStore.ts` (`preferences`) |
-| Imprimante thermique Bluetooth | ✗ Interrupteur sans effet | idem |
-| Bip sonore au scan | ✗ Interrupteur sans effet | idem |
-| Déduction auto du stock | ✗ Interrupteur sans effet (la déduction est toujours appliquée) | idem |
+| Clôture de caisse | ✔ Persistée par jour (`registerClosedAt`), se réinitialise le lendemain ; n'empêche pas une vente | `store/useUiStore.ts` |
+| Alertes SMS de rupture | ✗ Réglage désactivé + badge « Bientôt » (aucun envoi) | `features/profil/PosSettings.tsx` |
+| Imprimante thermique Bluetooth | ✗ Réglage désactivé + badge « Bientôt » | idem |
+| Bip sonore au scan | ✗ Réglage désactivé + badge « Bientôt » | idem |
+| Déduction auto du stock | ✔ Toujours appliquée (le réglage a été retiré : ce n'était pas une option) | `store/useSalesStore.ts` |
 | Facturation / paiement d'abonnement | ◐ Aucune transaction | `features/abonnement/AbonnementModal.tsx` |
-| Notifications automatiques | ✗ Fixtures statiques uniquement | `store/useNotificationsStore.ts` |
+| Notifications automatiques | ◐ Crédit ouvert, rupture, crédit soldé ; pas d'alerte d'échéance | `store/useSalesStore.ts`, `store/useCreditsStore.ts` |
 | Annulation / remboursement de vente | ✗ Inexistant | — |
 | Téléversement d'image produit | ✗ URL seulement | `ProductFormModal.tsx` |
 | Code-barres / EAN produit | ✗ Champ `sku` libre, aucun scan réel | `types/index.ts` |
@@ -302,7 +304,7 @@ chiffres `.font-num`).
 
 - **Cœur métier réellement fonctionnel** : POS, stock, crédits, dépenses, bilan,
   export comptable, équipe/rôles, multi-organisation — le tout persisté par
-  organisation et couvert par 165 tests.
+  organisation et couvert par 175 tests.
 - **Surface « démonstration »** : impression, WhatsApp, scan, inventaire tournant,
   clôture, réglages POS, facturation — visibles volontairement, sans effet réel et
   sans mensonge (toasts explicites).

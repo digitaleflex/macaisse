@@ -94,16 +94,28 @@ describe('migration v1 → v2 des données persistées', () => {
     expect(credits[0].id).toBe('3');
   });
 
-  it('valide l’onglet et la modale persistés', async () => {
-    seedStorage(UI_KEY, { tab: 'inexistant', modal: 'depenses' });
+  it('valide l’onglet et la clôture persistés, ignore la modale', async () => {
+    seedStorage(UI_KEY, { tab: 'inexistant', modal: 'depenses', registerClosedAt: '2024-10-18' });
 
     const { useUiStore } = await import('../useUiStore');
     const state = useUiStore.getState();
 
     expect(state.tab).toBe('accueil');
-    expect(state.modal).toBe('depenses');
+    // La modale est transitoire : elle ne doit plus se rouvrir après reconnexion.
+    expect(state.modal).toBeNull();
+    expect(state.registerClosedAt).toBe('2024-10-18');
     // `isOnline` est transitoire (non persisté).
     expect(typeof state.isOnline).toBe('boolean');
+  });
+
+  it('rejette une date de clôture malformée', async () => {
+    seedStorage(UI_KEY, { tab: 'stock', registerClosedAt: 'hier' });
+
+    const { useUiStore } = await import('../useUiStore');
+    const state = useUiStore.getState();
+
+    expect(state.tab).toBe('stock');
+    expect(state.registerClosedAt).toBeNull();
   });
 
   it('ne plante pas sur une forme inattendue et repart du seed', async () => {

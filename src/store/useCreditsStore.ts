@@ -7,7 +7,9 @@ import type { ClientCredit } from '@/types';
 import { createId } from '@/domain/ids';
 import { applyPayment, computeCreditStatus, daysLate } from '@/domain/credits';
 import { SEED_CREDITS } from '@/mocks';
+import { t } from '@/content';
 import { syncRemote } from '@/services';
+import { useNotificationsStore } from './useNotificationsStore';
 import {
   coerceId,
   coerceNumber,
@@ -58,11 +60,23 @@ export const useCreditsStore = create<CreditsState>()(
       },
 
       payCredit: (id, amount) => {
+        const settled = (() => {
+          const current = get().credits.find((credit) => credit.id === id);
+          return current !== undefined && amount >= current.remainingAmount ? current : null;
+        })();
         set((state) => ({
           credits: state.credits.map((credit) =>
             credit.id === id ? applyPayment(credit, amount) : credit
           ),
         }));
+        if (settled) {
+          useNotificationsStore.getState().push({
+            title: t.notifications.feed.creditSettled(settled.clientName),
+            description: t.notifications.feed.creditSettledText,
+            type: 'success',
+            relatedTab: 'credits',
+          });
+        }
         syncRemote((api) => api.credits.pay(id, amount), 'Règlement non synchronisé.');
       },
 

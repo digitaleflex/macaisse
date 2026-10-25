@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import type { SeriesPoint } from '@/types';
 import { t } from '@/content';
-import { addDays, isSameDay, parseDate } from '@/domain/dates';
+import { addDays, isSameDay, parseDate, toIsoDate } from '@/domain/dates';
 import { activeCredits } from '@/domain/credits';
 import { computeKpis, dailyRevenueSeries } from '@/domain/finances';
 import { formatFCFA } from '@/domain/money';
@@ -48,7 +48,6 @@ function withShortLabels(points: SeriesPoint[]): SeriesPoint[] {
 
 export function AccueilView() {
   const [period, setPeriod] = useState<Period>('today');
-  const [closed, setClosed] = useState(false);
   const now = useMemo(() => new Date(), []);
   const { user } = useCurrentSession();
   const canSeeFinance = usePermission('finance.view');
@@ -58,6 +57,9 @@ export function AccueilView() {
   const credits = useCreditsStore((state) => state.credits);
   const products = useProductsStore((state) => state.products);
   const setTab = useUiStore((state) => state.setTab);
+  const registerClosedAt = useUiStore((state) => state.registerClosedAt);
+  const toggleRegisterClosed = useUiStore((state) => state.toggleRegisterClosed);
+  const closed = registerClosedAt === toIsoDate(now);
   const openModal = useUiStore((state) => state.openModal);
   const openReceipt = useUiStore((state) => state.openReceipt);
   const showToast = useUiStore((state) => state.showToast);
@@ -112,9 +114,12 @@ export function AccueilView() {
   const net = stats.revenue - stats.expenses;
 
   const toggleClosing = () => {
-    const next = !closed;
-    setClosed(next);
-    showToast(next ? t.dashboard.closing.closedToast : t.dashboard.closing.reopenedToast, next ? 'success' : 'info');
+    const next = registerClosedAt !== toIsoDate(now);
+    toggleRegisterClosed();
+    showToast(
+      next ? t.dashboard.closing.closedToast : t.dashboard.closing.reopenedToast,
+      next ? 'success' : 'info'
+    );
   };
 
   return (
