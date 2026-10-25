@@ -4,7 +4,9 @@
 Périmètre : connexion, inscription, reprise de session, multi-organisation,
 rôles, invitations, déconnexion.
 
-Voir aussi : [`ARCHITECTURE_AUDIT.md`](ARCHITECTURE_AUDIT.md),
+Voir aussi : [`AUTH_DECISIONS.md`](AUTH_DECISIONS.md) (**décisions
+normatives D1–D9 et règles RG-A01–RG-A22**, priment sur ce document),
+[`ARCHITECTURE_AUDIT.md`](ARCHITECTURE_AUDIT.md),
 [`API_CONTRACT.md`](API_CONTRACT.md) (routes d'auth).
 
 ---
@@ -51,45 +53,52 @@ Démarrage : restoreSession() ─► api.auth.me() ─► même activation
 
 | # | Sévérité | Constat | Preuve | Issue |
 |---|---|---|---|---|
-| A1 | **critique** | Jeton en `localStorage`, sans TTL, sans refresh ni `httpOnly` → vol par XSS valable indéfiniment | `store/useAuthStore.ts` (`persist`) | [#19](https://github.com/digitaleflex/macaisse/issues/19) |
+| A1 | **critique** | Jeton en `localStorage`, sans TTL, sans refresh ni `httpOnly` → vol par XSS valable indéfiniment | `store/useAuthStore.ts` (`persist`) | **décidé D1** — cookie `HttpOnly` + refresh rotatif |
 | A2 | ~~critique~~ ✅ **corrigé** | La connexion n'active plus rien ; `requireMembership` exige `status === 'active'` (sinon `403 INVITATION_PENDING`) ; acceptation explicite via `POST /auth/invitations/:orgId/accept` | `adapters/mockApi.ts`, `store/auth.ts` | [#20](https://github.com/digitaleflex/macaisse/issues/20) fermée |
-| A3 | majeur | Pas de mot de passe oublié, pas de vérification d'e-mail, pas de MFA ; mot de passe = 8 caractères côté client | `features/auth/LoginScreen.tsx:26` | [#21](https://github.com/digitaleflex/macaisse/issues/21) |
-| A4 | majeur | Aucune limitation des tentatives, aucun journal de connexion | absent | [#22](https://github.com/digitaleflex/macaisse/issues/22) |
+| A3 | majeur | Pas de mot de passe oublié, pas de vérification d'e-mail, pas de MFA ; mot de passe = 8 caractères côté client | `features/auth/LoginScreen.tsx:26` | **décidé D2/D4** — OTP téléphone, mot de passe optionnel à 12 caractères, récupération par OTP |
+| A4 | majeur | Aucune limitation des tentatives, aucun journal de connexion | absent | **décidé D8** — RG-A19, RG-A20 |
 | A5 | 🟡 **partiel** | Statut vérifié et acceptation explicite ✔ ; restent le jeton signé, l'expiration et la révocation côté serveur | `types/index.ts` (`Invitation`) | [#20](https://github.com/digitaleflex/macaisse/issues/20) (suite backend) |
-| A6 | majeur | `logout()` laisse toutes les collections métier en `localStorage` (poste partagé) | `store/auth.ts` | [#23](https://github.com/digitaleflex/macaisse/issues/23) |
+| A6 | majeur | `logout()` laisse toutes les collections métier en `localStorage` (poste partagé) | `store/auth.ts` | **décidé RG-A13** — purge obligatoire à la déconnexion |
 | A7 | ~~mineur~~ ✅ **corrigé** | `activateOrganization`/`switchOrganization`/`reloadOrganization` renvoient un booléen ; les toasts suivent le résultat | `store/auth.ts` | [#10](https://github.com/digitaleflex/macaisse/issues/10) fermée |
 | A8 | mineur | Profil non éditable, pas de suppression de compte | `AuthRepository` | [#24](https://github.com/digitaleflex/macaisse/issues/24) |
-| A9 | mineur | Migration du store auth sans coercition (jeton/profil arbitraires) | `store/useAuthStore.ts:33,40` | [#4](https://github.com/digitaleflex/macaisse/issues/4) |
-| A10 | mineur | `403` traité comme une session expirée à la reprise | `restoreSession` | [#25](https://github.com/digitaleflex/macaisse/issues/25) |
+| A9 | mineur | Migration du store auth sans coercition (jeton/profil arbitraires) | `store/useAuthStore.ts:33,40` | [#4](https://github.com/digitaleflex/macaisse/issues/4) ; disparaît avec D1 (plus de jeton persisté) |
+| A10 | mineur | `403` traité comme une session expirée à la reprise | `restoreSession` | **décidé RG-A12** — `403` et `STEP_UP_REQUIRED` ne déconnectent pas |
+| A11 | majeur (UX) | Les champs d'inscription n'ont aucun `autoComplete` : pas de gestionnaire de mots de passe, aucune saisie assistée sur mobile | `features/auth/LoginScreen.tsx:185-197` | [#21](https://github.com/digitaleflex/macaisse/issues/21) |
+| A12 | majeur (UX) | Mot de passe saisi **une seule fois**, sans révélation ni confirmation, et sans récupération possible → une faute de frappe perd le compte | `features/auth/LoginScreen.tsx:191` | **supprimé par D2/D4** (plus de mot de passe à l'inscription) |
+| A13 | majeur (UX) | Après inscription, espace vide sans onboarding : les états vides renvoient « Afficher tous les articles » / « Réinitialiser » sur un catalogue vide | `content/fr.ts:189-191,303-304` | **décidé RG-A04** — onboarding 3 étapes + états vides actionnables |
 
 ---
 
-## 4. Décisions à verrouiller avec le backend
+## 4. Décisions arrêtées
 
-1. **Transport** : access token court en mémoire + refresh en cookie
-   `httpOnly/ Secure/ SameSite=Strict`, ou session cookie complète (⇒ CSRF).
-   Ce choix conditionne la réconciliation des mutations (#1).
-2. **Durée de vie** : access 15 min / refresh 30 j rotatif, ou session
-   glissante ; exposer `expiresAt` dans `AuthResult`.
-3. **Invitations** : route dédiée, jeton signé, expiration 7 j, acceptation
-   explicite, `status` vérifié à chaque requête.
-4. **Vérification d'e-mail** : obligatoire à l'inscription ou différée ?
-5. **Mot de passe** : longueur minimale serveur (12), liste noire, pas de
-   complexité imposée (recommandation NIST/ANSSI).
-6. **Anti-bruteforce** : `429` + `Retry-After` sur `/auth/login`, verrouillage
-   progressif par e-mail et par IP.
-7. **`401` vs `403`** : 401 = jeton invalide/expiré → déconnexion ; 403 = jeton
-   valide mais non autorisé → message, **pas** de déconnexion.
+Les questions ouvertes de la version précédente de cette section sont
+**tranchées** dans [`AUTH_DECISIONS.md`](AUTH_DECISIONS.md) (statut : arrêté le
+2026-10-25, normatif) :
 
-À écrire dans [`API_CONTRACT.md`](API_CONTRACT.md) avant implémentation
-(issue [#25](https://github.com/digitaleflex/macaisse/issues/25)).
+| Question précédente | Décision | Réf. |
+|---|---|---|
+| Transport : access court + refresh cookie, ou session cookie complète ? | Session **cookie `HttpOnly`** + access 15 min + refresh rotatif, CSRF obligatoire | D1, RG-A10 |
+| Durée de vie | 30 j glissant / 90 j absolu (personnel) ; 90 j / 180 j (appareil enrôlé) | RG-A11 |
+| Invitations | Inchangé : jeton signé, 7 j, acceptation explicite | [API_CONTRACT](API_CONTRACT.md) |
+| Vérification d'e-mail obligatoire ? | **Non** : l'identité est le **téléphone** ; l'e-mail est facultatif et vérifié s'il est fourni | D2, RG-A01/RG-A02 |
+| Politique de mot de passe | Optionnel, **12 caractères**, liste noire, sans complexité imposée | D4 |
+| Anti-bruteforce | `429` + `Retry-After`, quotas par identifiant et par IP, journal 90 j | D8, RG-A19/RG-A20 |
+| `401` vs `403` | `401 UNAUTHENTICATED` déconnecte · `401 STEP_UP_REQUIRED` et `403` ne déconnectent pas | RG-A12 |
+
+Ce qui reste **ouvert** : le stockage du hash de PIN pour le mode hors ligne
+(D6) et la date d'ouverture de D7 (passkeys). Le canal OTP **est tranché** :
+WhatsApp Cloud API par défaut, SMS en repli plafonné, budget borné
+(`AUTH_DECISIONS.md` §7, RG-A23/RG-A24).
 
 ---
 
 ## 5. Ordre conseillé
 
-1. **#25** (contrat) — débloque tout le reste.
-2. **#19** (jeton/refresh) — avec **#1** (réconciliation `http`).
-3. **#20** (invitations) — bug d'accès réel, corrigeable en mock avant le backend.
-4. **#23** (purge locale) et **#22** (anti-bruteforce) — exploitation.
-5. **#21** (reset/vérification) puis **#24** (profil/suppression RGPD).
+Aligné sur [`AUTH_DECISIONS.md`](AUTH_DECISIONS.md) §6 :
+
+1. **Contrat** — ce document + §2 de `API_CONTRACT.md` (débloque tout).
+2. **D1** session cookie + CSRF + `AuthResult` sans jeton (avec #1 réconciliation).
+3. **D2/D4** OTP téléphone, mot de passe optionnel, purge locale (RG-A13).
+4. **Onboarding** 3 étapes + états vides (RG-A04).
+5. **D6** PIN + appareil enrôlé (indispensable au hors ligne #17).
+6. **D3** Google, puis **D8/D9** journal + step-up, puis **D7** passkeys.

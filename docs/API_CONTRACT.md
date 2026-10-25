@@ -20,7 +20,7 @@ VITE_API_TIMEOUT_MS=15000
   (gérant), `cashier` (caissier). Matrice des droits : `src/domain/permissions.ts`.
 - **Toutes** les données métier sont rattachées à une organisation et exposées
   sous `/orgs/:orgId/…`. Le serveur DOIT vérifier, à chaque requête, que
-  l'utilisateur du jeton est membre de `:orgId` (sinon `403`) et que son rôle
+  l'utilisateur de la session est membre de `:orgId` (sinon `403`) et que son rôle
   autorise l'action. Le client masque déjà les actions interdites, mais ce n'est
   pas une sécurité.
 
@@ -34,8 +34,16 @@ VITE_API_TIMEOUT_MS=15000
 ## Conventions
 
 - JSON UTF-8, montants en **FCFA entiers**, dates `YYYY-MM-DD`, heures `HH:MM`.
-- Authentification : `Authorization: Bearer <token>` sur toutes les routes sauf
-  `/auth/login` et `/auth/signup`. Un `401` déconnecte l'utilisateur côté client.
+- Authentification : **cookie de session `HttpOnly`** (`mc_session`, 15 min) +
+  refresh rotatif (`mc_refresh`). **Aucun en-tête `Authorization`**, aucun jeton
+  dans le corps des réponses : le client n'a rien de durable à persister.
+  Les routes publiques sont `/auth/otp/*`, `/auth/oauth/*`, `/auth/password/reset/*`,
+  `/auth/refresh` et `/auth/login` (hérité). Décisions et durées :
+  [`AUTH_DECISIONS.md`](AUTH_DECISIONS.md) (D1, RG-A10, RG-A11).
+- **CSRF obligatoire** sur toute mutation authentifiée par cookie : en-tête
+  `X-CSRF-Token` (double-submit) — `SameSite=Lax` seul ne suffit pas.
+- Un `401 UNAUTHENTICATED` déconnecte l'utilisateur ; un `401 STEP_UP_REQUIRED`
+  demande une réauthentification **sans** déconnecter (RG-A12).
 - Identifiants des entités métier **générés par le client** (`product-<uuid>`…) :
   le serveur les accepte tels quels (création idempotente).
 - Erreurs : statut ≠ 2xx et corps `{ "message": "Texte lisible en français", "code": "CODE_METIER" }`.
@@ -48,32 +56,130 @@ VITE_API_TIMEOUT_MS=15000
 
 ## Parcours client
 
-1. `POST /auth/login` (ou `/auth/signup`) → `AuthResult` (jeton + appartenances).
-2. Choix de l'organisation (dernière utilisée, sinon la première).
-3. `GET /orgs/:orgId/session` puis, en parallèle, les collections de l'organisation.
-4. Changement d'espace : étapes 2–3 avec un autre `orgId` (les données locales
-   sont cloisonnées par organisation : `localStorage['ma-caisse/<orgId>/…']`).
-5. Au rechargement : `GET /auth/me` avec le jeton persisté.
+**Propriétaire / gérant (cible principale)**
+
+1. `POST /auth/otp/request { phone }` → `202` (aucune révélation d'existence, RG-A09).
+2. `POST /auth/otp/verify { challengeId, code }` → `AuthResult` + cookies de
+   session. Si le numéro est inconnu, le compte **et** l'organisation sont créés
+   dans la même transaction (rôle `owner`, essai 14 j, RG-A06).
+3. Choix de l'organisation (dernière utilisée, sinon la première).
+4. `GET /orgs/:orgId/session` puis, en parallèle, les collections.
+5. Onboarding (nom du commerce, ville, premier article) jusqu'à `onboardedAt`
+   renseigné (RG-A04).
+6. Au rechargement / retour : `GET /auth/me` — le cookie porte la session.
+
+**Caissier (poste de la boutique)**
+
+1. L'appareil a été enrôlé par un propriétaire (`POST /orgs/:orgId/devices`).
+2. Le PIN est vérifié **localement** (D6) ; `POST /auth/pin/verify` sert à la
+   télémétrie et au compteur de tentatives quand le réseau est là.
+3. Aucun OTP n'est demandé à la relève. Verrouillage automatique après 15 min
+   d'inactivité (RG-A14).
+
+**Changement d'espace** : étapes 3–4 avec un autre `orgId` ; les données locales
+restent cloisonnées par organisation (`localStorage['ma-caisse/<orgId>/…']`).
 
 ## Routes — authentification
 
+### Identité (OTP téléphone — D2)
+
 | Méthode | Route | Corps | Réponse |
 |---|---|---|---|
-| POST | `/auth/login` | `{ email, password }` | `AuthResult` — `401` si identifiants invalides |
-| POST | `/auth/signup` | `SignupInput` (compte + commerce) | `AuthResult` — crée l'organisation, l'utilisateur en est `owner` ; `409` si e-mail déjà utilisé |
-| GET | `/auth/me` | — | `AuthResult` (jeton inchangé) |
-| POST | `/auth/logout` | — | `204` |
+| POST | `/auth/otp/request` | `{ phone }` (E.164) | `202 { challengeId, channel: "whatsapp" (défaut) ou "sms" (repli), expiresIn, retryAfter?, remainingQuota }` · `429 OTP_RATE_LIMITED` · `429 OTP_BUDGET_EXCEEDED` + `Retry-After` |
+| POST | `/auth/otp/verify` | `{ challengeId, code }` | `AuthResult` + cookies · `401 INVALID_OTP` · `410 OTP_EXPIRED` · `429 OTP_LOCKED` |
+
+### Google (D3)
+
+| Méthode | Route | Corps | Réponse |
+|---|---|---|---|
+| POST | `/auth/oauth/google` | `{ code, codeVerifier }` (PKCE) | `AuthResult` + cookies ; compte inconnu → créé avec `onboardingStep: "phone"` |
+| POST | `/auth/oauth/google/link` | `{ code, codeVerifier, challengeId, code: otp }` | `AuthResult` — rattachement e-mail ↔ téléphone (RG-A02) |
+
+### Session (D1)
+
+| Méthode | Route | Corps | Réponse |
+|---|---|---|---|
+| POST | `/auth/refresh` | — (cookie `mc_refresh`) | `204` + nouveaux cookies · `401` (réutilisation → révocation de la famille, RG-A10) |
+| GET | `/auth/me` | — | `AuthResult` (`expiresAt`) |
+| POST | `/auth/logout` | — | `204`, refresh invalidé côté serveur |
+| POST | `/auth/password/set` | `{ password }` | `204` (D4, 12 caractères minimum) |
+| POST | `/auth/password/change` | `{ currentPassword, password }` | `204` · `401 STEP_UP_REQUIRED` |
+| POST | `/auth/password/reset/request` | `{ email }` | `202` (réponse constante, RG-A09) |
+| POST | `/auth/password/reset/confirm` | `{ token, password }` | `204` |
+| GET | `/auth/events` | — | `AuthEvent[]` (10 dernières connexions, RG-A20) |
+
+### Invitations (inchangé)
+
+| Méthode | Route | Corps | Réponse |
+|---|---|---|---|
 | GET | `/auth/invitations` | — | `Invitation[]` — invitations reçues, en attente d'acceptation |
 | POST | `/auth/invitations/:orgId/accept` | — | `AuthResult` (appartenance passée à `active`) · `404 INVITATION_NOT_FOUND` |
 
+### Hérité (déprécié — à retirer une fois D2 livré)
+
+| Méthode | Route | Corps | Réponse |
+|---|---|---|---|
+| POST | `/auth/login` | `{ email, password }` | `AuthResult` + cookies · `401 INVALID_CREDENTIALS` |
+| POST | `/auth/signup` | `SignupInput` legacy (8 champs) | `AuthResult` · `409 EMAIL_TAKEN` |
+
+Les deux routes restent disponibles le temps de la migration : elles ouvrent une
+session **par cookie** comme les autres (pas de jeton dans le corps) et
+n'introduisent aucune règle nouvelle.
+
+### Appareils et PIN caissier (D6)
+
+| Méthode | Route | Corps | Réponse | Rôle |
+|---|---|---|---|---|
+| GET | `/orgs/:orgId/devices` | — | `Device[]` (`name`, `lastSeenAt`, `enrolledBy`) | owner |
+| POST | `/orgs/:orgId/devices` | `{ name, memberId }` | `Device` + `pinSetupToken` · `422 DEVICE_LIMIT` (3 max) | owner + step-up |
+| DELETE | `/orgs/:orgId/devices/:id` | — | `204` (session et cache local invalidés, RG-A17) | owner + step-up |
+| PUT | `/orgs/:orgId/members/:userId/pin` | `{ pin }` | `204` (`422 WEAK_PIN`) | owner |
+| POST | `/auth/pin/verify` | `{ deviceId, memberId, pin }` | `200 { ok }` · `401` · `423 PIN_LOCKED` | membre |
+
 ```jsonc
-// AuthResult
-{ "token": "…",
-  "user": { "id": "u-mamadou", "firstName": "Mamadou", "lastName": "Konaté", "email": "…", "phone": "…", "role": "Gérant" },
+// Device (3 maximum par organisation, RG-A15)
+{ "id": "dev-caisse-1", "name": "Caisse comptoir", "memberId": "u-awa",
+  "enrolledBy": "u-mamadou", "enrolledAt": "2026-10-25",
+  "lastSeenAt": "2026-10-25T17:40:00Z", "revokedAt": null }
+
+// AuthEvent (10 dernières exposées au titulaire, RG-A20)
+{ "at": "2026-10-25T17:40:00Z", "method": "otp_whatsapp", "result": "success",
+  "ip": "196.20.0.0", "userAgent": "…", "deviceId": null }
+```
+
+```jsonc
+// AuthResult — plus de champ "token" (D1)
+{ "user": { "id": "u-mamadou", "firstName": "Mamadou", "lastName": "Konaté",
+            "phone": "+221771234567", "email": "mamadou@exemple.sn" },
   "memberships": [
     { "organizationId": "org-etoile", "organizationName": "Boutique Étoile", "city": "Dakar Plateau", "role": "owner" },
-    { "organizationId": "org-baobab", "organizationName": "Supérette Le Baobab", "city": "Abidjan", "role": "manager" } ] }
+    { "organizationId": "org-baobab", "organizationName": "Supérette Le Baobab", "city": "Abidjan", "role": "manager" } ],
+  "expiresAt": "2026-10-25T18:15:00Z" }
 ```
+
+### Règles d'authentification (normatives)
+
+Les règles `RG-A01` à `RG-A22` de [`AUTH_DECISIONS.md`](AUTH_DECISIONS.md) §3
+sont **contractuelles** et priment sur tout exemple de ce document. Les plus
+structurantes pour le backend :
+
+1. Téléphone E.164 vérifié = identité unique ; e-mail unique et vérifié s'il est
+   fourni (RG-A01, RG-A02).
+2. OTP : 6 chiffres, 5 min, usage unique, 5 tentatives, quotas 3/h/numéro et
+   10/h/IP, aucune révélation d'existence (RG-A07 → RG-A09), **canal WhatsApp
+   Cloud API** avec SMS en repli désactivé par défaut (RG-A23).
+3. Access 15 min, refresh rotatif 30 j glissant / 90 j absolu (personnel) ou
+   90 j / 180 j (appareil enrôlé), réutilisation = révocation de famille
+   (RG-A10, RG-A11).
+4. `401 STEP_UP_REQUIRED` ≠ `401 UNAUTHENTICATED` : le premier ne déconnecte pas
+   (RG-A12).
+5. Déconnexion = invalidation serveur **et** purge des collections locales
+   (RG-A13).
+6. 3 appareils maximum par organisation, enrôlement par le propriétaire avec
+   step-up (RG-A15).
+7. **Budget** : 20 OTP par organisation et par mois civil, alerte à 80 %,
+   `429 OTP_BUDGET_EXCEEDED` à 100 %, plafond global et mode dégradé au-delà
+   (RG-A24). Modèle de coût : [`AUTH_DECISIONS.md`](AUTH_DECISIONS.md) §7.
 
 ### Règles d'invitation (normatives)
 
@@ -83,8 +189,8 @@ VITE_API_TIMEOUT_MS=15000
 2. **La connexion n'active rien.** Accepter une invitation est un acte explicite
    (`POST /auth/invitations/:orgId/accept`) ; un même utilisateur peut avoir
    plusieurs invitations en attente et les accepter séparément.
-3. `GET /auth/invitations` ne renvoie que les invitations de l'utilisateur du
-   jeton, jamais celles d'un collègue.
+3. `GET /auth/invitations` ne renvoie que les invitations de l'utilisateur de la
+   session, jamais celles d'un collègue.
 4. L'acceptation est idempotente : ré-accepter une invitation déjà active renvoie
    `200` avec l'`AuthResult` courant (pas d'erreur).
 5. Une invitation doit expirer (7 jours) et pouvoir être révoquée par un
@@ -138,11 +244,17 @@ l'interface ne peut pas réagir correctement (rejouer, annuler, déconnecter).
 
 | Statut | `code` attendu | Sens | Réaction client |
 |---|---|---|---|
-| `401` | `UNAUTHENTICATED` | jeton absent, expiré ou invalide | déconnexion immédiate |
-| `403` | `FORBIDDEN` | jeton valide, non-membre de `:orgId`, ou rôle insuffisant | toast + retour à la caisse |
+| `401` | `UNAUTHENTICATED` | cookie absent, expiré ou invalide | déconnexion immédiate |
+| `401` | `STEP_UP_REQUIRED` | session valide, action sensible : réauthentification < 5 min requise (RG-A12) | modale de réauthentification, **pas** de déconnexion |
+| `401` | `INVALID_CREDENTIALS`, `INVALID_OTP` | échec du facteur présenté | message, compteur de tentatives |
+| `403` | `FORBIDDEN` | session valide, non-membre de `:orgId`, ou rôle insuffisant | toast + retour à la caisse, **pas** de déconnexion |
+| `403` | `INVITATION_PENDING` | appartenance non acceptée | écran d'acceptation d'invitation |
 | `404` | `NOT_FOUND` | ressource inexistante dans cette organisation | toast, rafraîchissement de la collection |
 | `409` | `INSUFFICIENT_STOCK`, `DUPLICATE`, `CONFLICT` | état serveur incompatible avec la mutation | toast + rechargement de la ressource |
-| `422` | `VALIDATION_ERROR`, `OWNER_LOCKED`, `CREDIT_OVERPAYMENT` | règle métier violée, requête bien formée | toast, aucune reprise automatique |
+| `410` | `OTP_EXPIRED` | code expiré (TTL 5 min, RG-A07) | proposer un renvoi |
+| `422` | `VALIDATION_ERROR`, `OWNER_LOCKED`, `CREDIT_OVERPAYMENT`, `DEVICE_LIMIT`, `WEAK_PIN` | règle métier violée, requête bien formée | toast, aucune reprise automatique |
+| `423` | `PIN_LOCKED` | 5 échecs PIN, verrouillage 15 min (RG-A16) | message + déblocage par le propriétaire |
+| `429` | `OTP_RATE_LIMITED`, `OTP_LOCKED`, `OTP_BUDGET_EXCEEDED`, `RATE_LIMITED` | quota d'envoi, de tentatives ou budget mensuel de l'organisation atteint (RG-A08, RG-A19, RG-A24) | respecter `Retry-After`, afficher le délai ; pour le budget, proposer une autre méthode de connexion |
 | `5xx` | `SERVER_ERROR` | panne | toast + rejeu possible (voir idempotence) |
 
 Règles associées :
@@ -204,3 +316,18 @@ En mode `mock`, comptes, organisations et appartenances sont persistés dans
 survit au rechargement. Les comptes de démonstration (mot de passe `demo1234`)
 sont proposés sur l'écran de connexion via `auth.demoAccounts()` (liste vide en
 mode `http`).
+
+**Compatibilité avec les décisions** ([`AUTH_DECISIONS.md`](AUTH_DECISIONS.md)) :
+
+- La démo conserve **e-mail + mot de passe** : elle doit rester jouable en un clic
+  sur un salon, sans téléphone réel (RG-A22). L'exposition de `demo1234` est
+  limitée à `mode: 'mock'`.
+- `mockApi` reste la **spécification exécutable** : il DOIT exposer
+  `/auth/otp/request`, `/auth/otp/verify`, `/auth/pin/verify`, les routes
+  d'appareils et le refresh, avec un code OTP fixe et affiché (`000000`) et des
+  quotas réduits mais actifs. Un endpoint du contrat absent du mock est un bug.
+- Pendant la migration (phases 2 à 4 de `AUTH_DECISIONS.md` §6), `AuthResult`
+  porte transitoirement `token` **en mock uniquement** ; le retrait du champ et
+  la persistance zéro-jeton se font dans la même livraison que D1.
+- Les compteurs de tentatives et les verrouillages sont **remis à zéro** entre
+  deux scénarios de test (`createMockApi()` neuf).

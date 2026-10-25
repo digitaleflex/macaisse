@@ -331,11 +331,11 @@ Notes :
 
 | Symptôme | Cause probable | Correctif |
 |---|---|---|
-| Écran de chargement infini | Session non restaurée en mode `http`, ou `organizationId` absent | Vérifier `services/tenant.ts` (`setAuthToken`, `setActiveOrganization`) puis `store/auth.ts` |
+| Écran de chargement infini | Session non restaurée en mode `http`, cookie de session absent, ou `organizationId` absent | Vérifier `services/tenant.ts` (`setActiveOrganization`), le cookie/refresh puis `store/auth.ts` (D1, RG-A10) |
 | Données de démo réapparues / perdues | Clé `localStorage` écrasée ou organisation changée | Inspecter `ma-caisse/<orgId>/<collection>` ; `localStorage.clear()` pour repartir de zéro |
 | Deux organisations se contaminent | Store absent de `scopeStoresToOrganization()` | Ajouter le store dans `store/tenantScope.ts` |
 | « Écran blanc » + boucle infinie | Sélecteur Zustand qui alloue un objet/tableau | `useShallow` ou sélection d'une tranche stable + `useMemo` |
-| `401` permanent en mode `http` | Jeton manquant/expiré ; le client déconnecte au 401 | Re-login ; vérifier `getToken` dans `services/index.ts` |
+| `401` permanent en mode `http` | Cookie expiré ou refresh invalidé (réutilisation, révocation) ; le client déconnecte au `401` | Re-login ; vérifier `mc_session`/`mc_refresh` et le CSRF (RG-A10) — un `401 STEP_UP_REQUIRED` ne doit **pas** déconnecter |
 | `error: Unknown lockfile version` | Bun < 1.4 avec `bun.lock` v2 | `bun upgrade` (ou `bun install` régénère le lockfile, à éviter en PR) |
 | HMR inactif | `DISABLE_HMR=true` dans l'environnement (AI Studio) | Retirer la variable pour le dev local |
 | ESLint échoue sur un import inutilisé | `noUnusedLocals` + `--max-warnings 0` | Supprimer, pas désactiver |
@@ -375,6 +375,8 @@ Une tâche n'est pas terminée tant que :
 - [ ] Si nouvelle route : `contracts.ts`, `endpoints.ts`, `mockApi`, `httpApi`, `docs/API_CONTRACT.md`.
 - [ ] Si nouvelle donnée persistée : migration/coercion prévue (`storeUtils.ts`).
 - [ ] Permissions appliquées dans l'UI **et** documentées pour le serveur.
+- [ ] Si le changement touche l'identité ou la session : règle `RG-A…` citée et
+  `docs/AUTH_DECISIONS.md` respecté (aucun jeton durable côté client).
 - [ ] `bun run lint` ✔ · `bun run test` ✔ · `bun run build` ✔ si bundling touché.
 - [ ] Documentation mise à jour si une convention change (ce guide, `ARCHITECTURE.md`).
 
@@ -384,6 +386,11 @@ Une tâche n'est pas terminée tant que :
 
 - **Comprendre le multi-tenant** : `store/useAuthStore.ts`, `store/auth.ts`,
   `store/tenantScope.ts`, `services/tenant.ts` — dans cet ordre.
+- **Toucher à l'authentification** : lire d'abord
+  [`AUTH_DECISIONS.md`](AUTH_DECISIONS.md) (normatif : D1–D9, RG-A01–RG-A22),
+  puis `docs/API_CONTRACT.md` §2 (routes), puis seulement `features/auth` et
+  `store/auth.ts`. **Toute règle `RG-A…` modifiée dans le code doit citer son
+  identifiant dans le test** ; un écart entre le code et une règle est un bug.
 - **Comprendre le contrat backend** : `docs/API_CONTRACT.md`, puis
   `services/adapters/mockApi.ts` (implémentation de référence exécutable).
 - **Comprendre le design system** : `src/index.css` (bloc `@theme`) puis

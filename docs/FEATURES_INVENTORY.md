@@ -25,6 +25,11 @@ Légende : ✔ implémenté et fonctionnel · ◐ simulé (UI + toast, aucun eff
 | Connexion 1 clic | 4 comptes de démonstration listés (mot de passe `demo1234`) | `mocks/fixtures/accounts.ts` |
 | Reprise de session | `restoreSession()` au démarrage, écran splash + écran d'erreur avec *Réessayer* / *Se déconnecter* | `app/App.tsx`, `store/auth.ts` |
 
+> **Cible arrêtée** (non implémentée) : inscription en **1 champ** (OTP téléphone),
+> Google en accélérateur, PIN pour les caissiers, session en cookie `HttpOnly`.
+> Voir [`AUTH_DECISIONS.md`](AUTH_DECISIONS.md) — ce tableau décrit l'état
+> **actuel** du code, pas la cible.
+
 ### A.2 Shell applicatif
 
 | Élément | Détail | Desktop | Mobile |

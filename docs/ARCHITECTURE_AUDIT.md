@@ -130,7 +130,7 @@ la créance dans le même flux atomique (ou retirer le crédit partiel du POS).
 | m12 | Export : la **période sélectionnée est ignorée** (`exportToCSV('all', …)`), aucun filtre de dates dans la modale, et le nom de fichier est horodaté en **UTC** alors que tout le reste est local. | `BilanView.tsx:86,90` ; `export/ExportModal.tsx:31-39` ; `lib/export/csv.ts:84` |
 | m13 | Code mort / restes de template : `lib/ai/client.ts` sans aucun importeur (lit `import.meta.env` hors `config/env.ts`), dépendance `@google/genai` conservée, `package.json` nommé `react-example`, `.env.example` garde `GEMINI_API_KEY` / `APP_URL`. | `lib/ai/client.ts:38,53` ; `package.json:2` ; `.env.example:1-10` |
 | m14 | Deux constantes pour le **même mot de passe démo** (`DEMO_PASSWORD` et `DEMO_INVITE_PASSWORD`), et `config/` connaît un concept de mock. | `mocks/fixtures/accounts.ts:12` ; `config/reference.ts:80` |
-| m15 | **Règles d'import non outillées** : rien n'empêchait `ui/ → store/` (aucune règle `no-restricted-imports` n'existait, contrairement à une première lecture). | `eslint.config.js` (avant correction) | Correctif appliqué : frontières par lane, exception `@/ui/toastBus` documentée dans `useUiStore.ts` |
+| m15 | **Règles d'import non outillées** : rien n'empêchait `ui/ → store/` (aucune règle `no-restricted-imports` n'existait, contrairement à une première lecture). | `eslint.config.js` (avant correction) — correctif appliqué : frontières par lane, exception `@/ui/toastBus` documentée dans `useUiStore.ts` |
 | m16 | Erreurs avalées : `activateOrganization` met la session en erreur mais ne remonte rien ; les appelants affichent quand même « espace changé / synchronisé ». | `store/auth.ts:55-58` ; `OrgSwitcher.tsx:21-26` ; `ProfilModal.tsx:37-40` |
 | m17 | Panier **cloisonné par organisation, pas par utilisateur** : sur un poste partagé, le caissier suivant retrouve le panier du précédent (non vidé au logout). | `tenantScope.ts:59` ; `store/auth.ts:112-124` |
 
@@ -258,3 +258,10 @@ Issues créées après la revue dédiée ([`AUTH_REVIEW.md`](AUTH_REVIEW.md)) :
 | [#23](https://github.com/digitaleflex/macaisse/issues/23) — Purge des données locales au logout | A6 | P1 |
 | [#24](https://github.com/digitaleflex/macaisse/issues/24) — Édition de profil, suppression de compte | A8 | P2 |
 | [#25](https://github.com/digitaleflex/macaisse/issues/25) — Contrat d'auth (401/403, `expiresAt`, mot de passe) | A1, A7, A10 | **P0** (doc) |
+
+> **Depuis le 2026-10-25**, ces issues sont réordonnées et complétées par les
+> décisions arrêtées dans [`AUTH_DECISIONS.md`](AUTH_DECISIONS.md) : #19 devient
+> D1 (cookie + refresh), #21 est remplacée par D2 (OTP téléphone) et D4 (mot de
+> passe optionnel), #22 devient D8, et de nouvelles étapes apparaissent (D3
+> Google, D6 PIN caissier, D7 passkeys, D9 step-up). Le jalon 6 de
+> [`BACKLOG.md`](BACKLOG.md) fait foi.

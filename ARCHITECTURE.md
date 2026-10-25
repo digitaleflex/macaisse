@@ -35,18 +35,21 @@ app/  ──►  features/  ──►  store/  ──►  services/  ──►  
 |---|---|
 | Compte connecté, appartenances, organisation active (persisté) | `store/useAuthStore.ts` |
 | Connexion, inscription, reprise, changement d'espace, déconnexion | `store/auth.ts` |
-| Contexte des requêtes (jeton, `orgId`) | `services/tenant.ts` → routes `/orgs/:orgId/…` |
+| Contexte des requêtes (`orgId`, en-tête CSRF ; jeton aujourd'hui, **cookie de session en cible D1**) | `services/tenant.ts` → routes `/orgs/:orgId/…` |
 | Cloisonnement local des données (`ma-caisse/<orgId>/<collection>`) | `store/tenantScope.ts` |
 | Session de l'espace (commerce, abonnement, rôle) + `usePermission()` | `store/useSessionStore.ts` |
 | Matrice des droits `can(role, permission)` | `domain/permissions.ts` |
 | Écran de connexion / inscription | `features/auth` |
+| Décisions et règles d'authentification (D1–D9, RG-A01–RG-A22) | [`docs/AUTH_DECISIONS.md`](docs/AUTH_DECISIONS.md) — **normatif** |
 | Sélecteur d'espace (barre latérale, feuille mobile, profil) | `features/organisation` |
 | Gestion de l'équipe (inviter, changer de rôle, retirer) | `features/equipe` |
 
 Règles d'interface : la navigation (`app/useAllowedTabs.ts`), les raccourcis,
 les actions et les colonnes sensibles (prix d'achat, marges) dépendent de
 `usePermission`. Un onglet interdit redirige vers la caisse ou affiche « Accès
-réservé ». **La sécurité réelle reste côté serveur** (voir le contrat d'API).
+réservé ». **La sécurité réelle reste côté serveur** : règles normatives dans
+[`docs/AUTH_DECISIONS.md`](docs/AUTH_DECISIONS.md) (D1–D9, RG-A01–RG-A22) et le
+[contrat d'API](docs/API_CONTRACT.md).
 
 Comptes de démo (mot de passe `demo1234`) : Mamadou (propriétaire de Boutique
 Étoile + gérant de Supérette Le Baobab), Awa (caissière), Koffi (propriétaire
@@ -57,7 +60,8 @@ de la supérette), Fatou (gérante).
 ```
 UI (features) ──action──► store (mise à jour optimiste, persistée)
                               └── syncRemote(api => api.x.y()) ──► services ──► backend REST
-Connexion : login() ─► setAuthToken ─► activateOrganization(orgId)
+Connexion (aujourd'hui) : login() ─► setAuthToken ─► activateOrganization(orgId)
+Connexion (cible D2)    : requestOtp() ─► verifyOtp() ─► cookie de session ─► activateOrganization(orgId)
              ─► scopeStoresToOrganization ─► api.session.get(orgId) (+ collections en http) ─► stores
 ```
 
