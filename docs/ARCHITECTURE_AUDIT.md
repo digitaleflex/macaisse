@@ -215,7 +215,8 @@ fonctionnel), [`ARCHITECTURE.md`](../ARCHITECTURE.md) (règles de couches),
 
 ## 9. Backlog GitHub
 
-Chaque constat ouvert est tracé par une issue (aucun ne reste uniquement dans ce document).
+Chaque constat ouvert est tracé par une issue (aucun ne reste uniquement dans ce document),
+regroupée par fonction dans 8 jalons : voir [`BACKLOG.md`](BACKLOG.md).
 Labels : `bug`, `tech-debt`, `enhancement`, `audit`, `data-integrity`, `blocked`.
 
 | Issue | Constat | Priorité | Dépendance |

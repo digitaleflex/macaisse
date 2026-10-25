@@ -273,6 +273,7 @@ bun run build      # puis servir dist/
 | [`docs/FEATURES_INVENTORY.md`](docs/FEATURES_INVENTORY.md) | produit / avant-vente | Inventaire exhaustif de ce qui existe, avec le tableau de ce qui est **simulé ou absent** |
 | [`docs/ARCHITECTURE_AUDIT.md`](docs/ARCHITECTURE_AUDIT.md) | tech lead / équipe | Audit : 2 critiques, 9 majeurs, 15 mineurs, preuves `fichier:ligne`, plan d'action priorisé |
 | [`docs/AUTH_REVIEW.md`](docs/AUTH_REVIEW.md) | tech lead / backend | Revue d'authentification : flux, écarts production (A1–A10), décisions à verrouiller |
+| [`docs/BACKLOG.md`](docs/BACKLOG.md) | équipe | Backlog regroupé en 8 jalons par fonction, avec ordre de traitement |
 
 ---
 
