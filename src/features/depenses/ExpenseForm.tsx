@@ -2,7 +2,8 @@ import { useState, type FormEvent } from 'react';
 import { t } from '@/content';
 import { EXPENSE_CATEGORIES, type ExpenseCategory } from '@/config/reference';
 import { parseMontant } from '@/domain/money';
-import { Button, Input, Select, Switch } from '@/ui';
+import { validateExpenseForm, type ValidationCode } from '@/domain/validation';
+import { Button, FormError, Input, Select, Switch } from '@/ui';
 
 export type { ExpenseCategory };
 
@@ -31,11 +32,17 @@ export function ExpenseForm({ onSubmit, onCancel }: ExpenseFormProps) {
   const [amount, setAmount] = useState<number>(DEFAULT_AMOUNT);
   const [category, setCategory] = useState<ExpenseCategory>('Divers');
   const [hasReceipt, setHasReceipt] = useState(true);
+  const [error, setError] = useState<ValidationCode | null>(null);
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const trimmed = title.trim();
-    if (trimmed.length === 0 || amount <= 0) return;
+    const code = validateExpenseForm({ title: trimmed, amount });
+    if (code !== null) {
+      setError(code);
+      return;
+    }
+    setError(null);
     onSubmit({ title: trimmed, amount, category, hasReceipt });
   };
 
@@ -59,7 +66,12 @@ export function ExpenseForm({ onSubmit, onCancel }: ExpenseFormProps) {
           required
           suffix={t.common.currency}
           value={amount}
-          onChange={(event) => setAmount(parseMontant(event.target.value))}
+          min={0}
+          step={1}
+          onChange={(event) => {
+            setAmount(parseMontant(event.target.value));
+            setError(null);
+          }}
         />
         <Select
           label={t.expenses.form.category}
@@ -85,6 +97,7 @@ export function ExpenseForm({ onSubmit, onCancel }: ExpenseFormProps) {
           </Button>
         </div>
       </div>
+      <FormError message={error !== null ? t.validation[error] : null} />
     </form>
   );
 }

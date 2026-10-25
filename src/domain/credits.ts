@@ -89,6 +89,23 @@ export function creditProgress(credit: ClientCredit): number {
   return clamp(paid / credit.totalInitial, 0, 1);
 }
 
+/** Résultat d'un encaissement : montant imputé et écrêtage éventuel. */
+export interface AppliedPayment {
+  applied: number;
+  /** Vrai si le montant demandé dépassait le reste dû. */
+  clamped: boolean;
+}
+
+/**
+ * Montant réellement imputé à une créance : entier, jamais négatif, borné au
+ * reste dû. Source unique du montant affiché à l'utilisateur (issue #8).
+ */
+export function appliedPaymentAmount(credit: ClientCredit, amount: number): AppliedPayment {
+  const requested = Number.isFinite(amount) ? Math.max(0, Math.round(amount)) : 0;
+  const applied = Math.min(requested, credit.remainingAmount);
+  return { applied, clamped: applied < requested };
+}
+
 /**
  * Applique un paiement à un crédit (pur, immuable).
  * Refuse (throw) un montant ≤ 0 ou supérieur au reste dû.

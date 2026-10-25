@@ -281,20 +281,20 @@ bun run test:coverage                                 # couverture + seuils
 
 ### Couverture mesurée (base de référence)
 
-`bun run test:coverage` → **65,5 % lignes · 62,8 % fonctions · 59,5 % branches**
+`bun run test:coverage` → **65,3 % lignes · 63,2 % fonctions · 60,3 % branches**
 (23 fichiers, 175 tests). Seuils bloquants dans `vitest.config.ts` :
 `lines ≥ 63`, `functions ≥ 60`, `branches ≥ 55`. Une baisse fait échouer la CI.
 
 | Zone | Lignes | Fonctions | Branches | Lecture |
 |---|---:|---:|---:|---|
-| `domain/` | **98,7** | 100 | 92,1 | socle métier : exemplaire, à maintenir |
+| `domain/` | **98,7** | 100 | 92,1 | socle métier (dont `validation.ts`) : exemplaire, à maintenir |
 | `config/` | 100 | 100 | 82,4 | référentiels couverts |
 | `store/` | 81,7 | 83,3 | **58,7** | bon, mais branches d'orchestration à couvrir |
 | `app/` | 77,0 | 65,5 | 79,4 | shell couvert par le smoke |
 | `ui/` | 75,0 | 73,6 | 73,0 | primitives, tests ponctuels |
 | `services/` | 67,2 | 52,8 | 69,2 | invitations couvertes ; `httpApi` reste à 17 % |
 | `content/` | 58,2 | 55,8 | 77,8 | textes, peu de logique |
-| `features/` | **56,1** | 51,7 | **43,4** | écrans : couverts par le smoke seulement |
+| `features/` | **56,0** | 51,7 | **44,5** | écrans : couverts par le smoke seulement |
 | `lib/` | **15,9** | 31,8 | 45,8 | journaux comptables testés ; `pdf.ts` et `ai/` non |
 
 ### Zones à couvrir en priorité (avant les jalons concernés)

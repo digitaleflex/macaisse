@@ -8,6 +8,7 @@ import { canAccessTab } from '@/domain/permissions';
 import { api, isApiError, setActiveOrganization, setAuthToken } from '@/services';
 import { scopeStoresToOrganization } from './tenantScope';
 import { useAuthStore } from './useAuthStore';
+import { useCartStore } from './useCartStore';
 import { useCreditsStore } from './useCreditsStore';
 import { useExpensesStore } from './useExpensesStore';
 import { useNotificationsStore } from './useNotificationsStore';
@@ -38,8 +39,12 @@ async function loadCollections(): Promise<void> {
   useNotificationsStore.setState({ notifications });
 }
 
-/** Ouvre une organisation : cloisonne les stores, charge la session et les données. */
-export async function activateOrganization(organizationId: string): Promise<void> {
+/**
+ * Ouvre une organisation : cloisonne les stores, charge la session et les données.
+ * Renvoie `false` en cas d'échec (la session passe en `error`) pour que l'appelant
+ * n'annonce pas un succès qui n'a pas eu lieu (issue #10).
+ */
+export async function activateOrganization(organizationId: string): Promise<boolean> {
   const session = useSessionStore.getState();
   session.setStatus('loading');
   try {
@@ -54,9 +59,11 @@ export async function activateOrganization(organizationId: string): Promise<void
     ui.closeReceipt();
     if (!canAccessTab(loaded.role, ui.tab)) ui.setTab('ventes');
     useSessionStore.getState().setSession(loaded);
+    return true;
   } catch (error) {
     session.setStatus('error', errorMessage(error, t.auth.errors.generic));
     if (isApiError(error) && error.status === 401) await logout();
+    return false;
   }
 }
 
@@ -114,15 +121,18 @@ export async function restoreSession(): Promise<void> {
   }
 }
 
-export async function switchOrganization(organizationId: string): Promise<void> {
-  if (organizationId === useAuthStore.getState().currentOrganizationId && useSessionStore.getState().session) return;
-  await activateOrganization(organizationId);
+export async function switchOrganization(organizationId: string): Promise<boolean> {
+  if (organizationId === useAuthStore.getState().currentOrganizationId && useSessionStore.getState().session) {
+    return true;
+  }
+  return activateOrganization(organizationId);
 }
 
 /** Recharge l'organisation active (bouton « Synchroniser »). */
-export async function reloadOrganization(): Promise<void> {
+export async function reloadOrganization(): Promise<boolean> {
   const organizationId = useAuthStore.getState().currentOrganizationId;
-  if (organizationId) await activateOrganization(organizationId);
+  if (organizationId === null) return false;
+  return activateOrganization(organizationId);
 }
 
 /**
@@ -142,4 +152,7 @@ export async function logout(): Promise<void> {
   useUiStore.getState().closeModal();
   useUiStore.getState().closeReceipt();
   useTeamStore.getState().reset();
+  // Le panier est cloisonné par organisation, pas par utilisateur : sur un poste
+  // partagé, le caissier suivant ne doit pas retrouver la vente du précédent.
+  useCartStore.getState().clear();
 }

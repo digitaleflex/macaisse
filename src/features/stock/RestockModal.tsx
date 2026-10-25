@@ -2,7 +2,8 @@ import { useState, type FormEvent } from 'react';
 import type { Product } from '@/types';
 import { t } from '@/content';
 import { QUICK_RESTOCK_STEPS } from '@/config/reference';
-import { Button, Input, Modal, cn } from '@/ui';
+import { validateRestock, type ValidationCode } from '@/domain/validation';
+import { Button, FormError, Input, Modal, cn } from '@/ui';
 import { ProductThumb } from '@/features/shared/ProductThumb';
 
 /** Saisie d'une quantité de réapprovisionnement (validation déléguée au parent). */
@@ -17,10 +18,16 @@ const DEFAULT_QUANTITY = 20;
 
 export function RestockModal({ open, onClose, product, onSubmit }: RestockModalProps) {
   const [quantity, setQuantity] = useState(DEFAULT_QUANTITY);
+  const [error, setError] = useState<ValidationCode | null>(null);
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!Number.isFinite(quantity) || quantity <= 0) return;
+    const code = validateRestock(quantity);
+    if (code !== null) {
+      setError(code);
+      return;
+    }
+    setError(null);
     onSubmit(quantity);
   };
 
@@ -50,7 +57,12 @@ export function RestockModal({ open, onClose, product, onSubmit }: RestockModalP
           type="number"
           inputMode="numeric"
           value={quantity}
-          onChange={(event) => setQuantity(Number(event.target.value))}
+          min={1}
+          step={1}
+          onChange={(event) => {
+            setQuantity(Number(event.target.value));
+            setError(null);
+          }}
           hint={
             product
               ? t.stock.restockModal.after(
@@ -59,6 +71,7 @@ export function RestockModal({ open, onClose, product, onSubmit }: RestockModalP
               : undefined
           }
         />
+        <FormError message={error !== null ? t.validation[error] : null} />
         <div className="grid grid-cols-3 gap-2">
           {QUICK_RESTOCK_STEPS.map((step) => (
             <button

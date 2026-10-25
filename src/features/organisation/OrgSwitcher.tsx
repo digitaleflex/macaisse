@@ -21,8 +21,11 @@ function useSwitch() {
   const showToast = useUiStore((state) => state.showToast);
   return async (membership: Membership, onDone?: () => void) => {
     onDone?.();
-    await switchOrganization(membership.organizationId);
-    showToast(t.org.switched(membership.organizationName), 'success');
+    const ok = await switchOrganization(membership.organizationId);
+    showToast(
+      ok ? t.org.switched(membership.organizationName) : t.org.switchFailed,
+      ok ? 'success' : 'error'
+    );
   };
 }
 

@@ -3,7 +3,8 @@ import type { CreditInput } from '@/store/useCreditsStore';
 import { t } from '@/content';
 import { addDays, toIsoDate } from '@/domain/dates';
 import { DEFAULT_CREDIT_TERM_DAYS, initialsFrom } from '@/domain/credits';
-import { Button, Input, Modal } from '@/ui';
+import { validateCreditForm, type ValidationCode } from '@/domain/validation';
+import { Button, FormError, Input, Modal } from '@/ui';
 
 /** Enregistrement d'un nouveau crédit client (création déléguée au parent). */
 export interface CreditFormModalProps {
@@ -20,11 +21,17 @@ export function CreditFormModal({ open, onClose, onSubmit }: CreditFormModalProp
   const [place, setPlace] = useState('');
   const [amount, setAmount] = useState<number>(DEFAULT_AMOUNT);
   const [dueDate, setDueDate] = useState(() => toIsoDate(addDays(new Date(), DEFAULT_CREDIT_TERM_DAYS)));
+  const [error, setError] = useState<ValidationCode | null>(null);
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const name = clientName.trim();
-    if (name.length === 0 || amount <= 0) return;
+    const code = validateCreditForm({ clientName: name, amount, dueDate });
+    if (code !== null) {
+      setError(code);
+      return;
+    }
+    setError(null);
     onSubmit({
       clientName: name,
       initials: initialsFrom(name),
@@ -75,8 +82,13 @@ export function CreditFormModal({ open, onClose, onSubmit }: CreditFormModalProp
             type="number"
             inputMode="numeric"
             suffix={t.common.currency}
+            min={0}
+            step={1}
             value={amount}
-            onChange={(event) => setAmount(Number(event.target.value))}
+            onChange={(event) => {
+              setAmount(Number(event.target.value));
+              setError(null);
+            }}
           />
           <Input
             label={t.credits.form.dueDate}
@@ -87,6 +99,7 @@ export function CreditFormModal({ open, onClose, onSubmit }: CreditFormModalProp
             onChange={(event) => setDueDate(event.target.value)}
           />
         </div>
+        <FormError message={error !== null ? t.validation[error] : null} />
         <Button type="submit" variant="primary" size="lg" fullWidth icon="check">
           {t.credits.form.submit}
         </Button>

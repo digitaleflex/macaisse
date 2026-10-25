@@ -4,6 +4,7 @@
 // Pour une nouvelle langue : dupliquer ce fichier en respectant le type `Content`.
 
 import type { CreditStatus, StockStatus, TabType } from '@/types';
+import type { ValidationCode } from '@/domain/validation';
 
 /** « 1 article » / « 3 articles ». */
 export const plural = (count: number, one: string, many: string = `${one}s`): string =>
@@ -385,6 +386,8 @@ export const fr = {
     noResultText: 'Aucun crédit ne correspond à votre recherche ou à ce filtre.',
     toasts: {
       paid: (amount: string, name: string) => `Paiement de ${amount} validé pour ${name}.`,
+      paidClamped: (amount: string, name: string) =>
+        `Paiement plafonné au reste dû : ${amount} imputé pour ${name}.`,
       payFailed: 'Le paiement a été refusé.',
       created: (name: string) => `Nouveau crédit enregistré pour ${name}.`,
       reminder: (name: string) =>
@@ -547,6 +550,7 @@ export const fr = {
     sync: 'Synchroniser',
     syncUnavailable: 'Synchronisation non activée en mode démo.',
     syncDone: 'Données rechargées depuis le serveur.',
+    syncFailed: 'Synchronisation impossible : vérifiez votre connexion.',
     business: 'Commerce',
   },
 
@@ -688,6 +692,7 @@ export const fr = {
     acceptInvitation: 'Accepter',
     accepted: (name: string) => `Invitation acceptée — espace « ${name} » ouvert.`,
     acceptFailed: 'Impossible d’accepter cette invitation.',
+    switchFailed: 'Impossible d’ouvrir cet espace pour le moment.',
     yourSpaces: 'Vos espaces',
     current: 'Actuel',
     switched: (name: string) => `Espace « ${name} » ouvert.`,
@@ -747,6 +752,16 @@ export const fr = {
     stockStatus,
     creditStatus,
   },
+
+  /** Messages de refus des formulaires (codes renvoyés par `domain/validation`). */
+  validation: {
+    required: 'Ce champ est obligatoire.',
+    amount_positive: 'Le montant doit être supérieur à zéro.',
+    amount_not_negative: 'Le montant ne peut pas être négatif.',
+    quantity_positive: 'La quantité doit être supérieure à zéro.',
+    quantity_negative: 'La quantité ne peut pas être négative.',
+    not_integer: 'Utilisez un nombre entier (FCFA).',
+  } satisfies Record<ValidationCode, string>,
 } as const;
 
 export type Content = typeof fr;

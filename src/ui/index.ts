@@ -31,6 +31,7 @@ export { SegmentedControl, type SegmentOption, type SegmentedControlProps } from
 export { Chip, type ChipProps, type ChipDot } from './Chip';
 export {
   EmptyState,
+  FormError,
   ProgressBar,
   Avatar,
   Skeleton,
@@ -40,6 +41,7 @@ export {
   type ProgressBarProps,
   type AvatarProps,
   type PageHeaderProps,
+  type FormErrorProps,
 } from './Feedback';
 export { Modal, type ModalProps, type ModalSize, type ModalHeaderVariant } from './Modal';
 export { Drawer, type DrawerProps } from './Drawer';

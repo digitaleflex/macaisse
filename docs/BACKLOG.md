@@ -48,6 +48,9 @@ avec réintégration du stock et trace d'audit.
 | [#3](https://github.com/digitaleflex/macaisse/issues/3) | Supprimer `decrementStock` (code mort contraire à l'invariant) | P2 | S | front |
 | [#7](https://github.com/digitaleflex/macaisse/issues/7) | Montants FCFA entiers et positifs à la saisie | P1 | S | front |
 
+✅ **#7 livré** — `domain/validation.ts` + `min`/`step` sur les champs : aucun
+montant décimal ou négatif ne peut être persisté (12 tests). #3 reste ouvert.
+
 **Fini quand** aucun stock négatif n'est possible et qu'aucun montant décimal ou
 négatif n'entre en état.
 
@@ -61,6 +64,9 @@ négatif n'entre en état.
 |---|---|---|---|---|
 | [#8](https://github.com/digitaleflex/macaisse/issues/8) | Toast de règlement = montant réellement imputé | P1 | S | front |
 | [#14](https://github.com/digitaleflex/macaisse/issues/14) | Notification des échéances de crédit | P2 | M | front |
+
+✅ **#8 livré** — `appliedPaymentAmount()` (domaine) : le toast annonce le
+montant imputé et signale l'écrêtage (3 tests). #14 reste ouvert.
 
 **Fini quand** chaque mouvement annoncé correspond au mouvement réel, et qu'une
 échéance dépassée produit une alerte unique.
@@ -117,6 +123,10 @@ codes d'erreur sont respectés.
 | [#22](https://github.com/digitaleflex/macaisse/issues/22) | Anti-bruteforce + journal de connexion | P1 | M | backend |
 | [#23](https://github.com/digitaleflex/macaisse/issues/23) | Purge des données locales au logout | P1 | S/M | front |
 
+✅ **#10 livré** — `switchOrganization`/`reloadOrganization` renvoient un booléen,
+les toasts suivent le résultat (4 tests de session). #23 (purge complète) reste
+ouvert.
+
 **Fini quand** aucun jeton durable ne traîne en `localStorage`, qu'un `403` ne
 déconnecte pas, et qu'un poste partagé ne laisse aucune donnée métier derrière.
 
@@ -147,6 +157,10 @@ est détecté par un test, et que le hors ligne rejoue ses mutations sans doublo
 | [#11](https://github.com/digitaleflex/macaisse/issues/11) | Vider le panier à la déconnexion | P1 | S | front |
 | [#12](https://github.com/digitaleflex/macaisse/issues/12) | Retirer le module IA mort + nettoyer le template | P2 | S | front |
 | [#13](https://github.com/digitaleflex/macaisse/issues/13) | Unifier le mot de passe de démonstration | P2 | S | front |
+
+✅ **#6 et #11 livrés** — `domain/validation.ts` (codes traduits par
+`t.validation`) affiché via `FormError` dans les 4 formulaires ; `logout()` vide
+le panier (5 tests de session). #12 et #13 restent ouverts.
 
 **Fini quand** aucun formulaire n'échoue sans message, qu'aucun code inutilisé
 n'est livré, et que la déconnexion ne laisse pas de panier derrière elle.

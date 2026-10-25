@@ -57,7 +57,7 @@ Démarrage : restoreSession() ─► api.auth.me() ─► même activation
 | A4 | majeur | Aucune limitation des tentatives, aucun journal de connexion | absent | [#22](https://github.com/digitaleflex/macaisse/issues/22) |
 | A5 | 🟡 **partiel** | Statut vérifié et acceptation explicite ✔ ; restent le jeton signé, l'expiration et la révocation côté serveur | `types/index.ts` (`Invitation`) | [#20](https://github.com/digitaleflex/macaisse/issues/20) (suite backend) |
 | A6 | majeur | `logout()` laisse toutes les collections métier en `localStorage` (poste partagé) | `store/auth.ts` | [#23](https://github.com/digitaleflex/macaisse/issues/23) |
-| A7 | mineur | Échec d'activation : l'appelant affiche quand même un succès | `store/auth.ts:55-58` | [#10](https://github.com/digitaleflex/macaisse/issues/10) |
+| A7 | ~~mineur~~ ✅ **corrigé** | `activateOrganization`/`switchOrganization`/`reloadOrganization` renvoient un booléen ; les toasts suivent le résultat | `store/auth.ts` | [#10](https://github.com/digitaleflex/macaisse/issues/10) fermée |
 | A8 | mineur | Profil non éditable, pas de suppression de compte | `AuthRepository` | [#24](https://github.com/digitaleflex/macaisse/issues/24) |
 | A9 | mineur | Migration du store auth sans coercition (jeton/profil arbitraires) | `store/useAuthStore.ts:33,40` | [#4](https://github.com/digitaleflex/macaisse/issues/4) |
 | A10 | mineur | `403` traité comme une session expirée à la reprise | `restoreSession` | [#25](https://github.com/digitaleflex/macaisse/issues/25) |

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { ClientCredit } from '../../types';
 import {
+  appliedPaymentAmount,
   applyPayment,
   computeCreditStatus,
   creditFromSale,
@@ -175,5 +176,22 @@ describe('creditFromSale', () => {
       dueDate: '2024-02-14',
     });
     expect(DEFAULT_CREDIT_TERM_DAYS).toBe(30);
+  });
+});
+
+describe('appliedPaymentAmount — montant réellement imputé (#8)', () => {
+  const credit = makeCredit({ remainingAmount: 4000, totalInitial: 10000 });
+
+  it('impute le montant demandé s’il reste sous le dû', () => {
+    expect(appliedPaymentAmount(credit, 1500)).toEqual({ applied: 1500, clamped: false });
+  });
+
+  it('plafonne au reste dû et le signale', () => {
+    expect(appliedPaymentAmount(credit, 9000)).toEqual({ applied: 4000, clamped: true });
+  });
+
+  it('arrondit au franc et neutralise le négatif', () => {
+    expect(appliedPaymentAmount(credit, 1000.4)).toEqual({ applied: 1000, clamped: false });
+    expect(appliedPaymentAmount(credit, -100)).toEqual({ applied: 0, clamped: false });
   });
 });

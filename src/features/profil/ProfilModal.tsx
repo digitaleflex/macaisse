@@ -34,9 +34,9 @@ export function ProfilModal() {
       return;
     }
     setSyncing(true);
-    await reloadOrganization();
+    const ok = await reloadOrganization();
     setSyncing(false);
-    showToast(t.profile.syncDone, 'success');
+    showToast(ok ? t.profile.syncDone : t.profile.syncFailed, ok ? 'success' : 'error');
   };
 
   return (

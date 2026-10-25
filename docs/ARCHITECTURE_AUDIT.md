@@ -28,7 +28,9 @@ listées en [§6](#6-corrections-apportées-au-rapport-initial).
 | **M9** — double rendu de `StockView` | ✅ **corrigé** | `useMediaQuery` : tableau **ou** cartes, un seul DOM monté |
 | **m1** — modale persistée | ✅ **corrigé** | `modal` sorti du `partialize` (état transitoire) |
 | **m8 / m9 / m10** | ✅ **corrigé** | Options POS inertes désactivées et badgées « Bientôt » (`deductionAutoStock` supprimée : la déduction n'a jamais été optionnelle) ; clôture persistée par jour (`registerClosedAt`) ; piège de focus (Tab) dans `useOverlay` |
-| Reste ouvert | ⏳ | **C1** (réconciliation `http`, en attente backend), **m4** (confirmations de suppression), **m5/m6** (validations silencieuses, montants), m11 (gardes de rôle du mock), m12 (période d'export), m13 (code IA mort), m14, m16, m17 → voir le backlog d'issues en [§9](#9-backlog-github) |
+| **m5/m6/m7** — validations et montants | ✅ **corrigé** | `domain/validation.ts` (codes + messages via `content/fr.ts`), `FormError` dans les 4 formulaires, `min`/`step` sur les champs numériques, toast de règlement crédit basé sur `appliedPaymentAmount()` |
+| **m16/m17** — succès mensonger, panier au logout | ✅ **corrigé** | `switchOrganization`/`reloadOrganization` renvoient un booléen et les toasts suivent ; `logout()` vide le panier |
+| Reste ouvert | ⏳ | **C1** (réconciliation `http`, en attente backend), **m4** (confirmations de suppression), m11 (gardes de rôle du mock), m13 (code IA mort), m14 → voir le backlog d'issues en [§9](#9-backlog-github) |
 
 ---
 

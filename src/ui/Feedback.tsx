@@ -140,3 +140,19 @@ export function SectionTitle({ children, action, className }: { children: ReactN
     </div>
   );
 }
+
+export interface FormErrorProps {
+  /** Message déjà traduit (voir `t.validation`). */
+  message: string | null;
+  className?: string;
+}
+
+/** Erreur de formulaire annoncée aux lecteurs d'écran (`role="alert"`). */
+export function FormError({ message, className }: FormErrorProps) {
+  if (message === null) return null;
+  return (
+    <p role="alert" className={cn('text-xs font-medium text-rose-600', className)}>
+      {message}
+    </p>
+  );
+}

@@ -3,7 +3,8 @@ import type { Category, Product, ProductInput } from '@/types';
 import { t } from '@/content';
 import { PRODUCT_CATEGORIES } from '@/config/reference';
 import { createId } from '@/domain/ids';
-import { Button, Input, Modal, Select } from '@/ui';
+import { validateProductForm, type ValidationCode } from '@/domain/validation';
+import { Button, FormError, Input, Modal, Select } from '@/ui';
 
 /** Formulaire unique de création ET d'édition d'un article. */
 export interface ProductFormModalProps {
@@ -37,13 +38,19 @@ export function ProductFormModal({ open, onClose, product, onSubmit }: ProductFo
   const [costPrice, setCostPrice] = useState(product?.costPrice ?? 800);
   const [stock, setStock] = useState(product?.stock ?? 10);
   const [minStockAlert, setMinStockAlert] = useState(product?.minStockAlert ?? 5);
+  const [error, setError] = useState<ValidationCode | null>(null);
 
   const margin = price > 0 ? ((price - costPrice) / price) * 100 : 0;
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const trimmedName = name.trim();
-    if (!trimmedName) return;
+    const code = validateProductForm({ name: trimmedName, price, costPrice, stock, minStockAlert });
+    if (code !== null) {
+      setError(code);
+      return;
+    }
+    setError(null);
     onSubmit({
       id: product?.id ?? createId('product'),
       name: trimmedName,
@@ -102,8 +109,13 @@ export function ProductFormModal({ open, onClose, product, onSubmit }: ProductFo
             inputMode="numeric"
             required
             suffix={t.common.currency}
+            min={0}
+            step={1}
             value={price}
-            onChange={(event) => setPrice(Number(event.target.value))}
+            onChange={(event) => {
+              setPrice(Number(event.target.value));
+              setError(null);
+            }}
           />
           <Input
             label={t.stock.form.cost}
@@ -111,8 +123,13 @@ export function ProductFormModal({ open, onClose, product, onSubmit }: ProductFo
             type="number"
             inputMode="numeric"
             suffix={t.common.currency}
+            min={0}
+            step={1}
             value={costPrice}
-            onChange={(event) => setCostPrice(Number(event.target.value))}
+            onChange={(event) => {
+              setCostPrice(Number(event.target.value));
+              setError(null);
+            }}
           />
         </div>
         <div className="grid grid-cols-3 gap-3">
@@ -121,16 +138,26 @@ export function ProductFormModal({ open, onClose, product, onSubmit }: ProductFo
             name="product-stock"
             type="number"
             inputMode="numeric"
+            min={0}
+            step={1}
             value={stock}
-            onChange={(event) => setStock(Number(event.target.value))}
+            onChange={(event) => {
+              setStock(Number(event.target.value));
+              setError(null);
+            }}
           />
           <Input
             label={t.stock.form.minStock}
             name="product-min-stock"
             type="number"
             inputMode="numeric"
+            min={0}
+            step={1}
             value={minStockAlert}
-            onChange={(event) => setMinStockAlert(Number(event.target.value))}
+            onChange={(event) => {
+              setMinStockAlert(Number(event.target.value));
+              setError(null);
+            }}
           />
           <Input
             label={t.stock.form.unit}
@@ -143,6 +170,7 @@ export function ProductFormModal({ open, onClose, product, onSubmit }: ProductFo
         <p className="text-xs text-slate-500 -mt-1">
           {t.stock.form.marginPreview(margin.toFixed(1))}
         </p>
+        <FormError message={error !== null ? t.validation[error] : null} />
         <Button type="submit" variant="primary" size="lg" fullWidth icon="check">
           {isEdit ? t.stock.form.submitEdit : t.stock.form.submitCreate}
         </Button>

@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import type { ClientCredit, CreditStatus } from '@/types';
 import { t } from '@/content';
-import { creditProgress, creditRows, creditSummary } from '@/domain/credits';
+import { appliedPaymentAmount, creditProgress, creditRows, creditSummary } from '@/domain/credits';
 import { formatFCFA } from '@/domain/money';
 import { useCreditsStore, type CreditInput } from '@/store/useCreditsStore';
 import { usePermission } from '@/store/useSessionStore';
@@ -72,10 +72,21 @@ export function CreditsView() {
 
   const handlePay = (credit: ClientCredit, amount: number) => {
     try {
-      if (amount >= credit.remainingAmount) markSettled(credit.id);
-      else payCredit(credit.id, amount);
+      // Le montant annoncé est celui réellement imputé, pas celui saisi (#8).
+      const { applied, clamped } = appliedPaymentAmount(credit, amount);
+      if (applied <= 0) {
+        showToast(t.credits.toasts.payFailed, 'error');
+        return;
+      }
+      if (applied >= credit.remainingAmount) markSettled(credit.id);
+      else payCredit(credit.id, applied);
       setSelectedCredit(null);
-      showToast(t.credits.toasts.paid(formatFCFA(amount), credit.clientName), 'success');
+      showToast(
+        clamped
+          ? t.credits.toasts.paidClamped(formatFCFA(applied), credit.clientName)
+          : t.credits.toasts.paid(formatFCFA(applied), credit.clientName),
+        'success'
+      );
     } catch (error) {
       showToast(error instanceof Error ? error.message : t.credits.toasts.payFailed, 'error');
     }
