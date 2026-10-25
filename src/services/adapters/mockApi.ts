@@ -305,7 +305,7 @@ export function createMockApi({ latencyMs = 0, persist = false }: MockApiOptions
           };
           auth.accounts.push(account);
           createOwnerOrganization(account, {
-            name: input.organizationName.trim(),
+            name: input.organizationName.trim() || t.auth.googleDefaultOrg,
             activity: input.activity.trim(),
             city: input.city.trim(),
           });

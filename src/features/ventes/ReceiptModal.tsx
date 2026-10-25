@@ -1,6 +1,7 @@
 import { t } from '@/content';
 import { formatFCFA } from '@/domain/money';
 import { formatTime, parseDate } from '@/domain/dates';
+import { personDisplayName } from '@/domain/users';
 import { useCurrentSession } from '@/store/useSessionStore';
 import { useUiStore } from '@/store/useUiStore';
 import { BrandMark, Button, Modal } from '@/ui';
@@ -77,7 +78,7 @@ export function ReceiptModal() {
         <div className="py-3 border-b border-dashed border-line-strong space-y-1">
           <Row label={t.receipt.ticket} value={sale.saleNumber} strong />
           <Row label={t.receipt.dateTime} value={timeLabel ? `${dateLabel} · ${timeLabel}` : dateLabel} />
-          <Row label={t.receipt.cashier} value={`${user.firstName} ${user.lastName[0]}. (${business.registerLabel})`} />
+          <Row label={t.receipt.cashier} value={`${personDisplayName(user.firstName, user.lastName)} (${business.registerLabel})`} />
           {sale.clientName && <Row label={t.receipt.client} value={sale.clientName} strong />}
         </div>
 

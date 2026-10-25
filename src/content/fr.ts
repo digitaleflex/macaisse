@@ -663,7 +663,7 @@ export const fr = {
     signupSubmit: 'Créer mon espace',
     sectionAccount: 'Votre compte',
     sectionBusiness: 'Votre commerce',
-    signupLaterHint: 'Téléphone, ville et activité se complètent après l’ouverture de votre espace.',
+    signupLaterHint: 'Votre nom, le nom de votre commerce et vos coordonnées se complètent après l’ouverture.',
     demoTitle: 'Comptes de démonstration',
     demoHint: (password: string) => `Un clic pour se connecter — mot de passe : ${password}`,
     heroTitle: 'La caisse de votre commerce, partout.',

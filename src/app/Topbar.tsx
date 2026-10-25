@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { t } from '@/content';
+import { personInitials } from '@/domain/users';
 import { OrgList } from '@/features/organisation';
 import { isDemoMode } from '@/config/env';
 import { selectMemberships, useAuthStore } from '@/store/useAuthStore';
@@ -81,7 +82,7 @@ export function Topbar() {
             aria-label={t.header.profile}
             className="lg:hidden cursor-pointer rounded-xl active:scale-95 transition-transform"
           >
-            <Avatar initials={`${user.firstName[0]}${user.lastName[0]}`} tone="ink" size="sm" className="size-9" />
+            <Avatar initials={personInitials(user.firstName, user.lastName)} tone="ink" size="sm" className="size-9" />
           </button>
         </div>
       </div>

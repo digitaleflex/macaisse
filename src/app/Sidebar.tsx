@@ -1,6 +1,7 @@
 import { t } from '@/content';
 import { can, type Permission } from '@/domain/permissions';
 import { formatFCFA } from '@/domain/money';
+import { personDisplayName, personInitials } from '@/domain/users';
 import { OrgSwitcher } from '@/features/organisation';
 import { isDemoMode } from '@/config/env';
 import { logout } from '@/store/auth';
@@ -117,10 +118,10 @@ export function Sidebar() {
             aria-label={t.header.profile}
             className="flex-1 min-w-0 flex items-center gap-3 text-left cursor-pointer"
           >
-            <Avatar initials={`${user.firstName[0]}${user.lastName[0]}`} tone="zest" size="md" />
+            <Avatar initials={personInitials(user.firstName, user.lastName)} tone="zest" size="md" />
             <span className="min-w-0">
               <span className="block text-sm font-semibold text-white truncate">
-                {user.firstName} {user.lastName}
+                {personDisplayName(user.firstName, user.lastName)}
               </span>
               <span className="block text-xs text-slate-500 truncate">{t.roles[role]}</span>
             </span>

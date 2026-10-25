@@ -8,33 +8,34 @@ import { useUiStore } from '@/store/useUiStore';
 import { Avatar, Badge, BrandMark, Button, Icon, Input, SegmentedControl } from '@/ui';
 
 /**
- * Écran d'accès : connexion, création d'un commerce (inscription) et, en mode
- * démo, comptes prêts à l'emploi pour tester les rôles et les organisations.
+ * Écran d'accès : connexion, création d'un compte (inscription) et, en mode démo,
+ * comptes prêts à l'emploi pour tester les rôles et les organisations.
  *
- * Principes (docs/AUTH_DECISIONS.md, décision D3/D4) :
- * - Google d'abord : un tap, aucun mot de passe à retenir, 0 FCFA côté coût ;
- * - formulaire court : 5 champs, téléphone/ville/activité différés à l'espace ;
+ * Principes (docs/AUTH_DECISIONS.md) :
+ * - **2 champs** à l'inscription : e-mail + mot de passe. Le nom du commerce, le
+ *   nom de la personne, la ville et le téléphone sont collectés **après**
+ *   l'ouverture de l'espace (RG-A04) — rien à remplir pour commencer à vendre ;
+ * - Google d'abord : un tap, aucun mot de passe à retenir, 0 FCFA de coût ;
  * - erreurs par champ, mot de passe affichable, `autoComplete` renseigné ;
  * - la connexion par téléphone (OTP) arrive avec D2, en conversation WhatsApp.
  */
 type Mode = 'login' | 'signup';
-type FieldKey = 'firstName' | 'lastName' | 'email' | 'password' | 'organizationName';
+type FieldKey = 'email' | 'password';
 type FieldErrors = Partial<Record<FieldKey, string>>;
 
-const EMPTY_SIGNUP: SignupInput = {
+/** Longueur minimale (D4) : la longueur remplace la complexité imposée. */
+const MIN_PASSWORD = 12;
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/** Profil volontairement vide : complété par l'onboarding (RG-A04). */
+const EMPTY_PROFILE: Pick<SignupInput, 'firstName' | 'lastName' | 'phone' | 'organizationName' | 'activity' | 'city'> = {
   firstName: '',
   lastName: '',
-  email: '',
   phone: '',
-  password: '',
   organizationName: '',
   activity: '',
   city: '',
 };
-
-/** Longueur minimale serveur (D4) : la longueur remplace la complexité imposée. */
-const MIN_PASSWORD = 12;
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /**
  * Identité Google simulée (démo uniquement) : elle rejoue ce que renverrait le
@@ -88,7 +89,6 @@ export function LoginScreen() {
   const [mode, setMode] = useState<Mode>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [form, setForm] = useState<SignupInput>(EMPTY_SIGNUP);
   const [errors, setErrors] = useState<FieldErrors>({});
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -127,47 +127,30 @@ export function LoginScreen() {
     setShowPassword(false);
   };
 
-  const handleLogin = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const validate = (): boolean => {
     const next: FieldErrors = {};
     if (!EMAIL_PATTERN.test(email.trim())) next.email = t.auth.errors.emailInvalid;
     if (password.length === 0) next.password = t.auth.errors.required;
+    else if (mode === 'signup' && password.length < MIN_PASSWORD) next.password = t.auth.errors.passwordShort;
     setErrors(next);
-    if (Object.keys(next).length > 0) return;
-    void run(() => login({ email: email.trim(), password }));
+    return Object.keys(next).length === 0;
   };
 
-  const handleSignup = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const next: FieldErrors = {};
-    if (form.firstName.trim().length === 0) next.firstName = t.auth.errors.required;
-    if (form.lastName.trim().length === 0) next.lastName = t.auth.errors.required;
-    if (!EMAIL_PATTERN.test(form.email.trim())) next.email = t.auth.errors.emailInvalid;
-    if (form.password.length < MIN_PASSWORD) next.password = t.auth.errors.passwordShort;
-    if (form.organizationName.trim().length === 0) next.organizationName = t.auth.errors.required;
-    setErrors(next);
-    if (Object.keys(next).length > 0) return;
-    // Téléphone, ville et activité sont collectés après l'ouverture de l'espace
-    // (RG-A04) : les envoyer vides évite un formulaire de 8 champs.
-    void run(
-      () => signup({ ...form, phone: '', activity: '', city: '', email: form.email.trim() }),
-      form.firstName
-    );
+    if (!validate()) return;
+    if (mode === 'login') {
+      void run(() => login({ email: email.trim(), password }));
+      return;
+    }
+    // Aucun nom, aucun commerce demandé : l'espace naît sous « Mon commerce » et
+    // se complète à l'onboarding (RG-A04).
+    void run(() => signup({ ...EMPTY_PROFILE, email: email.trim(), password }));
   };
 
   const handleGoogle = () => {
     void run(() => signInWithGoogle(DEMO_GOOGLE_IDENTITY), DEMO_GOOGLE_IDENTITY.firstName);
   };
-
-  const field = (key: FieldKey) => ({
-    value: form[key],
-    error: errors[key],
-    onChange: (event: { target: { value: string } }) => {
-      const value = event.target.value;
-      setForm((previous) => ({ ...previous, [key]: value }));
-      setErrors((previous) => (previous[key] === undefined ? previous : { ...previous, [key]: undefined }));
-    },
-  });
 
   const passwordToggle = (
     <button
@@ -236,90 +219,55 @@ export function LoginScreen() {
             </>
           )}
 
-          {mode === 'login' ? (
-            <form onSubmit={handleLogin} className={isDemoMode ? 'flex flex-col gap-4' : 'mt-6 flex flex-col gap-4'} noValidate>
-              <Input
-                label={t.auth.email}
-                name="login-email"
-                type="email"
-                autoComplete="email"
-                inputMode="email"
-                autoFocus
-                required
-                icon="mail"
-                value={email}
-                error={errors.email}
-                onChange={(event) => {
-                  setEmail(event.target.value);
-                  setErrors((previous) => ({ ...previous, email: undefined }));
-                }}
-                placeholder={t.auth.emailPlaceholder}
-              />
-              <Input
-                label={t.auth.password}
-                name="login-password"
-                type={showPassword ? 'text' : 'password'}
-                autoComplete="current-password"
-                required
-                icon="lock"
-                value={password}
-                error={errors.password}
-                action={passwordToggle}
-                onChange={(event) => {
-                  setPassword(event.target.value);
-                  setErrors((previous) => ({ ...previous, password: undefined }));
-                }}
-              />
-              <Button type="submit" variant="primary" size="lg" fullWidth loading={pending} iconRight="arrow_forward">
-                {t.auth.submit}
-              </Button>
-            </form>
-          ) : (
-            <form onSubmit={handleSignup} className={isDemoMode ? 'flex flex-col gap-4' : 'mt-6 flex flex-col gap-4'} noValidate>
-              <div className="text-xs font-semibold uppercase tracking-wider text-slate-400">{t.auth.sectionAccount}</div>
-              <div className="grid sm:grid-cols-2 gap-3">
-                <Input label={t.auth.firstName} name="signup-first" autoComplete="given-name" required {...field('firstName')} />
-                <Input label={t.auth.lastName} name="signup-last" autoComplete="family-name" required {...field('lastName')} />
-              </div>
-              <Input
-                label={t.auth.email}
-                name="signup-email"
-                type="email"
-                inputMode="email"
-                autoComplete="email"
-                icon="mail"
-                required
-                placeholder={t.auth.emailPlaceholder}
-                {...field('email')}
-              />
-              <Input
-                label={t.auth.password}
-                name="signup-password"
-                type={showPassword ? 'text' : 'password'}
-                autoComplete="new-password"
-                required
-                icon="lock"
-                action={passwordToggle}
-                hint={t.auth.passwordHint}
-                placeholder={t.auth.passwordPlaceholder}
-                {...field('password')}
-              />
-              <div className="text-xs font-semibold uppercase tracking-wider text-slate-400 pt-2">{t.auth.sectionBusiness}</div>
-              <Input
-                label={t.auth.orgName}
-                name="signup-org"
-                autoComplete="organization"
-                icon="storefront"
-                required
-                placeholder={t.auth.orgNamePlaceholder}
-                {...field('organizationName')}
-              />
-              <p className="text-xs text-slate-500 -mt-1">{t.auth.signupLaterHint}</p>
-              <Button type="submit" variant="accent" size="lg" fullWidth loading={pending} icon="rocket_launch">
-                {t.auth.signupSubmit}
-              </Button>
-            </form>
-          )}
+          <form onSubmit={handleSubmit} className={isDemoMode ? 'flex flex-col gap-4' : 'mt-6 flex flex-col gap-4'} noValidate>
+            <Input
+              label={t.auth.email}
+              name="auth-email"
+              type="email"
+              autoComplete="email"
+              inputMode="email"
+              autoFocus
+              required
+              icon="mail"
+              value={email}
+              error={errors.email}
+              onChange={(event) => {
+                setEmail(event.target.value);
+                setErrors((previous) => ({ ...previous, email: undefined }));
+              }}
+              placeholder={t.auth.emailPlaceholder}
+            />
+            <Input
+              label={t.auth.password}
+              name="auth-password"
+              type={showPassword ? 'text' : 'password'}
+              autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+              required
+              icon="lock"
+              value={password}
+              error={errors.password}
+              hint={mode === 'signup' ? t.auth.passwordHint : undefined}
+              action={passwordToggle}
+              onChange={(event) => {
+                setPassword(event.target.value);
+                setErrors((previous) => ({ ...previous, password: undefined }));
+              }}
+            />
+            <Button
+              type="submit"
+              variant={mode === 'login' ? 'primary' : 'accent'}
+              size="lg"
+              fullWidth
+              loading={pending}
+              icon={mode === 'login' ? undefined : 'rocket_launch'}
+              iconRight={mode === 'login' ? 'arrow_forward' : undefined}
+            >
+              {mode === 'login' ? t.auth.submit : t.auth.signupSubmit}
+            </Button>
+            {mode === 'signup' && (
+              <p className="text-xs text-slate-500 text-center -mt-1">{t.auth.signupLaterHint}</p>
+            )}
+          </form>
 
           {mode === 'login' && demoAccounts.length > 0 && (
             <section className="mt-10">

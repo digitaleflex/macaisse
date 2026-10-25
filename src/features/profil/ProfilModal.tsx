@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { t } from '@/content';
 import { parseDate } from '@/domain/dates';
+import { personDisplayName, personInitials } from '@/domain/users';
 import { OrgList } from '@/features/organisation';
 import { isDemoMode } from '@/config/env';
 import { logout, reloadOrganization } from '@/store/auth';
@@ -42,11 +43,11 @@ export function ProfilModal() {
   return (
     <Modal open={open} onClose={closeModal} title={t.profile.title} icon="manage_accounts" size="lg">
       <div className="rounded-2xl bg-ink-900 text-white p-5 bg-grid-ink flex items-center gap-4">
-        <Avatar initials={`${user.firstName[0]}${user.lastName[0]}`} tone="zest" size="lg" />
+        <Avatar initials={personInitials(user.firstName, user.lastName)} tone="zest" size="lg" />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="font-display font-bold text-lg">
-              {user.firstName} {user.lastName}
+              {personDisplayName(user.firstName, user.lastName)}
             </span>
             <Badge tone="zest">{t.roles[role]}</Badge>
           </div>
