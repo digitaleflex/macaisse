@@ -64,7 +64,8 @@ describe('App — smoke de rendu', () => {
 
   it('affiche l’écran de connexion sans session', () => {
     render(<App />);
-    expect(screen.getAllByText(t.auth.tabs.login).length).toBeGreaterThan(0);
+    // D2 : l'accès par téléphone est le parcours par défaut.
+    expect(screen.getAllByText(t.auth.phoneTitle).length).toBeGreaterThan(0);
   });
 
   it('monte les 5 onglets du propriétaire et ouvre/ferme le reçu sans boucle de rendu', async () => {

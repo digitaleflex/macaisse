@@ -208,6 +208,38 @@ describe('createMockApi — multi-organisation', () => {
     expect(after.business.name).toBe('Boutique Aïcha');
   });
 
+  it('connecte ou crée le compte par code téléphone (D2)', async () => {
+    const api = createMockApi();
+    const challenge = await api.auth.requestPhoneCode('77 123 45 67');
+    expect(challenge.channel).toBe('whatsapp_user');
+    expect(challenge.expiresIn).toBe(300);
+
+    const first = await api.auth.verifyPhoneCode({ challengeId: challenge.challengeId, code: '000000' });
+    expect(first.user.phone).toBe('221771234567');
+    expect(first.memberships).toHaveLength(1);
+
+    // Même numéro écrit autrement : même compte, aucun doublon (RG-A01).
+    const again = await api.auth.requestPhoneCode('+221 77 123 45 67');
+    const second = await api.auth.verifyPhoneCode({ challengeId: again.challengeId, code: '000000' });
+    expect(second.user.id).toBe(first.user.id);
+    expect(second.memberships).toHaveLength(1);
+  });
+
+  it('verrouille le code après cinq erreurs (RG-A08)', async () => {
+    const api = createMockApi();
+    const { challengeId } = await api.auth.requestPhoneCode('770000000');
+
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      await expect(api.auth.verifyPhoneCode({ challengeId, code: '111111' })).rejects.toMatchObject({
+        status: 401,
+      });
+    }
+    // Même le bon code est refusé : le défi est verrouillé.
+    await expect(api.auth.verifyPhoneCode({ challengeId, code: '000000' })).rejects.toMatchObject({
+      status: 429,
+    });
+  });
+
   it('rejette un identifiant inconnu par une ApiError 404', async () => {
     const api = createMockApi();
     await loginAs(api, 'mamadou@boutique-etoile.sn');

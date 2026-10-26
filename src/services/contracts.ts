@@ -9,6 +9,8 @@ import type {
   GoogleIdentity,
   NotificationItem,
   OnboardingInput,
+  PhoneChallenge,
+  PhoneVerifyInput,
   Product,
   SaleTransaction,
   InviteMemberInput,
@@ -33,6 +35,10 @@ import type {
 export interface AuthRepository {
   login(input: LoginInput): Promise<AuthResult>;
   signup(input: SignupInput): Promise<AuthResult>;
+  /** Envoie un code à usage unique au téléphone (D2, RG-A07/A08/A09). */
+  requestPhoneCode(phone: string): Promise<PhoneChallenge>;
+  /** Vérifie le code : connecte le compte ou le crée si le numéro est inconnu. */
+  verifyPhoneCode(input: PhoneVerifyInput): Promise<AuthResult>;
   /**
    * Connexion par Google. En démo, l'identité est simulée ; un compte inconnu est
    * créé avec un espace « Mon commerce » (décision D3). En production, l'échange

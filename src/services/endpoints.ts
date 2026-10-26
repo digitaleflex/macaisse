@@ -8,6 +8,8 @@ const org = (orgId: string) => `/orgs/${enc(orgId)}`;
 export const ENDPOINTS = {
   login: '/auth/login',
   signup: '/auth/signup',
+  otpRequest: '/auth/otp/request',
+  otpVerify: '/auth/otp/verify',
   refresh: '/auth/refresh',
   me: '/auth/me',
   logout: '/auth/logout',

@@ -47,7 +47,8 @@ export function VerifyEmailBanner() {
     return () => clearInterval(timer);
   }, [cooldown]);
 
-  if (!user || user.emailVerified) return null;
+  // Un compte créé par téléphone n'a pas d'e-mail : rien à vérifier.
+  if (!user || user.emailVerified || user.email.trim().length === 0) return null;
 
   const deadline = user.emailVerificationDueAt;
   const message =

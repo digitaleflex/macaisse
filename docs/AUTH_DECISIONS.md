@@ -89,6 +89,12 @@ Le palier 2 s'active quand le volume dépasse le quota gratuit, ou quand le
 « tapez Bonjour » coûte plus cher en friction que 7 FCFA. **Le SMS reste un
 repli désactivé par défaut** (RG-A23, budget §7).
 
+**Implémentation (démo livrée)** : écran unique téléphone → code, code `000000`
+affiché, TTL 5 min, 5 tentatives, canal `whatsapp_user`, numéros normalisés en
+E.164 (`domain/phone.ts`) pour que `77 123 45 67` et `+221 77 123 45 67`
+désignent le même compte. Restent à brancher : le compte WhatsApp Business, le
+template (palier 2) et les quotas serveur.
+
 **Pourquoi.** Le numéro est déjà nécessaire au produit (ticket, PDF comptable,
 contact client — `receipt.phone(business.phone)`, `lib/export/pdf.ts:52`), alors
 que l'e-mail est peu consulté par la cible et parfois partagé. Un seul canal à
@@ -256,7 +262,7 @@ Identifiants stables : **RG-Axx**, cités par `API_CONTRACT.md` et par les tests
 
 | # | Règle |
 |---|---|
-| **RG-A01** | Un compte est identifié par un **numéro de téléphone vérifié, unique, au format E.164**. Le numéro est la clé de connexion : il ne peut appartenir qu'à un seul compte. |
+| **RG-A01** | Un compte est identifié par un **numéro de téléphone vérifié, unique, au format E.164**. Le numéro est la clé de connexion : il ne peut appartenir qu'à un seul compte. Toute écriture est **normalisée** avant comparaison (`+221 77 123 45 67`, `00221771234567` et `77 123 45 67` → `221771234567`) : deux graphies ne doivent jamais créer deux commerces. |
 | **RG-A02** | L'e-mail, s'il est fourni, est **unique** et **vérifié**. Google fournit un e-mail vérifié : un e-mail déjà utilisé **rattache** l'identité au compte existant après OTP sur le téléphone du compte — jamais de doublon, jamais de fusion silencieuse. |
 | **RG-A03** | Un compte sans contact téléphonique **renseigné** (sur le commerce **ou** sur le compte) ne peut pas vendre ni encaisser : il peut explorer son espace, pas opérer une caisse. Le numéro est demandé **au moment d'encaisser** si l'onboarding a été passé (`PhoneRequiredModal`), puis enregistré sur le commerce — jamais de blocage de la caisse. Objectif : ne jamais produire un ticket sans coordonnées. *Application* : côté client depuis D3 ; la **vérification** du numéro par OTP devient obligatoire dès que D2 est livré, et le serveur doit refuser `POST /sales` sans contact. |
 | **RG-A04** | L'inscription ne demande **qu'un champ** (téléphone). *Parcours e-mail de transition (avant D2)* : **deux champs** (e-mail + mot de passe) — jamais plus. Le nom de la personne, le nom du commerce, la ville et l'activité sont collectés **après la première connexion** : **2 étapes courtes** (nom du commerce → coordonnées) puis une **checklist de démarrage** non bloquante (premier article, première vente, premier vendeur). Valeurs par défaut utilisables (« Mon commerce », fuseau `Africa/Dakar`, devise `FCFA`). Tant que l'onboarding n'est pas terminé, `business.onboardedAt` est `null` et l'accueil affiche la checklist, jamais un état vide. |
@@ -364,7 +370,7 @@ réutilise `applyAuth()` (`store/auth.ts:69-75`) sans le modifier.
 | 2 | D1 session cookie + CSRF + `AuthResult` sans jeton | 1 | ✅ **client livré** (lint + 210 tests) ; serveur à brancher |
 | 3 | **D3 Google** (accélérateur d'inscription, 0 FCFA) | 2 | ✅ **démo livrée** ; production = identifiant client Google + échange PKCE serveur |
 | 4 | Onboarding 3 étapes + états vides actionnables | 3 | parcours complet : Google → commerce → vente → ticket |
-| 5 | **D2 OTP palier 1** (conversation initiée, 0 FCFA) + D4 mot de passe optionnel + RG-A13 purge | 2, **numéro WhatsApp + lien `wa.me`** | tests `mockApi` : OTP expiré, quota, budget, énumération, non-révélation |
+| 5 | **D2 OTP palier 1** (conversation initiée, 0 FCFA) + D4 mot de passe optionnel + RG-A13 purge | 2, **numéro WhatsApp + lien `wa.me`** | ✅ **démo livrée** (écran + mock : TTL 5 min, 5 tentatives) ; reste le compte WhatsApp Business et les quotas serveur |
 | 6 | D6 PIN + appareil enrôlé + verrouillage | 2, 5 | test hors ligne : PIN validé sans réseau |
 | 7 | D8 journal + D9 step-up | 2 | `429` + `Retry-After`, `STEP_UP_REQUIRED` sans déconnexion |
 | 8 | D2 OTP palier 2 (template payant) | 5 | bascule à l'unité quand le quota gratuit est dépassé |

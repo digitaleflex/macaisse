@@ -29,6 +29,7 @@ Démarrage : restoreSession() ─► api.auth.me() ─► même activation
 | Brique | État | Preuve |
 |---|---|---|
 | Connexion / inscription / reprise / logout | ✔ fonctionnel | `store/auth.ts` |
+| Connexion par téléphone + OTP (D2) | ✔ démo | `features/auth/LoginScreen.tsx`, `services/adapters/mockApi.ts` |
 | Multi-organisation + rôle par organisation | ✔ | `pickOrganization`, `Membership.role` |
 | Cloisonnement des données par organisation | ✔ | `store/tenantScope.ts` |
 | Jeton injecté sur chaque requête | ✔ | `services/tenant.ts`, `http/httpClient.ts` |

@@ -6,6 +6,7 @@ import type {
   Expense,
   Invitation,
   NotificationItem,
+  PhoneChallenge,
   Product,
   SaleTransaction,
   Session,
@@ -25,6 +26,8 @@ export function createHttpApi(http: HttpClient): Api {
     auth: {
       login: (input) => http.post<AuthResult>(ENDPOINTS.login, input),
       signup: (input) => http.post<AuthResult>(ENDPOINTS.signup, input),
+      requestPhoneCode: (phone) => http.post<PhoneChallenge>(ENDPOINTS.otpRequest, { phone }),
+      verifyPhoneCode: (input) => http.post<AuthResult>(ENDPOINTS.otpVerify, input),
       /**
        * L'échange PKCE est fait par le serveur : le client ne doit jamais envoyer
        * une identité Google auto-déclarée. Tant que le backend et l'identifiant

@@ -14,6 +14,7 @@ import { t } from '@/content';
 import { applyPayment } from '@/domain/credits';
 import { createId } from '@/domain/ids';
 import { toIsoDate } from '@/domain/dates';
+import { normalizePhone } from '@/domain/phone';
 import {
   DEMO_PASSWORD,
   MOCK_ACCOUNTS,
@@ -64,6 +65,11 @@ const EMAIL_GRACE_MS = 72 * 60 * 60 * 1000;
 /** Durée de vie du code e-mail (RG-A27) : 10 min. */
 const EMAIL_CODE_TTL_MS = 10 * 60 * 1000;
 const DEMO_EMAIL_CODE = '000000';
+/** Code téléphone (D2) : 6 chiffres, 5 min, 5 tentatives (RG-A07/A08). */
+const PHONE_CODE_TTL_MS = 5 * 60 * 1000;
+const PHONE_CODE_ATTEMPTS = 5;
+const PHONE_RESEND_S = 30;
+const DEMO_PHONE_CODE = '000000';
 
 interface MockSession {
   userId: string;
@@ -117,6 +123,14 @@ export function createMockApi({ latencyMs = 0, persist = false }: MockApiOptions
   let session = loadSession(persist);
   /** Code de vérification e-mail simulé (un seul à la fois, comme côté serveur). */
   let emailChallenge: { email: string; code: string; expiresAt: number } | null = null;
+  /** Défi téléphone simulé (D2) : un seul à la fois, 5 min, 5 tentatives. */
+  let phoneChallenge: {
+    id: string;
+    phone: string;
+    code: string;
+    expiresAt: number;
+    attempts: number;
+  } | null = null;
 
   const saveAuth = () => {
     if (!persist) return;
@@ -323,6 +337,74 @@ export function createMockApi({ latencyMs = 0, persist = false }: MockApiOptions
             city: input.city.trim(),
           });
           saveAuth();
+          openSession(account.id);
+          return authResult(account);
+        }),
+      requestPhoneCode: (rawPhone) =>
+        respond(() => {
+          const phone = rawPhone.trim();
+          const normalized = normalizePhone(phone);
+          if (normalized === '') {
+            fail(t.auth.errors.phoneInvalid, 422, 'VALIDATION_ERROR');
+          }
+          const challengeId = createId('otp');
+          phoneChallenge = {
+            id: challengeId,
+            phone: normalized,
+            code: DEMO_PHONE_CODE,
+            expiresAt: Date.now() + PHONE_CODE_TTL_MS,
+            attempts: 0,
+          };
+          return {
+            challengeId,
+            phone,
+            channel: 'whatsapp_user' as const,
+            expiresIn: PHONE_CODE_TTL_MS / 1000,
+            retryAfter: PHONE_RESEND_S,
+            demoCode: DEMO_PHONE_CODE,
+          };
+        }),
+      verifyPhoneCode: ({ challengeId, code }) =>
+        respond(() => {
+          const active = phoneChallenge;
+          if (!active || active.id !== challengeId) fail(t.auth.errors.phoneCodeMissing, 400, 'OTP_MISSING');
+          if (active.expiresAt <= Date.now()) {
+            phoneChallenge = null;
+            fail(t.auth.errors.phoneCodeExpired, 410, 'OTP_EXPIRED');
+          }
+          if (active.attempts >= PHONE_CODE_ATTEMPTS) fail(t.auth.errors.phoneTooMany, 429, 'OTP_LOCKED');
+          if (code.trim() !== active.code) {
+            active.attempts += 1;
+            fail(t.auth.errors.phoneCodeInvalid, 401, 'INVALID_OTP');
+          }
+          const digits = active.phone;
+          phoneChallenge = null;
+
+          // D2 : le code prouve le numéro ; le compte est créé s'il est inconnu.
+          const existing = auth.accounts.find((a) => normalizePhone(a.phone) === digits);
+          let account = existing;
+          if (!account) {
+            const created: MockAccount = {
+              id: createId('user'),
+              firstName: '',
+              lastName: '',
+              role: t.roles.owner,
+              phone: digits,
+              email: '',
+              password: '',
+              // Aucune adresse e-mail : rien à vérifier (RG-A27 ne s'applique pas).
+              emailVerified: false,
+              emailVerificationDueAt: null,
+            };
+            auth.accounts.push(created);
+            createOwnerOrganization(created, {
+              name: t.auth.googleDefaultOrg,
+              activity: '',
+              city: '',
+            });
+            saveAuth();
+            account = created;
+          }
           openSession(account.id);
           return authResult(account);
         }),

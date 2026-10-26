@@ -273,6 +273,28 @@ export interface EmailChallenge {
   sentAt: string;
 }
 
+/** Canal d'envoi d'un code téléphone (RG-A23). */
+export type OtpChannel = 'whatsapp_user' | 'whatsapp' | 'sms';
+
+/** Défi de connexion par téléphone (D2). */
+export interface PhoneChallenge {
+  challengeId: string;
+  phone: string;
+  channel: OtpChannel;
+  /** Durée de vie du code, en secondes (300 = 5 min). */
+  expiresIn: number;
+  /** Secondes avant de pouvoir redemander un code. */
+  retryAfter: number;
+  /** Mode démo uniquement : le code est affiché pour pouvoir tester. */
+  demoCode?: string;
+}
+
+/** Demande / vérification d'un code téléphone. */
+export interface PhoneVerifyInput {
+  challengeId: string;
+  code: string;
+}
+
 /** Compte de démonstration proposé sur l'écran de connexion (mode `mock` uniquement). */
 export interface DemoAccount {
   email: string;

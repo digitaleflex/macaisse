@@ -2,7 +2,17 @@
 // connexion, inscription, reprise de session, changement d'espace, déconnexion.
 // Seul module autorisé à modifier le contexte `services/tenant`.
 
-import type { AuthResult, DemoAccount, EmailChallenge, GoogleIdentity, Invitation, LoginInput, SignupInput } from '@/types';
+import type {
+  AuthResult,
+  DemoAccount,
+  EmailChallenge,
+  GoogleIdentity,
+  Invitation,
+  LoginInput,
+  PhoneChallenge,
+  PhoneVerifyInput,
+  SignupInput,
+} from '@/types';
 import { t } from '@/content';
 import { canAccessTab } from '@/domain/permissions';
 import { api, isApiError, setActiveOrganization } from '@/services';
@@ -110,6 +120,19 @@ export async function login(input: LoginInput): Promise<void> {
  */
 export async function signInWithGoogle(identity: GoogleIdentity): Promise<void> {
   await applyAuth(await api.auth.googleSignIn(identity));
+}
+
+/** Demande un code de connexion par téléphone (D2, WhatsApp). */
+export async function requestPhoneLoginCode(phone: string): Promise<PhoneChallenge> {
+  return api.auth.requestPhoneCode(phone);
+}
+
+/**
+ * Vérifie le code téléphone : connecte le compte existant ou crée le commerce
+ * si le numéro est inconnu (RG-A09 : la distinction n'est faite qu'ici).
+ */
+export async function verifyPhoneCode(input: PhoneVerifyInput): Promise<void> {
+  await applyAuth(await api.auth.verifyPhoneCode(input));
 }
 
 export async function signup(input: SignupInput): Promise<void> {

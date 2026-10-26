@@ -20,7 +20,8 @@ Légende : ✔ implémenté et fonctionnel · ◐ simulé (UI + toast, aucun eff
 | Élément | Détail | Fichier |
 |---|---|---|
 | Écran | Deux onglets *Se connecter* / *Créer un compte*, panneau marketing (3 arguments) | `features/auth/LoginScreen.tsx` (247 l) |
-| Connexion | e-mail + mot de passe affichable, erreurs **par champ**, `autoComplete`, erreurs API typées (`invalidCredentials`, `sessionExpired`, `forbidden`…) | idem |
+| Connexion (défaut) | **Téléphone → code à 6 chiffres** (code `000000` en démo), canal WhatsApp simulé, numéro normalisé E.164, renvoi après 30 s | `features/auth/LoginScreen.tsx`, `domain/phone.ts` |
+| Connexion e-mail | e-mail + mot de passe affichable, erreurs **par champ**, `autoComplete`, erreurs API typées (`invalidCredentials`, `sessionExpired`, `forbidden`…) | idem |
 | Inscription | **2 champs** : e-mail + mot de passe (12 car. min) ; nom, commerce, téléphone, ville et activité sont collectés après l'ouverture (RG-A04). Espace créé sous « Mon commerce » | idem |
 | Connexion 1 clic | 4 comptes de démonstration listés (mot de passe `demo1234`) | `mocks/fixtures/accounts.ts` |
 | Google (démo) | Bouton « Continuer avec Google » avec le **logo « G » officiel** (SVG inline, non recoloré) : identité simulée, espace « Mon commerce » créé au premier accès (production = PKCE serveur, `501` en `http`) | `features/auth/GoogleButton.tsx`, `ui/GoogleMark.tsx`, `adapters/mockApi.ts` |

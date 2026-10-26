@@ -1,10 +1,18 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import type { DemoAccount, GoogleIdentity, SignupInput } from '@/types';
+import type { DemoAccount, GoogleIdentity, PhoneChallenge, SignupInput } from '@/types';
 import { t } from '@/content';
 import { isDemoMode } from '@/config/env';
 import { validatePassword, type PasswordIssue } from '@/domain/password';
+import { isValidPhone } from '@/domain/phone';
 import { isApiError } from '@/services';
-import { login, loadDemoAccounts, signInWithGoogle, signup } from '@/store/auth';
+import {
+  login,
+  loadDemoAccounts,
+  requestPhoneLoginCode,
+  signInWithGoogle,
+  signup,
+  verifyPhoneCode,
+} from '@/store/auth';
 import { useUiStore } from '@/store/useUiStore';
 import { Avatar, Badge, BrandMark, Button, Icon, Input, SegmentedControl } from '@/ui';
 import { GoogleButton } from './GoogleButton';
@@ -22,7 +30,9 @@ import { GoogleButton } from './GoogleButton';
  * - la connexion par téléphone (OTP) arrive avec D2, en conversation WhatsApp.
  */
 type Mode = 'login' | 'signup';
-type FieldKey = 'email' | 'password';
+/** Moyen d'accès : téléphone (D2, par défaut) ou e-mail (parcours de transition). */
+type View = 'phone' | 'email';
+type FieldKey = 'email' | 'password' | 'phone' | 'code';
 type FieldErrors = Partial<Record<FieldKey, string>>;
 
 /** Message affiché pour le premier manquement détecté (RG-A29). */
@@ -95,9 +105,14 @@ function HeroPanel() {
 
 export function LoginScreen() {
   const showToast = useUiStore((state) => state.showToast);
+  const [view, setView] = useState<View>('phone');
   const [mode, setMode] = useState<Mode>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [phone, setPhone] = useState('');
+  const [challenge, setChallenge] = useState<PhoneChallenge | null>(null);
+  const [code, setCode] = useState('');
+  const [cooldown, setCooldown] = useState(0);
   const [errors, setErrors] = useState<FieldErrors>({});
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -164,6 +179,73 @@ export function LoginScreen() {
     void run(() => signInWithGoogle(DEMO_GOOGLE_IDENTITY), DEMO_GOOGLE_IDENTITY.firstName);
   };
 
+  const sendPhoneCode = async () => {
+    if (!isValidPhone(phone)) {
+      setErrors({ phone: t.auth.errors.phoneInvalid });
+      return;
+    }
+    setPending(true);
+    setError(null);
+    setErrors({});
+    try {
+      const result = await requestPhoneLoginCode(phone.trim());
+      setChallenge(result);
+      setCode('');
+      setCooldown(result.retryAfter);
+      showToast(t.auth.phoneSentTo(result.phone), 'info');
+    } catch (caught) {
+      setError(errorText(caught));
+    } finally {
+      setPending(false);
+    }
+  };
+
+  const submitPhone = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    void sendPhoneCode();
+  };
+
+  const submitPhoneCode = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!challenge) return;
+    if (code.trim().length !== 6) {
+      setErrors({ code: t.auth.errors.required });
+      return;
+    }
+    void run(() => verifyPhoneCode({ challengeId: challenge.challengeId, code: code.trim() }));
+  };
+
+  const resetPhoneChallenge = () => {
+    setChallenge(null);
+    setCode('');
+    setErrors({});
+    setError(null);
+  };
+
+  const switchView = () => {
+    setView((current) => (current === 'phone' ? 'email' : 'phone'));
+    setError(null);
+    setErrors({});
+  };
+
+  const title =
+    view === 'phone'
+      ? challenge === null
+        ? t.auth.phoneTitle
+        : t.auth.phoneCodeTitle
+      : mode === 'login'
+        ? t.auth.loginTitle
+        : t.auth.signupTitle;
+
+  const subtitle =
+    view === 'phone'
+      ? challenge === null
+        ? t.auth.phoneSubtitle
+        : t.auth.phoneSentTo(phone.trim())
+      : mode === 'login'
+        ? t.auth.loginSubtitle
+        : t.auth.signupSubtitle;
+
   const passwordToggle = (
     <button
       type="button"
@@ -185,21 +267,8 @@ export function LoginScreen() {
             <div className="font-display font-extrabold text-lg">{t.app.name}</div>
           </div>
 
-          <SegmentedControl
-            label={t.auth.tabs.login}
-            value={mode}
-            onChange={switchMode}
-            fullWidth
-            options={[
-              { value: 'login', label: t.auth.tabs.login },
-              { value: 'signup', label: t.auth.tabs.signup },
-            ]}
-          />
-
-          <h1 className="font-display font-extrabold text-2xl text-ink-900 mt-8">
-            {mode === 'login' ? t.auth.loginTitle : t.auth.signupTitle}
-          </h1>
-          <p className="text-sm text-slate-500 mt-1">{mode === 'login' ? t.auth.loginSubtitle : t.auth.signupSubtitle}</p>
+          <h1 className="font-display font-extrabold text-2xl text-ink-900 mt-1">{title}</h1>
+          <p className="text-sm text-slate-500 mt-1">{subtitle}</p>
 
           {error && (
             <div role="alert" className="mt-5 flex items-start gap-2.5 p-3 rounded-xl bg-rose-50 text-sm text-rose-700">
@@ -220,57 +289,147 @@ export function LoginScreen() {
             </>
           )}
 
-          <form onSubmit={handleSubmit} className={isDemoMode ? 'flex flex-col gap-4' : 'mt-6 flex flex-col gap-4'} noValidate>
-            <Input
-              label={t.auth.email}
-              name="auth-email"
-              type="email"
-              autoComplete="email"
-              inputMode="email"
-              autoFocus
-              required
-              icon="mail"
-              value={email}
-              error={errors.email}
-              onChange={(event) => {
-                setEmail(event.target.value);
-                setErrors((previous) => ({ ...previous, email: undefined }));
-              }}
-              placeholder={t.auth.emailPlaceholder}
-            />
-            <Input
-              label={t.auth.password}
-              name="auth-password"
-              type={showPassword ? 'text' : 'password'}
-              autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-              required
-              icon="lock"
-              value={password}
-              error={errors.password}
-              hint={mode === 'signup' ? t.auth.passwordHint : undefined}
-              action={passwordToggle}
-              onChange={(event) => {
-                setPassword(event.target.value);
-                setErrors((previous) => ({ ...previous, password: undefined }));
-              }}
-            />
-            <Button
-              type="submit"
-              variant={mode === 'login' ? 'primary' : 'accent'}
-              size="lg"
-              fullWidth
-              loading={pending}
-              icon={mode === 'login' ? undefined : 'rocket_launch'}
-              iconRight={mode === 'login' ? 'arrow_forward' : undefined}
-            >
-              {mode === 'login' ? t.auth.submit : t.auth.signupSubmit}
-            </Button>
-            {mode === 'signup' && (
-              <p className="text-xs text-slate-500 text-center -mt-1">{t.auth.signupLaterHint}</p>
-            )}
-          </form>
+          {view === 'phone' ? (
+            challenge === null ? (
+              <form onSubmit={submitPhone} className="flex flex-col gap-4" noValidate>
+                <Input
+                  label={t.auth.phoneLabel}
+                  name="auth-phone"
+                  type="tel"
+                  inputMode="tel"
+                  autoComplete="tel"
+                  autoFocus
+                  required
+                  icon="smartphone"
+                  value={phone}
+                  error={errors.phone}
+                  onChange={(event) => {
+                    setPhone(event.target.value);
+                    setErrors((previous) => ({ ...previous, phone: undefined }));
+                  }}
+                  placeholder={t.auth.phonePlaceholder}
+                />
+                <Button type="submit" size="lg" fullWidth loading={pending} icon="sms">
+                  {t.auth.phoneSubmit}
+                </Button>
+                {isDemoMode && <p className="text-xs text-slate-500 text-center -mt-1">{t.auth.phoneDemoHint}</p>}
+              </form>
+            ) : (
+              <form onSubmit={submitPhoneCode} className="flex flex-col gap-4" noValidate>
+                <Input
+                  label={t.auth.phoneCodeLabel}
+                  name="auth-phone-code"
+                  value={code}
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  maxLength={6}
+                  placeholder="000000"
+                  autoFocus
+                  error={errors.code}
+                  hint={isDemoMode ? t.auth.phoneDemoHint : undefined}
+                  onChange={(event) => {
+                    setCode(event.target.value.replace(/\D/g, '').slice(0, 6));
+                    setErrors((previous) => ({ ...previous, code: undefined }));
+                  }}
+                />
+                <Button type="submit" size="lg" fullWidth loading={pending} icon="login">
+                  {t.auth.phoneCodeSubmit}
+                </Button>
+                <div className="flex items-center justify-between gap-3 text-xs font-semibold text-slate-500">
+                  <button
+                    type="button"
+                    onClick={resetPhoneChallenge}
+                    className="hover:text-ink-900 cursor-pointer"
+                  >
+                    {t.auth.phoneChange}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={pending || cooldown > 0}
+                    onClick={() => void sendPhoneCode()}
+                    className="hover:text-ink-900 disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
+                  >
+                    {cooldown > 0 ? t.auth.phoneResendIn(cooldown) : t.auth.phoneResend}
+                  </button>
+                </div>
+              </form>
+            )
+          ) : (
+            <>
+              <SegmentedControl
+                label={t.auth.tabs.login}
+                value={mode}
+                onChange={switchMode}
+                fullWidth
+                options={[
+                  { value: 'login', label: t.auth.tabs.login },
+                  { value: 'signup', label: t.auth.tabs.signup },
+                ]}
+              />
 
-          {mode === 'login' && demoAccounts.length > 0 && (
+              <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4" noValidate>
+                <Input
+                  label={t.auth.email}
+                  name="auth-email"
+                  type="email"
+                  autoComplete="email"
+                  inputMode="email"
+                  autoFocus
+                  required
+                  icon="mail"
+                  value={email}
+                  error={errors.email}
+                  onChange={(event) => {
+                    setEmail(event.target.value);
+                    setErrors((previous) => ({ ...previous, email: undefined }));
+                  }}
+                  placeholder={t.auth.emailPlaceholder}
+                />
+                <Input
+                  label={t.auth.password}
+                  name="auth-password"
+                  type={showPassword ? 'text' : 'password'}
+                  autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+                  required
+                  icon="lock"
+                  value={password}
+                  error={errors.password}
+                  hint={mode === 'signup' ? t.auth.passwordHint : undefined}
+                  action={passwordToggle}
+                  onChange={(event) => {
+                    setPassword(event.target.value);
+                    setErrors((previous) => ({ ...previous, password: undefined }));
+                  }}
+                />
+                <Button
+                  type="submit"
+                  variant={mode === 'login' ? 'primary' : 'accent'}
+                  size="lg"
+                  fullWidth
+                  loading={pending}
+                  icon={mode === 'login' ? undefined : 'rocket_launch'}
+                  iconRight={mode === 'login' ? 'arrow_forward' : undefined}
+                >
+                  {mode === 'login' ? t.auth.submit : t.auth.signupSubmit}
+                </Button>
+                {mode === 'signup' && (
+                  <p className="text-xs text-slate-500 text-center -mt-1">{t.auth.signupLaterHint}</p>
+                )}
+              </form>
+            </>
+          )}
+
+          <div className="mt-5 text-center">
+            <button
+              type="button"
+              onClick={switchView}
+              className="text-xs font-semibold text-slate-500 hover:text-ink-900 cursor-pointer"
+            >
+              {view === 'phone' ? t.auth.useEmail : t.auth.usePhone}
+            </button>
+          </div>
+
+          {view === 'email' && demoAccounts.length > 0 && (
             <section className="mt-10">
               <div className="flex items-center gap-2">
                 <h2 className="text-sm font-semibold text-ink-900">{t.auth.demoTitle}</h2>
