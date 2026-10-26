@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { t } from '@/content';
-import { isApiError } from '@/services';
+import { describeError } from '@/services';
 import { stepUp } from '@/store/auth';
 import { useStepUpStore } from '@/store/stepUp';
 import { Button, Icon, Input, Modal } from '@/ui';
@@ -30,7 +30,7 @@ export function StepUpModal() {
       setPassword('');
       resolve(true);
     } catch (caught) {
-      setError(isApiError(caught) ? caught.message : t.auth.errors.generic);
+      setError(describeError(caught).message);
     } finally {
       setPending(false);
     }

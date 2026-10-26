@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { t } from '@/content';
-import { isApiError } from '@/services';
+import { describeError } from '@/services';
 import { completeOnboarding, needsOnboarding } from '@/store/onboarding';
 import { useSessionStore } from '@/store/useSessionStore';
 import { useUiStore } from '@/store/useUiStore';
@@ -46,7 +46,7 @@ export function OnboardingModal() {
       await completeOnboarding({ name: name.trim(), city: city.trim(), phone: phone.trim(), activity: activity.trim() });
       showToast(t.onboarding.done, 'success');
     } catch (caught) {
-      setError(isApiError(caught) ? caught.message : t.auth.errors.generic);
+      setError(describeError(caught).message);
     } finally {
       setPending(false);
     }

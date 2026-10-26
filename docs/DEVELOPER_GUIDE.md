@@ -386,6 +386,10 @@ Une tâche n'est pas terminée tant que :
 
 - **Comprendre le multi-tenant** : `store/useAuthStore.ts`, `store/auth.ts`,
   `store/tenantScope.ts`, `services/tenant.ts` — dans cet ordre.
+- **Afficher une erreur** : passer par `describeError(error)` (`services/errorMessages.ts`).
+  Il conserve le message métier d'un 4xx mais reformule réseau, timeout et 5xx,
+  et indique si l'action est rejouable. **Ne jamais afficher `error.message`
+  brut** pour une panne : l'utilisateur n'a que faire d'un code HTTP.
 - **Toucher à l'authentification** : lire d'abord
   [`AUTH_DECISIONS.md`](AUTH_DECISIONS.md) (normatif : D1–D9, RG-A01–RG-A29),
   puis `docs/API_CONTRACT.md` §2 (routes), puis seulement `features/auth` et

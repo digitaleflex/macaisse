@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { t } from '@/content';
-import { isApiError } from '@/services';
+import { describeError } from '@/services';
 import { deleteAccount } from '@/store/auth';
 import { useUiStore } from '@/store/useUiStore';
 import { Button, Icon, Input, Modal } from '@/ui';
@@ -28,7 +28,7 @@ export function DeleteAccountModal({ open, onClose }: { open: boolean; onClose: 
       await deleteAccount({ password, confirmation: confirmation.trim() });
       showToast(t.accountDeletion.done, 'success');
     } catch (caught) {
-      setError(isApiError(caught) ? caught.message : t.auth.errors.generic);
+      setError(describeError(caught).message);
     } finally {
       setPending(false);
     }

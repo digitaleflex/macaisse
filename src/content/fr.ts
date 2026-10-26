@@ -52,6 +52,30 @@ const creditStatus: Record<CreditStatus, string> = {
 };
 
 export const fr = {
+  errors: {
+    network: 'Serveur injoignable. Vérifiez votre connexion, puis réessayez.',
+    timeout: 'Le serveur met trop de temps à répondre. Réessayez dans un instant.',
+    server: 'Le serveur a rencontré un problème. Réessayez dans un instant.',
+    session: 'Votre session a expiré : reconnectez-vous.',
+    stepUp: 'Confirmez votre identité pour continuer.',
+    forbidden: 'Vous n’avez pas les droits pour cette action.',
+    notFound: 'Cet élément n’existe plus.',
+    conflict: 'Les données ont changé entre-temps. Rechargez, puis réessayez.',
+    expired: 'Ce code a expiré : demandez-en un nouveau.',
+    validation: 'Certaines informations sont incomplètes ou invalides.',
+    tooMany: 'Trop de tentatives. Patientez un instant avant de réessayer.',
+    unknown: 'Une erreur est survenue. Réessayez, puis contactez le support si cela persiste.',
+    retry: 'Réessayer',
+  },
+
+  crash: {
+    title: 'L’écran n’a pas pu s’afficher',
+    text: 'Vos données sont enregistrées. Rechargez la page pour reprendre — si le problème revient, copiez le détail et transmettez-le au support.',
+    reload: 'Recharger',
+    copy: 'Copier le détail',
+    copied: 'Détail copié.',
+  },
+
   app: {
     name: 'Ma Caisse',
     tagline: 'Caisse & gestion de commerce',

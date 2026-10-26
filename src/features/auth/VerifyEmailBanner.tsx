@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { t } from '@/content';
 import { isDemoMode } from '@/config/env';
 import { parseDate } from '@/domain/dates';
-import { isApiError } from '@/services';
+import { describeError } from '@/services';
 import { requestEmailVerification, verifyEmail } from '@/store/auth';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useUiStore } from '@/store/useUiStore';
@@ -64,7 +64,7 @@ export function VerifyEmailBanner() {
       setCooldown(RESEND_COOLDOWN_S);
       showToast(t.auth.verifyEmail.sentTo(user?.email ?? ''), 'info');
     } catch (caught) {
-      setError(isApiError(caught) ? caught.message : t.auth.errors.generic);
+      setError(describeError(caught).message);
     } finally {
       setPending(false);
     }
@@ -89,7 +89,7 @@ export function VerifyEmailBanner() {
       showToast(t.auth.verifyEmail.verified, 'success');
       setOpen(false);
     } catch (caught) {
-      setError(isApiError(caught) ? caught.message : t.auth.errors.generic);
+      setError(describeError(caught).message);
     } finally {
       setPending(false);
     }

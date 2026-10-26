@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { t } from '@/content';
-import { isApiError } from '@/services';
+import { describeError } from '@/services';
 import { completeOnboarding } from '@/store/onboarding';
 import { useCurrentSession } from '@/store/useSessionStore';
 import { useUiStore } from '@/store/useUiStore';
@@ -44,7 +44,7 @@ export function PhoneRequiredModal({ open, onClose, onSaved }: PhoneRequiredModa
       showToast(t.pos.phoneRequired.saved, 'success');
       onSaved();
     } catch (caught) {
-      setError(isApiError(caught) ? caught.message : t.auth.errors.generic);
+      setError(describeError(caught).message);
     } finally {
       setPending(false);
     }

@@ -1,6 +1,7 @@
 import {StrictMode} from 'react';
 import {createRoot} from 'react-dom/client';
 import App from '@/app/App';
+import { ErrorBoundary } from '@/app/ErrorBoundary';
 import { setErrorReporter } from '@/services';
 import { pushToast } from '@/ui';
 import './index.css';
@@ -10,6 +11,8 @@ setErrorReporter((message) => pushToast(message, 'error'));
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    <ErrorBoundary>
+      <App />
+    </ErrorBoundary>
   </StrictMode>,
 );

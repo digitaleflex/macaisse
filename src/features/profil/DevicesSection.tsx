@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { t } from '@/content';
 import { pinHash, validatePin } from '@/domain/pin';
 import { personDisplayName } from '@/domain/users';
-import { isApiError } from '@/services';
+import { describeError } from '@/services';
 import { useDevicesStore } from '@/store/devices';
 import { withStepUp } from '@/store/stepUp';
 import { clearEnrollment, readEnrollment, useLockStore, writeEnrollment } from '@/store/lock';
@@ -76,7 +76,7 @@ export function DevicesSection({ open }: { open: boolean }) {
       setFormOpen(false);
       setPin('');
     } catch (caught) {
-      setError(isApiError(caught) ? caught.message : t.auth.errors.generic);
+      setError(describeError(caught).message);
     } finally {
       setPending(false);
     }
@@ -91,7 +91,7 @@ export function DevicesSection({ open }: { open: boolean }) {
       }
       showToast(t.devices.revoked, 'success');
     } catch (caught) {
-      showToast(isApiError(caught) ? caught.message : t.auth.errors.generic, 'error');
+      showToast(describeError(caught).message, 'error');
     }
   };
 

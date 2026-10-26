@@ -166,7 +166,8 @@ est détecté par un test, et que le hors ligne rejoue ses mutations sans doublo
 
 | # | Sujet | Prio | Effort | Dépend |
 |---|---|---|---|---|
-| [#6](https://github.com/digitaleflex/macaisse/issues/6) | Validations de formulaire visibles | P1 | S | front |
+| [#6](https://github.com/digitaleflex/macaisse/issues/6) | Validations de formulaire visibles | ✅ livré | S | front |
+| à ouvrir | **Erreurs & feedback** : frontière d'erreur globale + messages normalisés (`describeError`) — ✅ **livré** ; reste le retour arrière des mutations optimistes | P1 | S/M | front |
 | [#11](https://github.com/digitaleflex/macaisse/issues/11) | Vider le panier à la déconnexion | P1 | S | front |
 | [#12](https://github.com/digitaleflex/macaisse/issues/12) | Retirer le module IA mort + nettoyer le template | P2 | S | front |
 | [#13](https://github.com/digitaleflex/macaisse/issues/13) | Unifier le mot de passe de démonstration | P2 | S | front |

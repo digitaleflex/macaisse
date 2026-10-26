@@ -26,6 +26,7 @@ Légende : ✔ implémenté et fonctionnel · ◐ simulé (UI + toast, aucun eff
 | Connexion 1 clic | 4 comptes de démonstration listés (mot de passe `demo1234`) | `mocks/fixtures/accounts.ts` |
 | Google (démo) | Bouton « Continuer avec Google » avec le **logo « G » officiel** (SVG inline, non recoloré) : identité simulée, espace « Mon commerce » créé au premier accès (production = PKCE serveur, `501` en `http`) | `features/auth/GoogleButton.tsx`, `ui/GoogleMark.tsx`, `adapters/mockApi.ts` |
 | Mot de passe oublié | Code à 6 chiffres (`000000` en démo) + nouveau mot de passe, lien depuis l'onglet e-mail ; aucune question secrète (D4) | `features/auth/ForgotPasswordModal.tsx` |
+| Écran de secours | Frontière d'erreur globale : un crash de rendu affiche un écran lisible (recharger / copier le détail) au lieu d'une page blanche, et journalise l'incident | `app/ErrorBoundary.tsx` |
 | Step-up (démo) | Modale de réauthentification sur `401 STEP_UP_REQUIRED`, rejeu unique de l'action, jamais de déconnexion | `features/auth/StepUpModal.tsx`, `store/stepUp.ts` |
 | Journal de connexions | 10 dernières tentatives (méthode, résultat, IP) dans le profil | `features/profil/ProfilModal.tsx` |
 | Suppression de compte | Mot de passe + mot-clé `SUPPRIMER` ; accès retirés immédiatement, anonymisation expliquée (RG-A21) | `features/profil/DeleteAccountModal.tsx` |

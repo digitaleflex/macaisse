@@ -42,4 +42,5 @@ export type { Api } from './contracts';
 export { reportError, setErrorReporter, type ErrorReporter } from './errorReporter';
 export { ApiError, isApiError } from './http/ApiError';
 export { ENDPOINTS } from './endpoints';
+export { describeError, errorText, type UserError } from './errorMessages';
 export { getActiveOrganization, setActiveOrganization } from './tenant';

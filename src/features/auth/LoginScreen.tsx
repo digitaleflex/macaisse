@@ -4,7 +4,7 @@ import { t } from '@/content';
 import { isDemoMode } from '@/config/env';
 import { validatePassword } from '@/domain/password';
 import { isValidPhone } from '@/domain/phone';
-import { isApiError } from '@/services';
+import { describeError } from '@/services';
 import {
   login,
   loadDemoAccounts,
@@ -62,7 +62,7 @@ const DEMO_GOOGLE_IDENTITY: GoogleIdentity = {
 };
 
 function errorText(error: unknown): string {
-  return isApiError(error) ? error.message : t.auth.errors.generic;
+  return describeError(error).message;
 }
 
 function HeroPanel() {

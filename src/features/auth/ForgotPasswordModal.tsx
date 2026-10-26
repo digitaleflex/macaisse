@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { t } from '@/content';
 import { isDemoMode } from '@/config/env';
 import { validatePassword } from '@/domain/password';
-import { isApiError } from '@/services';
+import { describeError } from '@/services';
 import { requestPasswordReset, resetPassword } from '@/store/auth';
 import { useUiStore } from '@/store/useUiStore';
 import { Button, Icon, Input, Modal } from '@/ui';
@@ -51,7 +51,7 @@ export function ForgotPasswordModal({ open, initialEmail, onClose }: ForgotPassw
       setCooldown(RESEND_COOLDOWN_S);
       showToast(t.auth.forgot.sentTo(email.trim()), 'info');
     } catch (caught) {
-      setError(isApiError(caught) ? caught.message : t.auth.errors.generic);
+      setError(describeError(caught).message);
     } finally {
       setPending(false);
     }
@@ -74,7 +74,7 @@ export function ForgotPasswordModal({ open, initialEmail, onClose }: ForgotPassw
       showToast(t.auth.forgot.done, 'success');
       onClose();
     } catch (caught) {
-      setError(isApiError(caught) ? caught.message : t.auth.errors.generic);
+      setError(describeError(caught).message);
     } finally {
       setPending(false);
     }

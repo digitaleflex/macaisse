@@ -5,7 +5,7 @@ import { personDisplayName, personInitials } from '@/domain/users';
 import { OrgList } from '@/features/organisation';
 import { isDemoMode } from '@/config/env';
 import type { AuthEvent } from '@/types';
-import { isApiError } from '@/services';
+import { describeError } from '@/services';
 import { loadAuthEvents, logout, reloadOrganization, saveBusiness, updateProfile } from '@/store/auth';
 import { selectMemberships, useAuthStore } from '@/store/useAuthStore';
 import { useCurrentSession, usePermission } from '@/store/useSessionStore';
@@ -87,7 +87,7 @@ export function ProfilModal() {
       showToast(t.profile.edit.saved, 'success');
       setEditing(false);
     } catch (error) {
-      showToast(isApiError(error) ? error.message : t.auth.errors.generic, 'error');
+      showToast(describeError(error).message, 'error');
     } finally {
       setSaving(false);
     }
