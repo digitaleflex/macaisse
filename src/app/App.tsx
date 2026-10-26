@@ -2,7 +2,7 @@ import { lazy, Suspense, useEffect, type ComponentType } from 'react';
 import type { TabType } from '@/types';
 import { t } from '@/content';
 import { canAccessTab } from '@/domain/permissions';
-import { LoginScreen, VerifyEmailBanner } from '@/features/auth';
+import { LockScreen, LoginScreen, VerifyEmailBanner, useInactivityLock } from '@/features/auth';
 import { ReceiptModal } from '@/features/ventes';
 import { DepensesModal } from '@/features/depenses';
 import { ExportModal } from '@/features/export';
@@ -136,6 +136,8 @@ export default function App() {
   useEffect(() => {
     void restoreSession();
   }, []);
+  // D6 : verrouillage après 15 min sans interaction sur un appareil enrôlé.
+  useInactivityLock(session !== null);
 
   if (!isAuthenticated) {
     return (
@@ -179,6 +181,7 @@ export default function App() {
       <NotificationDrawer />
       <ReceiptModal />
       <SwitchingOverlay />
+      <LockScreen />
       <ToastHost />
     </div>
   );

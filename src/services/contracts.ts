@@ -2,9 +2,12 @@ import type {
   AuthResult,
   BusinessProfile,
   CartLine,
-  DemoAccount,
   ClientCredit,
+  DemoAccount,
+  Device,
+  DeviceEnrollment,
   EmailChallenge,
+  EnrollDeviceInput,
   Expense,
   GoogleIdentity,
   NotificationItem,
@@ -12,6 +15,7 @@ import type {
   PasswordResetChallenge,
   PhoneChallenge,
   PhoneVerifyInput,
+  PinVerifyInput,
   Product,
   ProfileInput,
   SaleTransaction,
@@ -83,6 +87,16 @@ export interface OnboardingRepository {
   update(organizationId: string, input: OnboardingInput): Promise<BusinessProfile>;
 }
 
+/** Appareils de caisse et PIN (D6, RG-A15→A17). */
+export interface DevicesRepository {
+  list(organizationId: string): Promise<Device[]>;
+  enroll(organizationId: string, input: EnrollDeviceInput): Promise<DeviceEnrollment>;
+  revoke(organizationId: string, deviceId: string): Promise<void>;
+  setPin(organizationId: string, userId: string, pin: string): Promise<void>;
+  /** Vérification distante : sert au compteur d'échecs partagé. */
+  verifyPin(input: PinVerifyInput): Promise<{ ok: true }>;
+}
+
 export interface TeamRepository {
   list(organizationId: string): Promise<TeamMember[]>;
   invite(organizationId: string, input: InviteMemberInput): Promise<TeamMember>;
@@ -139,6 +153,7 @@ export interface Api {
   auth: AuthRepository;
   session: SessionRepository;
   onboarding: OnboardingRepository;
+  devices: DevicesRepository;
   team: TeamRepository;
   products: ProductsRepository;
   sales: SalesRepository;

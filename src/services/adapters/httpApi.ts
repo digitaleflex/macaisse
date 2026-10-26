@@ -2,6 +2,8 @@ import type {
   AuthResult,
   BusinessProfile,
   ClientCredit,
+  Device,
+  DeviceEnrollment,
   EmailChallenge,
   Expense,
   Invitation,
@@ -62,6 +64,13 @@ export function createHttpApi(http: HttpClient): Api {
     onboarding: {
       complete: (orgId, input) => http.post<BusinessProfile>(ENDPOINTS.onboarding(orgId), input),
       update: (orgId, input) => http.patch<BusinessProfile>(ENDPOINTS.business(orgId), input),
+    },
+    devices: {
+      list: (orgId) => http.get<Device[]>(ENDPOINTS.devices(orgId)),
+      enroll: (orgId, input) => http.post<DeviceEnrollment>(ENDPOINTS.devices(orgId), input),
+      revoke: (orgId, deviceId) => http.delete<void>(ENDPOINTS.device(orgId, deviceId)),
+      setPin: (orgId, userId, pin) => http.request<void>('PUT', ENDPOINTS.memberPin(orgId, userId), { body: { pin } }),
+      verifyPin: (input) => http.post<{ ok: true }>(ENDPOINTS.pinVerify, input),
     },
     team: {
       list: (orgId) => http.get<TeamMember[]>(ENDPOINTS.members(orgId)),

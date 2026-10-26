@@ -10,6 +10,7 @@ import { selectMemberships, useAuthStore } from '@/store/useAuthStore';
 import { useCurrentSession, usePermission } from '@/store/useSessionStore';
 import { selectModal, useUiStore } from '@/store/useUiStore';
 import { Avatar, Badge, Button, Icon, Input, Modal } from '@/ui';
+import { DevicesSection } from './DevicesSection';
 import { PosSettings } from './PosSettings';
 
 function formatDate(iso: string): string {
@@ -235,6 +236,8 @@ export function ProfilModal() {
           <OrgList />
         </section>
       )}
+
+      <DevicesSection open={open} />
 
       <PosSettings />
 

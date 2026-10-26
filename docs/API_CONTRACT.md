@@ -146,17 +146,17 @@ n'introduisent aucune règle nouvelle.
 
 | Méthode | Route | Corps | Réponse | Rôle |
 |---|---|---|---|---|
-| GET | `/orgs/:orgId/devices` | — | `Device[]` (`name`, `lastSeenAt`, `enrolledBy`) | owner |
+| GET | `/orgs/:orgId/devices` | — | `Device[]` (actifs **et** révoqués, triés par enrôlement) | membre |
 | POST | `/orgs/:orgId/devices` | `{ name, memberId }` | `Device` + `pinSetupToken` · `422 DEVICE_LIMIT` (3 max) | owner + step-up |
 | DELETE | `/orgs/:orgId/devices/:id` | — | `204` (session et cache local invalidés, RG-A17) | owner + step-up |
 | PUT | `/orgs/:orgId/members/:userId/pin` | `{ pin }` | `204` (`422 WEAK_PIN`) | owner |
-| POST | `/auth/pin/verify` | `{ deviceId, memberId, pin }` | `200 { ok }` · `401` · `423 PIN_LOCKED` | membre |
+| POST | `/auth/pin/verify` | `{ deviceId, memberId, pin }` | `200 { ok: true }` · `401 INVALID_PIN` ou `DEVICE_REVOKED` · `423 PIN_LOCKED` | membre |
 
 ```jsonc
 // Device (3 maximum par organisation, RG-A15)
-{ "id": "dev-caisse-1", "name": "Caisse comptoir", "memberId": "u-awa",
-  "enrolledBy": "u-mamadou", "enrolledAt": "2026-10-25",
-  "lastSeenAt": "2026-10-25T17:40:00Z", "revokedAt": null }
+{ "id": "dev-caisse-1", "organizationId": "org-etoile", "name": "Caisse comptoir",
+  "memberId": "u-awa", "memberName": "Awa Fall", "enrolledBy": "u-mamadou",
+  "enrolledAt": "2026-10-25", "lastSeenAt": "2026-10-25T17:40:00Z", "revokedAt": null }
 
 // AuthEvent (10 dernières exposées au titulaire, RG-A20)
 { "at": "2026-10-25T17:40:00Z", "method": "otp_whatsapp", "result": "success",
@@ -354,7 +354,7 @@ sont les responsabilités du backend, à traiter avant toute mise en production.
 | CSRF | vérifier `X-CSRF-Token` (double-submit) sur **toute** mutation authentifiée | D1 |
 | Autorisation | vérifier appartenance `active` + rôle sur chaque route, y compris `POST /sales` (`422 CONTACT_PHONE_REQUIRED`) et l'édition du commerce (`403` caissier) | RG-A03, RG-A18 |
 | Step-up | exiger une réauthentification < 5 min sur les actions sensibles, renvoyer `401 STEP_UP_REQUIRED` **sans** invalider la session | D9, RG-A12 |
-| Appareils & PIN | hash Argon2id du PIN, compteur d'échecs, verrouillage, révocation immédiate, liste des appareils | D6, RG-A15→A17 |
+| Appareils & PIN | hash **Argon2id** du PIN, compteur d'échecs **partagé entre appareils**, verrouillage 15 min après 5 échecs, révocation qui invalide la session de l'appareil, plafond de 3 appareils actifs | D6, RG-A15→A17 |
 | Anti-bruteforce | `429` + `Retry-After` par identifiant et par IP sur tous les points d'entrée | D8, RG-A19 |
 | Journal | table `auth_events` (90 j), consultation titulaire/propriétaire, purge planifiée | RG-A20 |
 | Comptes | unicité téléphone/e-mail (E.164 canonique), rattachement Google, suppression/anonymisation sous 30 j | RG-A01, A02, A21 |

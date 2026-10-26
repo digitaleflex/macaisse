@@ -343,7 +343,7 @@ Identifiants stables : **RG-Axx**, cités par `API_CONTRACT.md` et par les tests
 | Orchestration | `src/store/auth.ts:95-115` | `login`/`signup` remplacés par `requestOtp`/`verifyOtp` ; `restoreSession` s'appuie sur `GET /auth/me` + cookie |
 | Écran d'accès | `src/features/auth/LoginScreen.tsx` | ✅ **2 champs** (e-mail + mot de passe) + Google + mot de passe affichable + erreurs par champ ; le nom, le commerce et les coordonnées arrivent à l'onboarding (RG-A04) ; reste D2 (téléphone → code) |
 | Onboarding | `src/features/accueil/*` | checklist 3 étapes + état vide actionnable (l'écart « atterrissage vide » de la revue UX) |
-| Verrouillage caisse | nouveau `src/features/auth/LockScreen.tsx` | PIN, changement d'utilisateur, verrouillage d'inactivité |
+| Verrouillage caisse | `src/features/auth/LockScreen.tsx`, `store/lock.ts`, `store/devices.ts` | ✅ écran de verrouillage PIN, verrouillage d'inactivité 15 min, enrôlement d'appareil (3 max) et révocation ; PIN vérifié localement (hash de démonstration) |
 | Contrat | `src/services/contracts.ts`, `endpoints.ts`, `mockApi.ts`, `httpApi.ts` | nouveaux endpoints §2 de `API_CONTRACT.md` ; `mockApi` = spécification exécutable, donc OTP et PIN simulés |
 | Textes | `src/content/fr.ts:632-684` | messages OTP (renvoi, expiration, quota), Google, PIN, step-up |
 
@@ -378,7 +378,7 @@ réutilise `applyAuth()` (`store/auth.ts:69-75`) sans le modifier.
 | 3 | **D3 Google** (accélérateur d'inscription, 0 FCFA) | 2 | ✅ **démo livrée** ; production = identifiant client Google + échange PKCE serveur |
 | 4 | Onboarding 3 étapes + états vides actionnables | 3 | parcours complet : Google → commerce → vente → ticket |
 | 5 | **D2 OTP palier 1** (conversation initiée, 0 FCFA) + D4 mot de passe optionnel + RG-A13 purge | 2, **numéro WhatsApp + lien `wa.me`** | ✅ **démo livrée** (écran + mock : TTL 5 min, 5 tentatives) ; reste le compte WhatsApp Business et les quotas serveur |
-| 6 | D6 PIN + appareil enrôlé + verrouillage | 2, 5 | test hors ligne : PIN validé sans réseau |
+| 6 | D6 PIN + appareil enrôlé + verrouillage | 2, 5 | ✅ **front livré (mock)** : écran de verrouillage, enrôlement/révocation, PIN vérifié sans réseau ; reste hash Argon2id et compteur partagé serveur |
 | 7 | D8 journal + D9 step-up | 2 | `429` + `Retry-After`, `STEP_UP_REQUIRED` sans déconnexion |
 | 8 | D2 OTP palier 2 (template payant) | 5 | bascule à l'unité quand le quota gratuit est dépassé |
 | 9 | D7 passkey | 3, 5 | enrôlement + récupération par OTP |

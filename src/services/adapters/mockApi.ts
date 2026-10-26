@@ -1,6 +1,7 @@
 import type {
   AuthResult,
   ClientCredit,
+  Device,
   EmailChallenge,
   Expense,
   Membership,
@@ -42,6 +43,7 @@ interface AuthDb {
   accounts: MockAccount[];
   organizations: Record<string, MockOrganization>;
   memberships: MockMembership[];
+  devices: Device[];
 }
 
 interface OrgDb {
@@ -70,6 +72,10 @@ const PHONE_CODE_TTL_MS = 5 * 60 * 1000;
 const PHONE_CODE_ATTEMPTS = 5;
 const PHONE_RESEND_S = 30;
 const DEMO_PHONE_CODE = '000000';
+/** D6 : 3 appareils actifs maximum, 5 essais de PIN, verrouillage 15 min. */
+const DEVICE_LIMIT = 3;
+const PIN_MAX_ATTEMPTS = 5;
+const PIN_LOCK_MS = 15 * 60 * 1000;
 
 interface MockSession {
   userId: string;
@@ -80,14 +86,23 @@ interface MockSession {
 const clone = <T>(value: T): T => structuredClone(value);
 
 function defaultAuthDb(): AuthDb {
-  return clone({ accounts: MOCK_ACCOUNTS, organizations: MOCK_ORGANIZATIONS, memberships: MOCK_MEMBERSHIPS });
+  return clone({
+    accounts: MOCK_ACCOUNTS,
+    organizations: MOCK_ORGANIZATIONS,
+    memberships: MOCK_MEMBERSHIPS,
+    devices: [],
+  });
 }
 
 function loadAuthDb(persist: boolean): AuthDb {
   if (!persist) return defaultAuthDb();
   try {
     const raw = localStorage.getItem(AUTH_DB_KEY);
-    if (raw) return JSON.parse(raw) as AuthDb;
+    if (raw) {
+      const parsed = JSON.parse(raw) as AuthDb;
+      // Blob antérieur à D6 : la liste des appareils peut manquer.
+      return { ...parsed, devices: Array.isArray(parsed.devices) ? parsed.devices : [] };
+    }
   } catch {
     // Stockage indisponible ou corrompu : on repart des fixtures.
   }
@@ -615,6 +630,102 @@ export function createMockApi({ latencyMs = 0, persist = false }: MockApiOptions
           };
           saveAuth();
           return org.business;
+        }),
+    },
+    devices: {
+      list: (orgId) =>
+        respond(() => {
+          requireMembership(orgId);
+          return auth.devices.filter((device) => device.organizationId === orgId);
+        }),
+      enroll: (orgId, input) =>
+        respond(() => {
+          requireOwner(orgId);
+          const actor = currentAccount();
+          const membership = auth.memberships.find(
+            (m) => m.organizationId === orgId && m.userId === input.memberId && m.status === 'active'
+          );
+          if (!membership) fail(t.auth.errors.notFound, 404, 'NOT_FOUND');
+
+          const active = auth.devices.filter(
+            (device) => device.organizationId === orgId && device.revokedAt === null
+          );
+          if (active.length >= DEVICE_LIMIT) fail(t.devices.errors.limit, 422, 'DEVICE_LIMIT');
+
+          const account = auth.accounts.find((a) => a.id === membership.userId);
+          const device: Device = {
+            id: createId('device'),
+            organizationId: orgId,
+            name: input.name.trim() || t.devices.defaultName,
+            memberId: membership.userId,
+            memberName: account
+              ? `${account.firstName} ${account.lastName}`.trim() || account.phone
+              : membership.userId,
+            enrolledBy: actor.id,
+            enrolledAt: toIsoDate(new Date()),
+            lastSeenAt: null,
+            revokedAt: null,
+          };
+          auth.devices.push(device);
+          saveAuth();
+          return { device, pinSetupToken: `pin-${device.id}` };
+        }),
+      revoke: (orgId, deviceId) =>
+        respond(() => {
+          requireOwner(orgId);
+          const device = auth.devices.find((d) => d.id === deviceId && d.organizationId === orgId);
+          if (!device) fail(t.auth.errors.notFound, 404, 'NOT_FOUND');
+          device.revokedAt = toIsoDate(new Date());
+          saveAuth();
+        }),
+      setPin: (orgId, userId, pin) =>
+        respond(() => {
+          const actor = currentAccount();
+          const actorMembership = auth.memberships.find(
+            (m) => m.organizationId === orgId && m.userId === actor.id && m.status === 'active'
+          );
+          if (!actorMembership) fail(t.auth.errors.forbidden, 403, 'FORBIDDEN');
+          // Un propriétaire définit le PIN d'un membre ; chacun peut définir le sien.
+          if (actorMembership.role !== 'owner' && actor.id !== userId) {
+            fail(t.auth.errors.forbidden, 403, 'FORBIDDEN');
+          }
+          const target = auth.memberships.find((m) => m.organizationId === orgId && m.userId === userId);
+          if (!target) fail(t.auth.errors.notFound, 404, 'NOT_FOUND');
+          target.pin = pin;
+          target.failedAttempts = 0;
+          target.lockedUntil = null;
+          saveAuth();
+        }),
+      verifyPin: ({ deviceId, memberId, pin }) =>
+        respond(() => {
+          const device = auth.devices.find((d) => d.id === deviceId);
+          if (!device || device.revokedAt !== null) {
+            fail(t.devices.errors.revoked, 401, 'DEVICE_REVOKED');
+          }
+          const membership = auth.memberships.find(
+            (m) => m.userId === memberId && m.organizationId === device.organizationId
+          );
+          if (!membership) fail(t.auth.errors.forbidden, 403, 'FORBIDDEN');
+
+          if (membership.lockedUntil && Date.parse(membership.lockedUntil) > Date.now()) {
+            fail(t.devices.errors.locked, 423, 'PIN_LOCKED');
+          }
+          if (membership.pin === undefined || membership.pin !== pin) {
+            membership.failedAttempts = (membership.failedAttempts ?? 0) + 1;
+            if (membership.failedAttempts >= PIN_MAX_ATTEMPTS) {
+              membership.failedAttempts = 0;
+              membership.lockedUntil = new Date(Date.now() + PIN_LOCK_MS).toISOString();
+              saveAuth();
+              fail(t.devices.errors.locked, 423, 'PIN_LOCKED');
+            }
+            saveAuth();
+            fail(t.devices.errors.invalid, 401, 'INVALID_PIN');
+          }
+          membership.failedAttempts = 0;
+          membership.lockedUntil = null;
+          device.lastSeenAt = new Date().toISOString();
+          saveAuth();
+          return { ok: true };
         }),
     },
     team: {

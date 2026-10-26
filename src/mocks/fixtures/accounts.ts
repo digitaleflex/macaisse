@@ -25,6 +25,11 @@ export interface MockMembership {
   role: Role;
   status: 'active' | 'invited';
   joinedAt: string;
+  /** PIN de caisse (démo : en clair ; le serveur stocke un hash Argon2id). */
+  pin?: string;
+  failedAttempts?: number;
+  /** ISO : fin du verrouillage après 5 échecs (RG-A16). */
+  lockedUntil?: string | null;
 }
 
 export const DEFAULT_ORG_ID = 'org-etoile';

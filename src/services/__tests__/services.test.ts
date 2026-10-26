@@ -306,6 +306,55 @@ describe('createMockApi — multi-organisation', () => {
     ).rejects.toMatchObject({ status: 401 });
   });
 
+  it('enrôle un appareil, verrouille le PIN après 5 essais et le révoque (D6)', async () => {
+    const api = createMockApi();
+    await api.auth.login({ email: 'mamadou@boutique-etoile.sn', password: DEMO_PASSWORD });
+
+    expect(await api.devices.list('org-etoile')).toHaveLength(0);
+
+    const { device } = await api.devices.enroll('org-etoile', {
+      name: 'Caisse comptoir',
+      memberId: 'u-mamadou',
+    });
+    expect(device.name).toBe('Caisse comptoir');
+    await api.devices.setPin('org-etoile', 'u-mamadou', '9274');
+
+    await expect(
+      api.devices.verifyPin({ deviceId: device.id, memberId: 'u-mamadou', pin: '9274' })
+    ).resolves.toEqual({ ok: true });
+
+    // 4 échecs signalés, le 5e verrouille la caisse 15 min (RG-A16).
+    for (let attempt = 0; attempt < 4; attempt += 1) {
+      await expect(
+        api.devices.verifyPin({ deviceId: device.id, memberId: 'u-mamadou', pin: '1111' })
+      ).rejects.toMatchObject({ status: 401 });
+    }
+    await expect(
+      api.devices.verifyPin({ deviceId: device.id, memberId: 'u-mamadou', pin: '1111' })
+    ).rejects.toMatchObject({ status: 423 });
+    // Même le bon PIN est refusé pendant le verrouillage.
+    await expect(
+      api.devices.verifyPin({ deviceId: device.id, memberId: 'u-mamadou', pin: '9274' })
+    ).rejects.toMatchObject({ status: 423 });
+
+    await api.devices.revoke('org-etoile', device.id);
+    await expect(
+      api.devices.verifyPin({ deviceId: device.id, memberId: 'u-mamadou', pin: '9274' })
+    ).rejects.toMatchObject({ status: 401 });
+  });
+
+  it('limite à trois appareils actifs par organisation (RG-A15)', async () => {
+    const api = createMockApi();
+    await api.auth.login({ email: 'mamadou@boutique-etoile.sn', password: DEMO_PASSWORD });
+
+    for (let index = 0; index < 3; index += 1) {
+      await api.devices.enroll('org-etoile', { name: `Caisse ${index + 1}`, memberId: 'u-mamadou' });
+    }
+    await expect(
+      api.devices.enroll('org-etoile', { name: 'Caisse 4', memberId: 'u-mamadou' })
+    ).rejects.toMatchObject({ status: 422 });
+  });
+
   it('rejette un identifiant inconnu par une ApiError 404', async () => {
     const api = createMockApi();
     await loginAs(api, 'mamadou@boutique-etoile.sn');

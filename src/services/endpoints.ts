@@ -23,6 +23,10 @@ export const ENDPOINTS = {
   session: (orgId: string) => `${org(orgId)}/session`,
   onboarding: (orgId: string) => `${org(orgId)}/onboarding`,
   business: (orgId: string) => `${org(orgId)}/business`,
+  devices: (orgId: string) => `${org(orgId)}/devices`,
+  device: (orgId: string, deviceId: string) => `${org(orgId)}/devices/${enc(deviceId)}`,
+  memberPin: (orgId: string, userId: string) => `${org(orgId)}/members/${enc(userId)}/pin`,
+  pinVerify: '/auth/pin/verify',
   members: (orgId: string) => `${org(orgId)}/members`,
   member: (orgId: string, userId: string) => `${org(orgId)}/members/${enc(userId)}`,
 

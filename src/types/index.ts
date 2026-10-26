@@ -195,6 +195,44 @@ export interface PasswordResetChallenge {
   demoCode?: string;
 }
 
+/**
+ * Appareil de caisse enrôlé (D6). Un appareil enrôlé porte un PIN local qui
+ * permet d'ouvrir la caisse **hors ligne** ; sa révocation invalide la session.
+ */
+export interface Device {
+  id: string;
+  organizationId: string;
+  name: string;
+  memberId: string;
+  memberName: string;
+  enrolledBy: string;
+  /** Date (ISO) d'enrôlement. */
+  enrolledAt: string;
+  /** Dernier contact connu ; `null` = jamais revu depuis l'enrôlement. */
+  lastSeenAt: string | null;
+  /** Date (ISO) de révocation ; `null` = appareil actif. */
+  revokedAt: string | null;
+}
+
+/** Résultat d'un enrôlement (le jeton sert à définir le PIN du titulaire). */
+export interface DeviceEnrollment {
+  device: Device;
+  pinSetupToken: string;
+}
+
+/** Demande d'enrôlement d'un appareil (owner + step-up côté serveur). */
+export interface EnrollDeviceInput {
+  name: string;
+  memberId: string;
+}
+
+/** Vérification distante du PIN (télémétrie et compteur partagé). */
+export interface PinVerifyInput {
+  deviceId: string;
+  memberId: string;
+  pin: string;
+}
+
 export type BillingCycle = 'monthly' | 'yearly';
 
 export interface SubscriptionPlan {
