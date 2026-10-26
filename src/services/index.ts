@@ -2,8 +2,9 @@ import { env } from '@/config/env';
 import { createHttpApi } from './adapters/httpApi';
 import { createMockApi } from './adapters/mockApi';
 import { createHttpClient } from './http/httpClient';
-import { isApiError } from './http/ApiError';
 import { reportError } from './errorReporter';
+import { describeError } from './errorMessages';
+import { enqueueSync } from './syncQueue';
 import type { Api } from './contracts';
 
 /**
@@ -27,14 +28,22 @@ export const api: Api =
 
 /**
  * Propage une mutation déjà appliquée localement (mise à jour optimiste) vers le
- * backend. Un échec n'annule pas l'état local : il est signalé par un toast.
+ * backend.
+ *
+ * Un échec **rejouable** (réseau, timeout, 5xx, 429) est signalé à l'utilisateur
+ * **et** placé dans la file de synchronisation (`syncQueue`) : rien n'est perdu
+ * silencieusement, et l'utilisateur peut relancer l'envoi. Un refus métier
+ * (422, 403…) n'est pas rejoué : il faut corriger la donnée.
  * En mode `mock`, les stores persistés localement font foi : rien n'est envoyé.
  */
-export function syncRemote<T>(task: (client: Api) => Promise<T>, failureMessage: string): void {
+export function syncRemote<T>(task: (client: Api) => Promise<T>, label: string): void {
   if (api.mode !== 'http') return;
   task(api).catch((error: unknown) => {
-    const detail = isApiError(error) ? ` ${error.message}` : '';
-    reportError(`${failureMessage}${detail}`);
+    const described = describeError(error);
+    reportError(`${label} — ${described.message}`);
+    if (described.retryable) {
+      enqueueSync({ label, run: task as (client: Api) => Promise<unknown> });
+    }
   });
 }
 
@@ -43,4 +52,12 @@ export { reportError, setErrorReporter, type ErrorReporter } from './errorReport
 export { ApiError, isApiError } from './http/ApiError';
 export { ENDPOINTS } from './endpoints';
 export { describeError, errorText, type UserError } from './errorMessages';
+export {
+  clearSyncQueue,
+  enqueueSync,
+  flushSyncQueue,
+  getPendingSyncs,
+  subscribePendingSyncs,
+  type PendingSync,
+} from './syncQueue';
 export { getActiveOrganization, setActiveOrganization } from './tenant';

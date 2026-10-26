@@ -68,6 +68,14 @@ export const fr = {
     retry: 'Réessayer',
   },
 
+  sync: {
+    title: (count: number) => `${plural(count, 'opération non synchronisée', 'opérations non synchronisées')}`,
+    text: 'Elles sont conservées sur cet appareil et seront renvoyées au serveur.',
+    retry: 'Réessayer',
+    done: (count: number) => `${plural(count, 'opération synchronisée', 'opérations synchronisées')}.`,
+    failed: 'Envoi impossible pour le moment. Réessayez dans un instant.',
+  },
+
   crash: {
     title: 'L’écran n’a pas pu s’afficher',
     text: 'Vos données sont enregistrées. Rechargez la page pour reprendre — si le problème revient, copiez le détail et transmettez-le au support.',

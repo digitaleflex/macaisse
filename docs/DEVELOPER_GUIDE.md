@@ -386,6 +386,11 @@ Une tâche n'est pas terminée tant que :
 
 - **Comprendre le multi-tenant** : `store/useAuthStore.ts`, `store/auth.ts`,
   `store/tenantScope.ts`, `services/tenant.ts` — dans cet ordre.
+- **Mutation optimiste** : passer par `syncRemote(task, label)` (`services/index.ts`).
+  Un échec **rejouable** (réseau, timeout, 5xx, 429) entre dans la file
+  `services/syncQueue.ts` : bandeau + rejeu manuel, et rejeu automatique au retour
+  du réseau. Un refus métier (422, 403) n'est jamais rejoué. Ne jamais appeler
+  `fetch` ou `api` directement depuis un écran.
 - **Afficher une erreur** : passer par `describeError(error)` (`services/errorMessages.ts`).
   Il conserve le message métier d'un 4xx mais reformule réseau, timeout et 5xx,
   et indique si l'action est rejouable. **Ne jamais afficher `error.message`

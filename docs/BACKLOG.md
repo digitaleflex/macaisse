@@ -151,7 +151,7 @@ récupère sans support, qu'un caissier ouvre la caisse **sans réseau**, et qu'
 
 | # | Sujet | Prio | Effort | Dépend |
 |---|---|---|---|---|
-| [#1](https://github.com/digitaleflex/macaisse/issues/1) | Réconcilier les mutations optimistes (retry/rollback) | **P0** | M | backend |
+| [#1](https://github.com/digitaleflex/macaisse/issues/1) | Réconcilier les mutations optimistes — 🟡 **front partiel** : file de rejeu + bandeau « non synchronisé » (aucune perte silencieuse) ; restent le marquage par ligne et le retour arrière | **P0** | M | backend |
 | [#2](https://github.com/digitaleflex/macaisse/issues/2) | Parité mock/http + gardes de rôle du mock | P2 | M | front |
 | [#17](https://github.com/digitaleflex/macaisse/issues/17) | Mode hors ligne réel (PWA + file) | R | L | #1 |
 

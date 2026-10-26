@@ -3,6 +3,7 @@ import type { TabType } from '@/types';
 import { t } from '@/content';
 import { canAccessTab } from '@/domain/permissions';
 import { LockScreen, LoginScreen, StepUpModal, VerifyEmailBanner, useInactivityLock } from '@/features/auth';
+import { SyncBanner } from './SyncBanner';
 import { ReceiptModal } from '@/features/ventes';
 import { DepensesModal } from '@/features/depenses';
 import { ExportModal } from '@/features/export';
@@ -11,6 +12,7 @@ import { AbonnementModal } from '@/features/abonnement';
 import { NotificationDrawer } from '@/features/notifications';
 import { OnboardingModal } from '@/features/onboarding';
 import { TeamModal } from '@/features/equipe';
+import { api, flushSyncQueue } from '@/services';
 import { logout, reloadOrganization, restoreSession } from '@/store/auth';
 import { selectIsAuthenticated, useAuthStore } from '@/store/useAuthStore';
 import { selectSession, useSessionStore } from '@/store/useSessionStore';
@@ -128,6 +130,7 @@ function AccessDenied() {
  */
 export default function App() {
   const tab = useUiStore(selectTab);
+  const isOnline = useUiStore((state) => state.isOnline);
   const initOnlineListener = useUiStore((state) => state.initOnlineListener);
   const isAuthenticated = useAuthStore(selectIsAuthenticated);
   const session = useSessionStore(selectSession);
@@ -138,6 +141,10 @@ export default function App() {
   }, []);
   // D6 : verrouillage après 15 min sans interaction sur un appareil enrôlé.
   useInactivityLock(session !== null);
+  // Retour du réseau : on rejoue les mutations optimistes en attente.
+  useEffect(() => {
+    if (isOnline) void flushSyncQueue(api);
+  }, [isOnline]);
 
   if (!isAuthenticated) {
     return (
@@ -163,6 +170,7 @@ export default function App() {
       <div className="lg:pl-[264px] flex flex-col min-h-dvh">
         <Topbar />
         <VerifyEmailBanner />
+        <SyncBanner />
         <main id="main" className="flex-1 w-full max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 pt-5 sm:pt-7 pb-28 lg:pb-10">
           <Suspense fallback={<ViewFallback />}>
             <View key={`${session.business.id}-${tab}`} />
