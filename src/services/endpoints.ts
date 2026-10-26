@@ -13,6 +13,8 @@ export const ENDPOINTS = {
   refresh: '/auth/refresh',
   me: '/auth/me',
   logout: '/auth/logout',
+  stepUp: '/auth/step-up',
+  events: '/auth/events',
   passwordResetRequest: '/auth/password/reset/request',
   passwordResetConfirm: '/auth/password/reset/confirm',
   emailVerifyRequest: '/auth/email/verify/request',

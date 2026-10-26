@@ -763,6 +763,9 @@ export const fr = {
       resetCodeExpired: 'Ce code a expiré : demandez-en un nouveau.',
       resetCodeInvalid: 'Code incorrect.',
       resetTooMany: 'Trop de tentatives : demandez un nouveau code.',
+      stepUpRequired: 'Confirmez votre identité pour continuer.',
+      passwordMismatch: 'Mot de passe incorrect.',
+      confirmationMismatch: 'Tapez SUPPRIMER (en majuscules) pour confirmer.',
       generic: 'Connexion impossible pour le moment.',
     },
     verifyEmail: {
@@ -848,6 +851,43 @@ export const fr = {
     title: 'Accès réservé',
     text: (role: string) => `Votre rôle (${role}) ne permet pas d’ouvrir cette section.`,
     back: 'Retour à la caisse',
+  },
+
+  stepUp: {
+    title: 'Confirmez votre identité',
+    subtitle: 'Action sensible : saisissez votre mot de passe. Valable 5 minutes.',
+    password: 'Mot de passe',
+    submit: 'Confirmer',
+    cancel: 'Annuler',
+  },
+
+  connections: {
+    title: 'Connexions récentes',
+    subtitle: 'Les 10 dernières tentatives enregistrées sur votre compte.',
+    empty: 'Aucune connexion enregistrée.',
+    success: 'Réussie',
+    failure: 'Échouée',
+    methods: {
+      password: 'Mot de passe',
+      google: 'Google',
+      otp_phone: 'Code WhatsApp',
+      otp_email: 'Code e-mail',
+      reset: 'Réinitialisation',
+      step_up: 'Confirmation',
+    },
+  },
+
+  accountDeletion: {
+    title: 'Supprimer mon compte',
+    subtitle:
+      'Vos accès sont supprimés immédiatement. Vos pièces comptables sont anonymisées sous 30 jours (obligation légale).',
+    action: 'Supprimer mon compte',
+    confirmLabel: 'Tapez SUPPRIMER pour confirmer',
+    password: 'Mot de passe',
+    confirm: 'Supprimer définitivement',
+    cancel: 'Annuler',
+    done: 'Compte supprimé : vous allez être déconnecté.',
+    danger: 'Zone dangereuse',
   },
 
   devices: {

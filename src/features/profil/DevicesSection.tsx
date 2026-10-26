@@ -4,6 +4,7 @@ import { pinHash, validatePin } from '@/domain/pin';
 import { personDisplayName } from '@/domain/users';
 import { isApiError } from '@/services';
 import { useDevicesStore } from '@/store/devices';
+import { withStepUp } from '@/store/stepUp';
 import { clearEnrollment, readEnrollment, useLockStore, writeEnrollment } from '@/store/lock';
 import { useCurrentSession } from '@/store/useSessionStore';
 import { useTeamStore } from '@/store/useTeamStore';
@@ -60,7 +61,7 @@ export function DevicesSection({ open }: { open: boolean }) {
     setError(null);
     try {
       await savePin(business.id, memberId, pin);
-      const { device } = await enroll(business.id, { name: name.trim(), memberId });
+      const { device } = await withStepUp(() => enroll(business.id, { name: name.trim(), memberId }));
       if (memberId === user.id) {
         writeEnrollment({
           deviceId: device.id,
@@ -83,7 +84,7 @@ export function DevicesSection({ open }: { open: boolean }) {
 
   const handleRevoke = async (deviceId: string) => {
     try {
-      await revoke(business.id, deviceId);
+      await withStepUp(() => revoke(business.id, deviceId));
       if (local?.deviceId === deviceId) {
         clearEnrollment();
         useLockStore.getState().reset();

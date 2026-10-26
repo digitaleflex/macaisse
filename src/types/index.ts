@@ -226,6 +226,26 @@ export interface EnrollDeviceInput {
   memberId: string;
 }
 
+/** Méthode d'authentification journalisée (RG-A20). */
+export type AuthEventMethod = 'password' | 'google' | 'otp_phone' | 'otp_email' | 'reset' | 'step_up';
+
+/** Événement d'authentification exposé au titulaire (RG-A20). */
+export interface AuthEvent {
+  id: string;
+  /** Date et heure (ISO 8601). */
+  at: string;
+  method: AuthEventMethod;
+  result: 'success' | 'failure';
+  ip: string;
+  userAgent: string;
+  deviceId: string | null;
+}
+
+/** Réauthentification courte avant une action sensible (D9). */
+export interface StepUpInput {
+  password: string;
+}
+
 /** Vérification distante du PIN (télémétrie et compteur partagé). */
 export interface PinVerifyInput {
   deviceId: string;

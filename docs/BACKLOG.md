@@ -96,7 +96,7 @@ modale, nom de fichier en date locale, 6 tests dédiés.
 |---|---|---|---|---|
 | [#5](https://github.com/digitaleflex/macaisse/issues/5) | Confirmation avant suppression (+ `ConfirmDialog`) | P1 | S/M | front |
 | [#20](https://github.com/digitaleflex/macaisse/issues/20) | Cycle de vie des invitations (jeton, expiration, `status`) | P1 | M | contrat |
-| [#24](https://github.com/digitaleflex/macaisse/issues/24) | Édition de profil et suppression de compte | P2 | M | backend |
+| [#24](https://github.com/digitaleflex/macaisse/issues/24) | Édition de profil + suppression de compte — ✅ **front livré** ; reste l'anonymisation côté serveur | P2 | M | backend |
 
 ✅ **#20 livré (partie front/mock)** — `requireMembership` exige
 `status === 'active'` (`403 INVITATION_PENDING`), la connexion n'active plus
@@ -129,7 +129,7 @@ RG-A01–RG-A29).
 | à ouvrir | **D6** PIN caissier + appareil enrôlé + verrouillage — ✅ **front livré (mock)** ; reste hash Argon2id + compteur partagé serveur | P1 | L | #19, #17 |
 | [#21](https://github.com/digitaleflex/macaisse/issues/21) | Remplacé par D2/D4 (conserver l'issue comme suivi de migration) | P1 | M/L | D2 |
 | [#22](https://github.com/digitaleflex/macaisse/issues/22) | **D8** anti-bruteforce (`429` + `Retry-After`) + journal 90 j | P1 | M | D1 |
-| à ouvrir | **D9** step-up sur actions sensibles (`401 STEP_UP_REQUIRED`) | P2 | S/M | D1 |
+| à ouvrir | **D9** step-up — ✅ **front livré** (modale + rejeu unique, appliqué à l'enrôlement d'appareil) | P2 | S/M | D1 |
 | à ouvrir | ~~**RG-A03** encaissement sans contact téléphonique~~ ✅ **client livré** (modale au moment d'encaisser) ; reste le refus serveur sur `POST /sales` | P1 | S | backend |
 | à ouvrir | **D7** passkeys (opt-in, après récupération vérifiée) | P3 | M | D3 |
 | [#4](https://github.com/digitaleflex/macaisse/issues/4) | Durcir la migration du store auth (devient sans objet avec D1) | P2 | S | front |

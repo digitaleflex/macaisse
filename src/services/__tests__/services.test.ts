@@ -312,6 +312,12 @@ describe('createMockApi — multi-organisation', () => {
 
     expect(await api.devices.list('org-etoile')).toHaveLength(0);
 
+    // D9 : l'enrôlement exige une réauthentification de moins de 5 min.
+    await expect(
+      api.devices.enroll('org-etoile', { name: 'Caisse comptoir', memberId: 'u-mamadou' })
+    ).rejects.toMatchObject({ code: 'STEP_UP_REQUIRED' });
+    await api.auth.stepUp({ password: DEMO_PASSWORD });
+
     const { device } = await api.devices.enroll('org-etoile', {
       name: 'Caisse comptoir',
       memberId: 'u-mamadou',
@@ -347,12 +353,48 @@ describe('createMockApi — multi-organisation', () => {
     const api = createMockApi();
     await api.auth.login({ email: 'mamadou@boutique-etoile.sn', password: DEMO_PASSWORD });
 
+    await api.auth.stepUp({ password: DEMO_PASSWORD });
     for (let index = 0; index < 3; index += 1) {
       await api.devices.enroll('org-etoile', { name: `Caisse ${index + 1}`, memberId: 'u-mamadou' });
     }
     await expect(
       api.devices.enroll('org-etoile', { name: 'Caisse 4', memberId: 'u-mamadou' })
     ).rejects.toMatchObject({ status: 422 });
+  });
+
+  it('journalise les connexions du titulaire (RG-A20)', async () => {
+    const api = createMockApi();
+    await expect(
+      api.auth.login({ email: 'mamadou@boutique-etoile.sn', password: 'faux' })
+    ).rejects.toMatchObject({ status: 401 });
+    await api.auth.login({ email: 'mamadou@boutique-etoile.sn', password: DEMO_PASSWORD });
+
+    const events = await api.auth.events();
+    expect(events[0]).toMatchObject({ method: 'password', result: 'success' });
+    expect(events.some((event) => event.result === 'failure')).toBe(true);
+    // Le journal ne contient que les événements du titulaire.
+    expect(events.every((event) => typeof event.at === 'string')).toBe(true);
+    expect(events.length).toBeLessThanOrEqual(10);
+  });
+
+  it('supprime le compte : accès retirés, identité anonymisée (RG-A21)', async () => {
+    const api = createMockApi();
+    await api.auth.login({ email: 'mamadou@boutique-etoile.sn', password: DEMO_PASSWORD });
+
+    await expect(
+      api.auth.deleteAccount({ password: DEMO_PASSWORD, confirmation: 'supprimer' })
+    ).rejects.toMatchObject({ status: 422 });
+    await expect(
+      api.auth.deleteAccount({ password: 'faux', confirmation: 'SUPPRIMER' })
+    ).rejects.toMatchObject({ status: 401 });
+
+    await api.auth.deleteAccount({ password: DEMO_PASSWORD, confirmation: 'SUPPRIMER' });
+
+    // Le compte n'a plus d'accès ni d'identité exploitable.
+    await expect(api.auth.me()).rejects.toMatchObject({ status: 401 });
+    await expect(
+      api.auth.login({ email: 'mamadou@boutique-etoile.sn', password: DEMO_PASSWORD })
+    ).rejects.toMatchObject({ status: 401 });
   });
 
   it('rejette un identifiant inconnu par une ApiError 404', async () => {

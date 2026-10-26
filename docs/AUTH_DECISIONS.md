@@ -340,6 +340,9 @@ Identifiants stables : **RG-Axx**, cités par `API_CONTRACT.md` et par les tests
 | Persistance | `src/store/useAuthStore.ts:32-41` | `token` retiré du `partialize` (les écarts A1 et A9 disparaissent) |
 | Profil éditable | `src/features/profil/ProfilModal.tsx` | ✅ nom, téléphone, commerce (nom, ville, activité) ; `PATCH /auth/me` + `PATCH /orgs/:orgId/business` |
 | Mot de passe oublié | `src/features/auth/ForgotPasswordModal.tsx` | ✅ code 10 min, aucune question secrète, réponse constante |
+| Step-up (D9) | `src/features/auth/StepUpModal.tsx`, `store/stepUp.ts` | ✅ `withStepUp()` rejoue l'action une fois après confirmation ; aucun logout sur `STEP_UP_REQUIRED` |
+| Journal de connexions | `src/features/profil/ProfilModal.tsx` | ✅ 10 dernières tentatives (méthode, résultat, IP) |
+| Suppression de compte | `src/features/profil/DeleteAccountModal.tsx` | ✅ mot de passe + mot-clé `SUPPRIMER`, anonymisation expliquée |
 | Orchestration | `src/store/auth.ts:95-115` | `login`/`signup` remplacés par `requestOtp`/`verifyOtp` ; `restoreSession` s'appuie sur `GET /auth/me` + cookie |
 | Écran d'accès | `src/features/auth/LoginScreen.tsx` | ✅ **2 champs** (e-mail + mot de passe) + Google + mot de passe affichable + erreurs par champ ; le nom, le commerce et les coordonnées arrivent à l'onboarding (RG-A04) ; reste D2 (téléphone → code) |
 | Onboarding | `src/features/accueil/*` | checklist 3 étapes + état vide actionnable (l'écart « atterrissage vide » de la revue UX) |

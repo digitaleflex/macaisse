@@ -1,4 +1,6 @@
 import type {
+  AuthEvent,
+  AuthEventMethod,
   AuthResult,
   ClientCredit,
   Device,
@@ -39,11 +41,16 @@ import { requireOrganization } from '../tenant';
  * Il respecte exactement le contrat `Api` : basculer vers `http` ne change pas l'UI.
  */
 
+interface MockAuthEvent extends AuthEvent {
+  userId: string;
+}
+
 interface AuthDb {
   accounts: MockAccount[];
   organizations: Record<string, MockOrganization>;
   memberships: MockMembership[];
   devices: Device[];
+  events: MockAuthEvent[];
 }
 
 interface OrgDb {
@@ -76,6 +83,8 @@ const DEMO_PHONE_CODE = '000000';
 const DEVICE_LIMIT = 3;
 const PIN_MAX_ATTEMPTS = 5;
 const PIN_LOCK_MS = 15 * 60 * 1000;
+/** D9 : une réauthentification reste valable 5 min. */
+const STEP_UP_TTL_MS = 5 * 60 * 1000;
 
 interface MockSession {
   userId: string;
@@ -91,6 +100,7 @@ function defaultAuthDb(): AuthDb {
     organizations: MOCK_ORGANIZATIONS,
     memberships: MOCK_MEMBERSHIPS,
     devices: [],
+    events: [],
   });
 }
 
@@ -101,7 +111,11 @@ function loadAuthDb(persist: boolean): AuthDb {
     if (raw) {
       const parsed = JSON.parse(raw) as AuthDb;
       // Blob antérieur à D6 : la liste des appareils peut manquer.
-      return { ...parsed, devices: Array.isArray(parsed.devices) ? parsed.devices : [] };
+      return {
+        ...parsed,
+        devices: Array.isArray(parsed.devices) ? parsed.devices : [],
+        events: Array.isArray(parsed.events) ? parsed.events : [],
+      };
     }
   } catch {
     // Stockage indisponible ou corrompu : on repart des fixtures.
@@ -136,6 +150,31 @@ export function createMockApi({ latencyMs = 0, persist = false }: MockApiOptions
   const auth = loadAuthDb(persist);
   const orgData = new Map<string, OrgDb>();
   let session = loadSession(persist);
+  /** Fenêtres de réauthentification courte (D9), par compte, 5 min. */
+  const stepUpWindows = new Map<string, number>();
+
+  /** Journal d'authentification (RG-A20) : 100 derniers événements. */
+  const logEvent = (userId: string, method: AuthEventMethod, result: 'success' | 'failure'): void => {
+    auth.events.unshift({
+      id: createId('evt'),
+      userId,
+      at: new Date().toISOString(),
+      method,
+      result,
+      ip: '127.0.0.1',
+      userAgent: 'démo',
+      deviceId: null,
+    });
+    auth.events = auth.events.slice(0, 100);
+    saveAuth();
+  };
+
+  /** Exige une réauthentification de moins de 5 min (D9). */
+  const requireStepUp = (userId: string): void => {
+    const last = stepUpWindows.get(userId) ?? 0;
+    if (Date.now() - last > STEP_UP_TTL_MS) fail(t.auth.errors.stepUpRequired, 401, 'STEP_UP_REQUIRED');
+  };
+
   /** Code de vérification e-mail simulé (un seul à la fois, comme côté serveur). */
   let emailChallenge: { email: string; code: string; expiresAt: number } | null = null;
   /** Défi de réinitialisation de mot de passe (D4) : 10 min, 5 tentatives. */
@@ -324,10 +363,12 @@ export function createMockApi({ latencyMs = 0, persist = false }: MockApiOptions
           // Un compte créé par Google n'a pas de mot de passe : `!account.password`
           // empêche une connexion avec une chaîne vide.
           if (!account || !account.password || account.password !== password) {
+            if (account) logEvent(account.id, 'password', 'failure');
             fail(t.auth.errors.invalidCredentials, 401, 'INVALID_CREDENTIALS');
           }
           // Aucune activation implicite : accepter une invitation est un acte
           // explicite (`acceptInvitation`), sinon l'invité accède sans consentir.
+          logEvent(account.id, 'password', 'success');
           openSession(account.id);
           return authResult(account);
         }),
@@ -422,6 +463,7 @@ export function createMockApi({ latencyMs = 0, persist = false }: MockApiOptions
             saveAuth();
             account = created;
           }
+          logEvent(account.id, 'otp_phone', 'success');
           openSession(account.id);
           return authResult(account);
         }),
@@ -430,6 +472,7 @@ export function createMockApi({ latencyMs = 0, persist = false }: MockApiOptions
           const email = identity.email.trim().toLowerCase();
           const existing = auth.accounts.find((a) => a.email.toLowerCase() === email);
           if (existing) {
+            logEvent(existing.id, 'google', 'success');
             openSession(existing.id);
             return authResult(existing);
           }
@@ -539,6 +582,58 @@ export function createMockApi({ latencyMs = 0, persist = false }: MockApiOptions
           saveAuth();
           return authResult(account);
         }),
+      stepUp: ({ password }) =>
+        respond(() => {
+          const account = currentAccount();
+          if (!account.password || account.password !== password) {
+            logEvent(account.id, 'step_up', 'failure');
+            fail(t.auth.errors.passwordMismatch, 401, 'INVALID_CREDENTIALS');
+          }
+          stepUpWindows.set(account.id, Date.now());
+          logEvent(account.id, 'step_up', 'success');
+          return { ok: true as const };
+        }),
+      events: () =>
+        respond(() => {
+          const account = currentAccount();
+          return auth.events
+            .filter((event) => event.userId === account.id)
+            .slice(0, 10)
+            .map(({ userId: _userId, ...event }) => {
+              void _userId;
+              return event;
+            });
+        }),
+      deleteAccount: ({ password, confirmation }) =>
+        respond(() => {
+          const account = currentAccount();
+          if (confirmation.trim() !== 'SUPPRIMER') {
+            fail(t.auth.errors.confirmationMismatch, 422, 'VALIDATION_ERROR');
+          }
+          if (account.password && account.password !== password) {
+            fail(t.auth.errors.passwordMismatch, 401, 'INVALID_CREDENTIALS');
+          }
+          // RG-A21 : accès supprimés immédiatement, données comptables anonymisées.
+          const owned = auth.memberships
+            .filter((membership) => membership.userId === account.id && membership.role === 'owner')
+            .map((membership) => membership.organizationId);
+          auth.memberships = auth.memberships.filter((membership) => membership.userId !== account.id);
+          for (const orgId of owned) {
+            delete auth.organizations[orgId];
+            auth.devices = auth.devices.filter((device) => device.organizationId !== orgId);
+          }
+          auth.devices = auth.devices.filter((device) => device.memberId !== account.id);
+          account.firstName = '';
+          account.lastName = '';
+          account.phone = '';
+          account.email = '';
+          account.password = '';
+          account.emailVerified = false;
+          account.emailVerificationDueAt = null;
+          auth.events = auth.events.filter((event) => event.userId !== account.id);
+          saveAuth();
+          closeSession();
+        }),
       logout: () =>
         respond(() => {
           closeSession();
@@ -642,6 +737,7 @@ export function createMockApi({ latencyMs = 0, persist = false }: MockApiOptions
         respond(() => {
           requireOwner(orgId);
           const actor = currentAccount();
+          requireStepUp(actor.id);
           const membership = auth.memberships.find(
             (m) => m.organizationId === orgId && m.userId === input.memberId && m.status === 'active'
           );
@@ -673,6 +769,7 @@ export function createMockApi({ latencyMs = 0, persist = false }: MockApiOptions
       revoke: (orgId, deviceId) =>
         respond(() => {
           requireOwner(orgId);
+          requireStepUp(currentAccount().id);
           const device = auth.devices.find((d) => d.id === deviceId && d.organizationId === orgId);
           if (!device) fail(t.auth.errors.notFound, 404, 'NOT_FOUND');
           device.revokedAt = toIsoDate(new Date());

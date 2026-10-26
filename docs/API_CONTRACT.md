@@ -122,7 +122,9 @@ restent cloisonnées par organisation (`localStorage['ma-caisse/<orgId>/…']`).
 | POST | `/auth/password/reset/confirm` | `{ token, password }` | `204` |
 | POST | `/auth/email/verify/request` | — | `{ email, expiresIn: 600, sentAt }` · `429 EMAIL_RATE_LIMITED` |
 | POST | `/auth/email/verify/confirm` | `{ code }` | `AuthResult` (`emailVerified: true`) · `400 EMAIL_CODE_MISSING` · `401 INVALID_EMAIL_CODE` · `410 EMAIL_CODE_EXPIRED` |
-| GET | `/auth/events` | — | `AuthEvent[]` (10 dernières connexions, RG-A20) |
+| POST | `/auth/step-up` | `{ password }` | `200 { ok: true }` — fenêtre de 5 min (D9) · `401 INVALID_CREDENTIALS` |
+| GET | `/auth/events` | — | `AuthEvent[]` (10 dernières connexions du titulaire, RG-A20) |
+| DELETE | `/auth/me` | `{ password, confirmation: "SUPPRIMER" }` | `204` — accès supprimés, identité anonymisée (RG-A21) · `422 VALIDATION_ERROR` si le mot-clé manque |
 
 ### Invitations (inchangé)
 

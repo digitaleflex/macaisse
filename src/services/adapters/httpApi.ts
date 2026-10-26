@@ -1,4 +1,5 @@
 import type {
+  AuthEvent,
   AuthResult,
   BusinessProfile,
   ClientCredit,
@@ -50,6 +51,10 @@ export function createHttpApi(http: HttpClient): Api {
       requestPasswordReset: (email) =>
         http.post<PasswordResetChallenge>(ENDPOINTS.passwordResetRequest, { email }),
       resetPassword: (input) => http.post<void>(ENDPOINTS.passwordResetConfirm, input),
+      stepUp: (input) => http.post<{ ok: true }>(ENDPOINTS.stepUp, input),
+      events: () => http.get<AuthEvent[]>(ENDPOINTS.events),
+      deleteAccount: ({ password, confirmation }) =>
+        http.request<void>('DELETE', ENDPOINTS.me, { body: { password, confirmation } }),
       requestEmailVerification: () => http.post<EmailChallenge>(ENDPOINTS.emailVerifyRequest),
       verifyEmail: (input) => http.post<AuthResult>(ENDPOINTS.emailVerifyConfirm, input),
       logout: () => http.post<void>(ENDPOINTS.logout),

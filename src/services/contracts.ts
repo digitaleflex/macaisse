@@ -1,4 +1,5 @@
 import type {
+  AuthEvent,
   AuthResult,
   BusinessProfile,
   CartLine,
@@ -19,6 +20,7 @@ import type {
   Product,
   ProfileInput,
   SaleTransaction,
+  StepUpInput,
   InviteMemberInput,
   Invitation,
   LoginInput,
@@ -63,6 +65,12 @@ export interface AuthRepository {
   requestPasswordReset(email: string): Promise<PasswordResetChallenge>;
   /** Remplace le mot de passe après vérification du code. */
   resetPassword(input: { email: string; code: string; password: string }): Promise<void>;
+  /** Réauthentification courte (D9) : ouvre une fenêtre de 5 min. */
+  stepUp(input: StepUpInput): Promise<{ ok: true }>;
+  /** Journal des connexions du titulaire (RG-A20). */
+  events(): Promise<AuthEvent[]>;
+  /** Suppression du compte : anonymisation sous 30 j (RG-A21). */
+  deleteAccount(input: { password: string; confirmation: string }): Promise<void>;
   logout(): Promise<void>;
   /** Comptes proposés sur l'écran de connexion (vide hors démo). */
   demoAccounts(): Promise<DemoAccount[]>;

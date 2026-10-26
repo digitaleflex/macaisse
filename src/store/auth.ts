@@ -3,6 +3,7 @@
 // Seul module autorisé à modifier le contexte `services/tenant`.
 
 import type {
+  AuthEvent,
   AuthResult,
   DemoAccount,
   EmailChallenge,
@@ -180,6 +181,22 @@ export async function saveBusiness(input: OnboardingInput): Promise<void> {
 /** Demande un code de réinitialisation (réponse constante, RG-A09). */
 export async function requestPasswordReset(email: string): Promise<PasswordResetChallenge> {
   return api.auth.requestPasswordReset(email);
+}
+
+/** Réauthentification courte (D9) : 5 minutes, sans invalider la session. */
+export async function stepUp(password: string): Promise<void> {
+  await api.auth.stepUp({ password });
+}
+
+/** Journal des 10 dernières connexions du titulaire (RG-A20). */
+export async function loadAuthEvents(): Promise<AuthEvent[]> {
+  return api.auth.events();
+}
+
+/** Supprime le compte (anonymisation RG-A21) puis ferme la session. */
+export async function deleteAccount(input: { password: string; confirmation: string }): Promise<void> {
+  await api.auth.deleteAccount(input);
+  await logout();
 }
 
 /** Remplace le mot de passe après vérification du code. Aucune session ouverte. */

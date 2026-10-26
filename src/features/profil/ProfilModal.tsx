@@ -1,21 +1,31 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { t } from '@/content';
 import { parseDate } from '@/domain/dates';
 import { personDisplayName, personInitials } from '@/domain/users';
 import { OrgList } from '@/features/organisation';
 import { isDemoMode } from '@/config/env';
+import type { AuthEvent } from '@/types';
 import { isApiError } from '@/services';
-import { logout, reloadOrganization, saveBusiness, updateProfile } from '@/store/auth';
+import { loadAuthEvents, logout, reloadOrganization, saveBusiness, updateProfile } from '@/store/auth';
 import { selectMemberships, useAuthStore } from '@/store/useAuthStore';
 import { useCurrentSession, usePermission } from '@/store/useSessionStore';
 import { selectModal, useUiStore } from '@/store/useUiStore';
 import { Avatar, Badge, Button, Icon, Input, Modal } from '@/ui';
+import { DeleteAccountModal } from './DeleteAccountModal';
 import { DevicesSection } from './DevicesSection';
 import { PosSettings } from './PosSettings';
 
 function formatDate(iso: string): string {
   const date = parseDate(iso);
   return date ? date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' }) : iso;
+}
+
+/** Heure d'un événement d'authentification, en heure locale. */
+function formatDateTime(iso: string): string {
+  const date = parseDate(iso);
+  return date
+    ? date.toLocaleString('fr-FR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
+    : iso;
 }
 
 /** Profil & paramètres (pilotée par `useUiStore.modal === 'profil'`). */
@@ -29,6 +39,8 @@ export function ProfilModal() {
   const canBill = usePermission('billing.manage');
   const canManageTeam = usePermission('team.manage');
   const [syncing, setSyncing] = useState(false);
+  const [events, setEvents] = useState<AuthEvent[]>([]);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [draft, setDraft] = useState({
@@ -80,6 +92,19 @@ export function ProfilModal() {
       setSaving(false);
     }
   };
+
+  useEffect(() => {
+    if (!open) return;
+    let alive = true;
+    loadAuthEvents()
+      .then((list) => {
+        if (alive) setEvents(list);
+      })
+      .catch(() => undefined);
+    return () => {
+      alive = false;
+    };
+  }, [open]);
 
   const handleSync = async () => {
     if (!live) {
@@ -257,9 +282,59 @@ export function ProfilModal() {
         </div>
       </section>
 
+      <section className="space-y-2">
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 px-1">
+          {t.connections.title}
+        </h3>
+        <div className="rounded-2xl border border-line p-4 space-y-2">
+          <p className="text-xs text-slate-500">{t.connections.subtitle}</p>
+          {events.length === 0 ? (
+            <p className="text-xs text-slate-400">{t.connections.empty}</p>
+          ) : (
+            <ul className="divide-y divide-line">
+              {events.map((event) => (
+                <li key={event.id} className="flex items-center gap-2 py-2 text-sm">
+                  <Icon
+                    name={event.result === 'success' ? 'check_circle' : 'error'}
+                    size={16}
+                    className={event.result === 'success' ? 'text-brand-600' : 'text-rose-500'}
+                  />
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-ink-900 truncate">{t.connections.methods[event.method]}</span>
+                    <span className="block text-xs text-slate-500">
+                      {formatDateTime(event.at)} · {event.ip}
+                    </span>
+                  </span>
+                  <Badge tone={event.result === 'success' ? 'success' : 'danger'}>
+                    {event.result === 'success' ? t.connections.success : t.connections.failure}
+                  </Badge>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </section>
+
       <Button variant="danger-soft" size="lg" fullWidth icon="logout" onClick={() => void logout()}>
         {t.auth.logout}
       </Button>
+
+      <section className="space-y-2">
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-rose-500 px-1">
+          {t.accountDeletion.danger}
+        </h3>
+        <div className="rounded-2xl border border-rose-200 bg-rose-50/40 p-4 flex items-center gap-3">
+          <div className="min-w-0 flex-1">
+            <div className="text-sm font-semibold text-ink-900">{t.accountDeletion.title}</div>
+            <div className="text-xs text-slate-600">{t.accountDeletion.subtitle}</div>
+          </div>
+          <Button variant="danger" size="sm" icon="delete_forever" onClick={() => setDeleteOpen(true)}>
+            {t.accountDeletion.action}
+          </Button>
+        </div>
+      </section>
+
+      <DeleteAccountModal open={deleteOpen} onClose={() => setDeleteOpen(false)} />
     </Modal>
   );
 }
