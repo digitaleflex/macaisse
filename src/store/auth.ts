@@ -9,8 +9,11 @@ import type {
   GoogleIdentity,
   Invitation,
   LoginInput,
+  OnboardingInput,
+  PasswordResetChallenge,
   PhoneChallenge,
   PhoneVerifyInput,
+  ProfileInput,
   SignupInput,
 } from '@/types';
 import { t } from '@/content';
@@ -157,6 +160,35 @@ export async function restoreSession(): Promise<void> {
 /** Envoie (ou renvoie) le code de vérification de l'adresse du compte courant. */
 export async function requestEmailVerification(): Promise<EmailChallenge> {
   return api.auth.requestEmailVerification();
+}
+
+/** Met à jour le profil personnel et rafraîchit compte + session. */
+export async function updateProfile(input: ProfileInput): Promise<void> {
+  const result = await api.auth.updateProfile(input);
+  useAuthStore.getState().setAuth(result);
+  useSessionStore.getState().setUser(result.user);
+}
+
+/** Enregistre les informations du commerce depuis le profil (sans onboarding). */
+export async function saveBusiness(input: OnboardingInput): Promise<void> {
+  const organizationId = useAuthStore.getState().currentOrganizationId;
+  if (!organizationId) throw new Error('Aucune organisation active.');
+  const business = await api.onboarding.update(organizationId, input);
+  useSessionStore.getState().setBusiness(business);
+}
+
+/** Demande un code de réinitialisation (réponse constante, RG-A09). */
+export async function requestPasswordReset(email: string): Promise<PasswordResetChallenge> {
+  return api.auth.requestPasswordReset(email);
+}
+
+/** Remplace le mot de passe après vérification du code. Aucune session ouverte. */
+export async function resetPassword(input: {
+  email: string;
+  code: string;
+  password: string;
+}): Promise<void> {
+  await api.auth.resetPassword(input);
 }
 
 /** Confirme le code de vérification et met à jour le profil connecté. */

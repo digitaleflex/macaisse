@@ -122,7 +122,7 @@ RG-A01–RG-A29).
 | [#19](https://github.com/digitaleflex/macaisse/issues/19) | **D1** session cookie `HttpOnly` + refresh rotatif + CSRF + `AuthResult` sans jeton | **P0** | M | #25 + #1 |
 | à ouvrir | **D3** Google (démo livrée) : production = ID client Google + échange PKCE serveur, rattachement e-mail ↔ téléphone | P1 | S/M | #19 |
 | à ouvrir | **D2 palier 1** OTP WhatsApp **conversation initiée** (0 FCFA) : `/auth/otp/*`, quotas, non-révélation — ✅ **démo livrée** ; reste le compte WhatsApp Business + quotas serveur | **P0** | L | #19, numéro WhatsApp + lien `wa.me` |
-| à ouvrir | **D4** mot de passe optionnel (12 car., liste noire) + reset par OTP | P1 | M | D2 |
+| à ouvrir | **D4** mot de passe optionnel (12 car., liste noire) + reset par OTP — ✅ **démo livrée** (mock) ; reste Argon2id + envoi e-mail serveur | P1 | M | D2 |
 | à ouvrir | **RG-A27/A28** vérification e-mail : OTP 10 min, grâce de 72 h non bloquante — **front livré en démo** | P1 | S | backend e-mail |
 | à ouvrir | ~~**RG-A04** onboarding 3 étapes + états vides actionnables~~ ✅ **livré** (2 étapes + checklist, `onboardedAt` côté serveur) | P1 | M | front |
 | [#23](https://github.com/digitaleflex/macaisse/issues/23) | **RG-A13** purge des collections locales au logout | ✅ **livré** | S/M | front |

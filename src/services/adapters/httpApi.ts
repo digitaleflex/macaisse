@@ -6,6 +6,7 @@ import type {
   Expense,
   Invitation,
   NotificationItem,
+  PasswordResetChallenge,
   PhoneChallenge,
   Product,
   SaleTransaction,
@@ -43,6 +44,10 @@ export function createHttpApi(http: HttpClient): Api {
           )
         ),
       me: () => http.get<AuthResult>(ENDPOINTS.me),
+      updateProfile: (input) => http.patch<AuthResult>(ENDPOINTS.me, input),
+      requestPasswordReset: (email) =>
+        http.post<PasswordResetChallenge>(ENDPOINTS.passwordResetRequest, { email }),
+      resetPassword: (input) => http.post<void>(ENDPOINTS.passwordResetConfirm, input),
       requestEmailVerification: () => http.post<EmailChallenge>(ENDPOINTS.emailVerifyRequest),
       verifyEmail: (input) => http.post<AuthResult>(ENDPOINTS.emailVerifyConfirm, input),
       logout: () => http.post<void>(ENDPOINTS.logout),
@@ -56,6 +61,7 @@ export function createHttpApi(http: HttpClient): Api {
     },
     onboarding: {
       complete: (orgId, input) => http.post<BusinessProfile>(ENDPOINTS.onboarding(orgId), input),
+      update: (orgId, input) => http.patch<BusinessProfile>(ENDPOINTS.business(orgId), input),
     },
     team: {
       list: (orgId) => http.get<TeamMember[]>(ENDPOINTS.members(orgId)),

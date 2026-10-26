@@ -4,11 +4,12 @@ import { parseDate } from '@/domain/dates';
 import { personDisplayName, personInitials } from '@/domain/users';
 import { OrgList } from '@/features/organisation';
 import { isDemoMode } from '@/config/env';
-import { logout, reloadOrganization } from '@/store/auth';
+import { isApiError } from '@/services';
+import { logout, reloadOrganization, saveBusiness, updateProfile } from '@/store/auth';
 import { selectMemberships, useAuthStore } from '@/store/useAuthStore';
 import { useCurrentSession, usePermission } from '@/store/useSessionStore';
 import { selectModal, useUiStore } from '@/store/useUiStore';
-import { Avatar, Badge, Button, Icon, Modal } from '@/ui';
+import { Avatar, Badge, Button, Icon, Input, Modal } from '@/ui';
 import { PosSettings } from './PosSettings';
 
 function formatDate(iso: string): string {
@@ -27,7 +28,57 @@ export function ProfilModal() {
   const canBill = usePermission('billing.manage');
   const canManageTeam = usePermission('team.manage');
   const [syncing, setSyncing] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [draft, setDraft] = useState({
+    firstName: '',
+    lastName: '',
+    phone: '',
+    name: '',
+    city: '',
+    activity: '',
+  });
   const live = !isDemoMode;
+  // Un caissier modifie son profil, pas la fiche du commerce (matrice des droits).
+  const canEditBusiness = role !== 'cashier';
+
+  const setDraftField = (key: keyof typeof draft) => (event: { target: { value: string } }) => {
+    const value = event.target.value;
+    setDraft((previous) => ({ ...previous, [key]: value }));
+  };
+
+  const openEditor = () => {
+    setDraft({
+      firstName: user.firstName,
+      lastName: user.lastName,
+      phone: user.phone || business.phone,
+      name: business.name,
+      city: business.city,
+      activity: business.activity,
+    });
+    setEditing(true);
+  };
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      await updateProfile({ firstName: draft.firstName, lastName: draft.lastName, phone: draft.phone });
+      if (canEditBusiness) {
+        await saveBusiness({
+          name: draft.name,
+          city: draft.city,
+          phone: draft.phone,
+          activity: draft.activity,
+        });
+      }
+      showToast(t.profile.edit.saved, 'success');
+      setEditing(false);
+    } catch (error) {
+      showToast(isApiError(error) ? error.message : t.auth.errors.generic, 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const handleSync = async () => {
     if (!live) {
@@ -55,6 +106,81 @@ export function ProfilModal() {
           <div className="text-xs text-slate-500">{user.phone}</div>
         </div>
       </div>
+
+      <div className="flex justify-end">
+        <Button variant="secondary" size="sm" icon="edit" onClick={openEditor}>
+          {t.profile.edit.open}
+        </Button>
+      </div>
+
+      {editing && (
+        <section className="space-y-3 rounded-2xl border border-line p-4">
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500">{t.profile.edit.person}</h3>
+          <div className="grid sm:grid-cols-2 gap-3">
+            <Input
+              label={t.profile.edit.firstName}
+              name="profile-first"
+              autoComplete="given-name"
+              value={draft.firstName}
+              onChange={setDraftField('firstName')}
+            />
+            <Input
+              label={t.profile.edit.lastName}
+              name="profile-last"
+              autoComplete="family-name"
+              value={draft.lastName}
+              onChange={setDraftField('lastName')}
+            />
+          </div>
+          <Input
+            label={t.profile.edit.phone}
+            name="profile-phone"
+            type="tel"
+            inputMode="tel"
+            autoComplete="tel"
+            value={draft.phone}
+            onChange={setDraftField('phone')}
+          />
+
+          {canEditBusiness && (
+            <>
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 pt-2">
+                {t.profile.edit.business}
+              </h3>
+              <Input
+                label={t.profile.edit.businessName}
+                name="profile-business-name"
+                autoComplete="organization"
+                value={draft.name}
+                onChange={setDraftField('name')}
+              />
+              <div className="grid sm:grid-cols-2 gap-3">
+                <Input
+                  label={t.profile.edit.city}
+                  name="profile-city"
+                  value={draft.city}
+                  onChange={setDraftField('city')}
+                />
+                <Input
+                  label={t.profile.edit.activity}
+                  name="profile-activity"
+                  value={draft.activity}
+                  onChange={setDraftField('activity')}
+                />
+              </div>
+            </>
+          )}
+
+          <div className="flex gap-2">
+            <Button variant="ghost" size="lg" onClick={() => setEditing(false)}>
+              {t.profile.edit.cancel}
+            </Button>
+            <Button size="lg" fullWidth loading={saving} icon="check" onClick={() => void save()}>
+              {t.profile.edit.save}
+            </Button>
+          </div>
+        </section>
+      )}
 
       <section className="space-y-2">
         <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 px-1">{t.profile.business}</h3>

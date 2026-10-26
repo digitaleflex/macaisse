@@ -9,9 +9,11 @@ import type {
   GoogleIdentity,
   NotificationItem,
   OnboardingInput,
+  PasswordResetChallenge,
   PhoneChallenge,
   PhoneVerifyInput,
   Product,
+  ProfileInput,
   SaleTransaction,
   InviteMemberInput,
   Invitation,
@@ -51,6 +53,12 @@ export interface AuthRepository {
   requestEmailVerification(): Promise<EmailChallenge>;
   /** Vérifie le code et marque l'adresse comme prouvée. */
   verifyEmail(input: { code: string }): Promise<AuthResult>;
+  /** Met à jour le profil personnel (nom, téléphone). */
+  updateProfile(input: ProfileInput): Promise<AuthResult>;
+  /** Envoie un code de réinitialisation (réponse constante, RG-A09). */
+  requestPasswordReset(email: string): Promise<PasswordResetChallenge>;
+  /** Remplace le mot de passe après vérification du code. */
+  resetPassword(input: { email: string; code: string; password: string }): Promise<void>;
   logout(): Promise<void>;
   /** Comptes proposés sur l'écran de connexion (vide hors démo). */
   demoAccounts(): Promise<DemoAccount[]>;
@@ -71,6 +79,8 @@ export interface SessionRepository {
 export interface OnboardingRepository {
   /** Enregistre les informations du commerce et clôt l'onboarding. */
   complete(organizationId: string, input: OnboardingInput): Promise<BusinessProfile>;
+  /** Modifie les informations du commerce sans toucher à `onboardedAt`. */
+  update(organizationId: string, input: OnboardingInput): Promise<BusinessProfile>;
 }
 
 export interface TeamRepository {

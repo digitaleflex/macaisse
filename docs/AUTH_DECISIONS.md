@@ -149,6 +149,11 @@ des mots de passe compromis valent mieux que la complexité. Et un mot de passe
 qu'on peut oublier sans recours est le premier facteur d'abandon — c'est
 exactement l'écart A3 (`docs/AUTH_REVIEW.md:56`).
 
+**Implémentation (démo livrée)** : réinitialisation par code (`000000`), TTL
+10 min, 5 tentatives, réponse constante quelle que soit l'adresse. Le mot de
+passe est remplacé en mémoire par le mock ; en production, hash Argon2id et
+liste noire restent au serveur.
+
 **Conséquences.** Le seuil de 8 caractères côté client
 (`LoginScreen.tsx:26`) disparaît au profit d'une validation serveur à 12.
 `POST /auth/password/set`, `/auth/password/change`, `/auth/password/reset/*`.
@@ -333,6 +338,8 @@ Identifiants stables : **RG-Axx**, cités par `API_CONTRACT.md` et par les tests
 | Types d'entrée | `src/types/index.ts:216-230` | `LoginInput` → `{ phone }` ou `{ email, password }` (legacy) ; `SignupInput` → `{ phone }` ; `AuthResult` sans `token`, avec `expiresAt` |
 | Transport | `src/services/http/httpClient.ts`, `services/tenant.ts` | `credentials: 'include'`, suppression du Bearer, en-tête CSRF |
 | Persistance | `src/store/useAuthStore.ts:32-41` | `token` retiré du `partialize` (les écarts A1 et A9 disparaissent) |
+| Profil éditable | `src/features/profil/ProfilModal.tsx` | ✅ nom, téléphone, commerce (nom, ville, activité) ; `PATCH /auth/me` + `PATCH /orgs/:orgId/business` |
+| Mot de passe oublié | `src/features/auth/ForgotPasswordModal.tsx` | ✅ code 10 min, aucune question secrète, réponse constante |
 | Orchestration | `src/store/auth.ts:95-115` | `login`/`signup` remplacés par `requestOtp`/`verifyOtp` ; `restoreSession` s'appuie sur `GET /auth/me` + cookie |
 | Écran d'accès | `src/features/auth/LoginScreen.tsx` | ✅ **2 champs** (e-mail + mot de passe) + Google + mot de passe affichable + erreurs par champ ; le nom, le commerce et les coordonnées arrivent à l'onboarding (RG-A04) ; reste D2 (téléphone → code) |
 | Onboarding | `src/features/accueil/*` | checklist 3 étapes + état vide actionnable (l'écart « atterrissage vide » de la revue UX) |

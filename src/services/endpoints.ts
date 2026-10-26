@@ -13,6 +13,8 @@ export const ENDPOINTS = {
   refresh: '/auth/refresh',
   me: '/auth/me',
   logout: '/auth/logout',
+  passwordResetRequest: '/auth/password/reset/request',
+  passwordResetConfirm: '/auth/password/reset/confirm',
   emailVerifyRequest: '/auth/email/verify/request',
   emailVerifyConfirm: '/auth/email/verify/confirm',
   invitations: '/auth/invitations',
@@ -20,6 +22,7 @@ export const ENDPOINTS = {
 
   session: (orgId: string) => `${org(orgId)}/session`,
   onboarding: (orgId: string) => `${org(orgId)}/onboarding`,
+  business: (orgId: string) => `${org(orgId)}/business`,
   members: (orgId: string) => `${org(orgId)}/members`,
   member: (orgId: string, userId: string) => `${org(orgId)}/members/${enc(userId)}`,
 

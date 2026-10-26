@@ -25,6 +25,8 @@ Légende : ✔ implémenté et fonctionnel · ◐ simulé (UI + toast, aucun eff
 | Inscription | **2 champs** : e-mail + mot de passe (12 car. min) ; nom, commerce, téléphone, ville et activité sont collectés après l'ouverture (RG-A04). Espace créé sous « Mon commerce » | idem |
 | Connexion 1 clic | 4 comptes de démonstration listés (mot de passe `demo1234`) | `mocks/fixtures/accounts.ts` |
 | Google (démo) | Bouton « Continuer avec Google » avec le **logo « G » officiel** (SVG inline, non recoloré) : identité simulée, espace « Mon commerce » créé au premier accès (production = PKCE serveur, `501` en `http`) | `features/auth/GoogleButton.tsx`, `ui/GoogleMark.tsx`, `adapters/mockApi.ts` |
+| Mot de passe oublié | Code à 6 chiffres (`000000` en démo) + nouveau mot de passe, lien depuis l'onglet e-mail ; aucune question secrète (D4) | `features/auth/ForgotPasswordModal.tsx` |
+| Profil éditable | Nom, téléphone, nom du commerce, ville, activité ; un caissier ne modifie pas la fiche du commerce | `features/profil/ProfilModal.tsx` |
 | Vérification e-mail (démo) | Bandeau persistant + modale de code à 6 chiffres (code `000000` en démo), renvoi avec délai de 30 s, grâce de 72 h sans blocage de la caisse | `features/auth/VerifyEmailBanner.tsx`, `domain/password.ts` |
 | Mise en route | **2 étapes** (nom du commerce → coordonnées) à la première ouverture, « Plus tard » possible ; `business.onboardedAt` renseigné côté serveur | `features/onboarding/OnboardingModal.tsx`, `store/onboarding.ts` |
 | Checklist d'accueil | Premier article / première vente / premier vendeur ; disparaît quand tout est fait ; états vides qui créent réellement l'article | `features/accueil/SetupChecklist.tsx`, `features/stock/StockView.tsx` |

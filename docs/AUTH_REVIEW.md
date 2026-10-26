@@ -61,7 +61,7 @@ Démarrage : restoreSession() ─► api.auth.me() ─► même activation
 | A5 | 🟡 **partiel** | Statut vérifié et acceptation explicite ✔ ; restent le jeton signé, l'expiration et la révocation côté serveur | `types/index.ts` (`Invitation`) | [#20](https://github.com/digitaleflex/macaisse/issues/20) (suite backend) |
 | A6 | ~~majeur~~ ✅ **corrigé** | `logout()` purge désormais **toutes** les collections métier du stockage local (toutes organisations) et vide l'état mémoire ; seules les préférences d'affichage et les données serveur simulées survivent | `store/localData.ts`, `store/auth.ts` | livré |
 | A7 | ~~mineur~~ ✅ **corrigé** | `activateOrganization`/`switchOrganization`/`reloadOrganization` renvoient un booléen ; les toasts suivent le résultat | `store/auth.ts` | [#10](https://github.com/digitaleflex/macaisse/issues/10) fermée |
-| A8 | mineur | Profil non éditable, pas de suppression de compte | `AuthRepository` | [#24](https://github.com/digitaleflex/macaisse/issues/24) |
+| A8 | 🟡 **partiel** | ✅ Profil et fiche du commerce **éditables** ; reste la suppression de compte (RG-A21) | `features/profil/ProfilModal.tsx` | [#24](https://github.com/digitaleflex/macaisse/issues/24) |
 | A9 | mineur | Migration du store auth sans coercition (jeton/profil arbitraires) | `store/useAuthStore.ts:33,40` | [#4](https://github.com/digitaleflex/macaisse/issues/4) ; disparaît avec D1 (plus de jeton persisté) |
 | A10 | mineur | `403` traité comme une session expirée à la reprise | `restoreSession` | **décidé RG-A12** — `403` et `STEP_UP_REQUIRED` ne déconnectent pas |
 | A11 | ~~majeur (UX)~~ ✅ **corrigé** | `autoComplete` renseigné sur les deux formulaires (gestionnaires de mots de passe, saisie assistée) | `features/auth/LoginScreen.tsx` | livré |

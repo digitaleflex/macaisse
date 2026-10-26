@@ -240,6 +240,72 @@ describe('createMockApi — multi-organisation', () => {
     });
   });
 
+  it('met à jour le profil personnel et la fiche du commerce', async () => {
+    const api = createMockApi();
+    await api.auth.login({ email: 'mamadou@boutique-etoile.sn', password: DEMO_PASSWORD });
+
+    const updated = await api.auth.updateProfile({
+      firstName: 'Mamadou',
+      lastName: 'K.',
+      phone: '+221 77 111 22 33',
+    });
+    expect(updated.user).toMatchObject({ lastName: 'K.', phone: '+221 77 111 22 33' });
+
+    const business = await api.onboarding.update('org-etoile', {
+      name: 'Boutique Étoile 2',
+      city: 'Dakar',
+      phone: '+221 77 111 22 33',
+      activity: 'Alimentation',
+    });
+    expect(business.name).toBe('Boutique Étoile 2');
+    // L'édition ne relance pas l'onboarding.
+    expect(business.onboardedAt).toBeTruthy();
+
+    const session = await api.session.get('org-etoile');
+    expect(session.business.name).toBe('Boutique Étoile 2');
+    expect(session.user.lastName).toBe('K.');
+  });
+
+  it('réinitialise le mot de passe par code (D4)', async () => {
+    const api = createMockApi();
+    const challenge = await api.auth.requestPasswordReset('mamadou@boutique-etoile.sn');
+    expect(challenge.expiresIn).toBe(600);
+
+    await expect(
+      api.auth.resetPassword({
+        email: 'mamadou@boutique-etoile.sn',
+        code: '123456',
+        password: 'nouveau-mot-de-passe-2026',
+      })
+    ).rejects.toMatchObject({ status: 401 });
+
+    await api.auth.resetPassword({
+      email: 'mamadou@boutique-etoile.sn',
+      code: '000000',
+      password: 'nouveau-mot-de-passe-2026',
+    });
+
+    await expect(
+      api.auth.login({ email: 'mamadou@boutique-etoile.sn', password: DEMO_PASSWORD })
+    ).rejects.toMatchObject({ status: 401 });
+    const logged = await api.auth.login({
+      email: 'mamadou@boutique-etoile.sn',
+      password: 'nouveau-mot-de-passe-2026',
+    });
+    expect(logged.user.email).toBe('mamadou@boutique-etoile.sn');
+  });
+
+  it('ne révèle pas l’existence d’un compte à la demande de réinitialisation', async () => {
+    const api = createMockApi();
+    const known = await api.auth.requestPasswordReset('mamadou@boutique-etoile.sn');
+    const unknown = await api.auth.requestPasswordReset('inconnu@test.sn');
+    // Même forme de réponse : impossible de deviner si l'adresse existe (RG-A09).
+    expect(unknown).toMatchObject({ expiresIn: known.expiresIn });
+    await expect(
+      api.auth.resetPassword({ email: 'inconnu@test.sn', code: '000000', password: 'mot-de-passe-solide-2026' })
+    ).rejects.toMatchObject({ status: 401 });
+  });
+
   it('rejette un identifiant inconnu par une ApiError 404', async () => {
     const api = createMockApi();
     await loginAs(api, 'mamadou@boutique-etoile.sn');

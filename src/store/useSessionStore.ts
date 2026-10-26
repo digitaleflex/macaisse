@@ -13,6 +13,8 @@ export interface SessionState {
   status: LoadStatus;
   error: string | null;
   setSession: (session: Session) => void;
+  /** Met à jour le profil personnel de l'organisation active (édition du profil). */
+  setUser: (user: Session['user']) => void;
   /** Met à jour le commerce de l'organisation active (onboarding, paramètres). */
   setBusiness: (business: BusinessProfile) => void;
   setStatus: (status: LoadStatus, error?: string | null) => void;
@@ -24,6 +26,8 @@ export const useSessionStore = create<SessionState>()((set) => ({
   status: 'idle',
   error: null,
   setSession: (session) => set({ session, status: 'ready', error: null }),
+  setUser: (user) =>
+    set((state) => ({ session: state.session === null ? null : { ...state.session, user } })),
   setBusiness: (business) =>
     set((state) => ({ session: state.session === null ? null : { ...state.session, business } })),
   setStatus: (status, error = null) => set({ status, error }),

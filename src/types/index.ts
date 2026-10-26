@@ -178,6 +178,23 @@ export interface OnboardingInput {
   activity: string;
 }
 
+/** Champs personnels modifiables depuis le profil (D4/A8). */
+export interface ProfileInput {
+  firstName: string;
+  lastName: string;
+  phone: string;
+}
+
+/** Défi de réinitialisation de mot de passe (D4). */
+export interface PasswordResetChallenge {
+  email: string;
+  /** Durée de vie du code, en secondes (600 = 10 min). */
+  expiresIn: number;
+  sentAt: string;
+  /** Mode démo uniquement : le code est affiché pour pouvoir tester. */
+  demoCode?: string;
+}
+
 export type BillingCycle = 'monthly' | 'yearly';
 
 export interface SubscriptionPlan {

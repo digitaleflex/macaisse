@@ -116,6 +116,7 @@ restent cloisonnées par organisation (`localStorage['ma-caisse/<orgId>/…']`).
 | GET | `/auth/me` | — | `AuthResult` (`expiresAt`) |
 | POST | `/auth/logout` | — | `204`, refresh invalidé côté serveur |
 | POST | `/auth/password/set` | `{ password }` | `204` (D4, 12 caractères minimum) |
+| PATCH | `/auth/me` | `{ firstName, lastName, phone }` | `AuthResult` (profil mis à jour) |
 | POST | `/auth/password/change` | `{ currentPassword, password }` | `204` · `401 STEP_UP_REQUIRED` |
 | POST | `/auth/password/reset/request` | `{ email }` | `202` (réponse constante, RG-A09) |
 | POST | `/auth/password/reset/confirm` | `{ token, password }` | `204` |
@@ -235,6 +236,7 @@ structurantes pour le backend :
 |---|---|---|---|---|
 | GET | `/orgs/:orgId/session` | — | `Session` (`user`, `business`, `subscription`, `role`) | membre |
 | POST | `/orgs/:orgId/onboarding` | `{ name, city, phone, activity }` | `BusinessProfile` avec `onboardedAt` renseigné (RG-A04) · `403` si caissier | membre (hors caissier) |
+| PATCH | `/orgs/:orgId/business` | `{ name, city, phone, activity }` | `BusinessProfile` — `onboardedAt` **inchangé** (édition depuis le profil) · `403` si caissier | membre (hors caissier) |
 | GET | `/orgs/:orgId/members` | — | `TeamMember[]` | membre |
 | POST | `/orgs/:orgId/members` | `InviteMemberInput` (`role` ∈ `manager`/`cashier`) | `TeamMember` (`status: "invited"`) ; `409` si déjà membre | owner |
 | PATCH | `/orgs/:orgId/members/:userId` | `{ role }` | `TeamMember` ; `422` si cible ou rôle `owner` | owner |
@@ -327,7 +329,6 @@ Règles associées :
   rapprochement de caisse fiable.
 
 ## Statut de `mockApi` (à lire avant d'implémenter)
-
 `src/services/adapters/mockApi.ts` est la **spécification exécutable** du
 contrat : les mêmes scénarios y sont joués que côté serveur. Deux précisions
 pour éviter les malentendus :
@@ -337,6 +338,32 @@ pour éviter les malentendus :
   servent aux **tests de contrat** (`src/services/__tests__/contract.test.ts`).
 - Ils DOIVENT donc rester alignés sur ce document : un écart entre `mockApi` et
   le serveur est un bug de contrat, pas un détail de démo.
+
+## Ce que le backend doit porter (le front ne fait que le refléter)
+
+Le front couvre le parcours, la validation d'usage et les garde-fous d'interface.
+**Tout ce qui suit n'est pas implémenté côté client et ne doit pas l'être** : ce
+sont les responsabilités du backend, à traiter avant toute mise en production.
+
+| Domaine | Ce que le serveur DOIT faire | Réf. |
+|---|---|---|
+| Mots de passe | hash **Argon2id**, liste noire complète (Pwned Passwords, k-anonymity), 12–64 caractères, refus si l'identité est recopiée | RG-A29 |
+| OTP téléphone | envoi WhatsApp (palier 1 conversation initiée, palier 2 template), quotas 3/h/numéro et 10/h/IP, 5 tentatives, TTL 5 min, usage unique, comparaison à temps constant, réponse constante | RG-A07→A09, A23, A24 |
+| OTP e-mail / reset | envoi e-mail, TTL 10 min, 3/h/adresse, 5 tentatives, invalidation des codes précédents, réponse constante | RG-A27, A09 |
+| Session | signature de l'access token, cookies `HttpOnly/Secure/SameSite`, refresh rotatif + détection de réutilisation, révocation de famille, `expiresAt` | D1, RG-A10, RG-A11 |
+| CSRF | vérifier `X-CSRF-Token` (double-submit) sur **toute** mutation authentifiée | D1 |
+| Autorisation | vérifier appartenance `active` + rôle sur chaque route, y compris `POST /sales` (`422 CONTACT_PHONE_REQUIRED`) et l'édition du commerce (`403` caissier) | RG-A03, RG-A18 |
+| Step-up | exiger une réauthentification < 5 min sur les actions sensibles, renvoyer `401 STEP_UP_REQUIRED` **sans** invalider la session | D9, RG-A12 |
+| Appareils & PIN | hash Argon2id du PIN, compteur d'échecs, verrouillage, révocation immédiate, liste des appareils | D6, RG-A15→A17 |
+| Anti-bruteforce | `429` + `Retry-After` par identifiant et par IP sur tous les points d'entrée | D8, RG-A19 |
+| Journal | table `auth_events` (90 j), consultation titulaire/propriétaire, purge planifiée | RG-A20 |
+| Comptes | unicité téléphone/e-mail (E.164 canonique), rattachement Google, suppression/anonymisation sous 30 j | RG-A01, A02, A21 |
+| Données métier | unicité des numéros de vente, transaction vente+créance, contrôle de stock, `updatedAt` | §Idempotence |
+
+**Aucune règle de sécurité ne repose sur le front.** Le client valide pour
+l'ergonomie (message immédiat, pas d'aller-retour inutile) ; le serveur rejette
+de toute façon. Un client modifié ne doit jamais obtenir plus que ce que les
+règles `RG-A…` autorisent.
 
 ## Mode démo
 

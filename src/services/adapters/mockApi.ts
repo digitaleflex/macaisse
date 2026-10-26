@@ -123,6 +123,8 @@ export function createMockApi({ latencyMs = 0, persist = false }: MockApiOptions
   let session = loadSession(persist);
   /** Code de vérification e-mail simulé (un seul à la fois, comme côté serveur). */
   let emailChallenge: { email: string; code: string; expiresAt: number } | null = null;
+  /** Défi de réinitialisation de mot de passe (D4) : 10 min, 5 tentatives. */
+  let passwordReset: { email: string; code: string; expiresAt: number; attempts: number } | null = null;
   /** Défi téléphone simulé (D2) : un seul à la fois, 5 min, 5 tentatives. */
   let phoneChallenge: {
     id: string;
@@ -439,6 +441,55 @@ export function createMockApi({ latencyMs = 0, persist = false }: MockApiOptions
           return authResult(account);
         }),
       me: () => respond(() => authResult(currentAccount())),
+      updateProfile: (input) =>
+        respond(() => {
+          const account = currentAccount();
+          account.firstName = input.firstName.trim();
+          account.lastName = input.lastName.trim();
+          account.phone = input.phone.trim();
+          saveAuth();
+          return authResult(account);
+        }),
+      requestPasswordReset: (rawEmail) =>
+        respond(() => {
+          const email = rawEmail.trim().toLowerCase();
+          passwordReset = {
+            email,
+            code: DEMO_EMAIL_CODE,
+            expiresAt: Date.now() + EMAIL_CODE_TTL_MS,
+            attempts: 0,
+          };
+          // Réponse constante : l'existence du compte n'est jamais révélée (RG-A09).
+          return {
+            email,
+            expiresIn: EMAIL_CODE_TTL_MS / 1000,
+            sentAt: new Date().toISOString(),
+            demoCode: DEMO_EMAIL_CODE,
+          };
+        }),
+      resetPassword: ({ email, code, password }) =>
+        respond(() => {
+          const active = passwordReset;
+          if (!active) fail(t.auth.errors.resetCodeMissing, 400, 'RESET_CODE_MISSING');
+          if (active.email !== email.trim().toLowerCase()) {
+            fail(t.auth.errors.resetCodeInvalid, 401, 'INVALID_RESET_CODE');
+          }
+          if (active.expiresAt <= Date.now()) {
+            passwordReset = null;
+            fail(t.auth.errors.resetCodeExpired, 410, 'RESET_CODE_EXPIRED');
+          }
+          if (active.attempts >= 5) fail(t.auth.errors.resetTooMany, 429, 'RESET_LOCKED');
+          if (code.trim() !== active.code) {
+            active.attempts += 1;
+            fail(t.auth.errors.resetCodeInvalid, 401, 'INVALID_RESET_CODE');
+          }
+          const account = auth.accounts.find((a) => a.email.toLowerCase() === active.email);
+          passwordReset = null;
+          // Anti-énumération : un e-mail inconnu renvoie le même refus qu'un code faux.
+          if (!account) fail(t.auth.errors.resetCodeInvalid, 401, 'INVALID_RESET_CODE');
+          account.password = password;
+          saveAuth();
+        }),
       requestEmailVerification: () =>
         respond<EmailChallenge>(() => {
           const account = currentAccount();
@@ -545,6 +596,22 @@ export function createMockApi({ latencyMs = 0, persist = false }: MockApiOptions
             phone: input.phone.trim(),
             activity: input.activity.trim(),
             onboardedAt: new Date().toISOString(),
+          };
+          saveAuth();
+          return org.business;
+        }),
+      update: (orgId, input) =>
+        respond(() => {
+          const membership = requireMembership(orgId);
+          if (membership.role === 'cashier') fail(t.auth.errors.forbidden, 403, 'FORBIDDEN');
+          const org = auth.organizations[orgId] ?? fail(t.auth.errors.notFound, 404, 'NOT_FOUND');
+          // Édition depuis le profil : `onboardedAt` n'est pas modifié.
+          org.business = {
+            ...org.business,
+            name: input.name.trim() || org.business.name,
+            city: input.city.trim(),
+            phone: input.phone.trim(),
+            activity: input.activity.trim(),
           };
           saveAuth();
           return org.business;

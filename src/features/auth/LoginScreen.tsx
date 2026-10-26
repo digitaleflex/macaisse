@@ -2,7 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import type { DemoAccount, GoogleIdentity, PhoneChallenge, SignupInput } from '@/types';
 import { t } from '@/content';
 import { isDemoMode } from '@/config/env';
-import { validatePassword, type PasswordIssue } from '@/domain/password';
+import { validatePassword } from '@/domain/password';
 import { isValidPhone } from '@/domain/phone';
 import { isApiError } from '@/services';
 import {
@@ -15,7 +15,9 @@ import {
 } from '@/store/auth';
 import { useUiStore } from '@/store/useUiStore';
 import { Avatar, Badge, BrandMark, Button, Icon, Input, SegmentedControl } from '@/ui';
+import { ForgotPasswordModal } from './ForgotPasswordModal';
 import { GoogleButton } from './GoogleButton';
+import { PASSWORD_ISSUE_MESSAGE } from './passwordMessage';
 
 /**
  * Écran d'accès : connexion, création d'un compte (inscription) et, en mode démo,
@@ -34,15 +36,6 @@ type Mode = 'login' | 'signup';
 type View = 'phone' | 'email';
 type FieldKey = 'email' | 'password' | 'phone' | 'code';
 type FieldErrors = Partial<Record<FieldKey, string>>;
-
-/** Message affiché pour le premier manquement détecté (RG-A29). */
-const PASSWORD_MESSAGE: Record<PasswordIssue, string> = {
-  too_short: t.auth.errors.passwordShort,
-  too_long: t.auth.errors.passwordLong,
-  common: t.auth.errors.passwordCommon,
-  contains_identity: t.auth.errors.passwordIdentity,
-  repeated: t.auth.errors.passwordRepeated,
-};
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -117,6 +110,7 @@ export function LoginScreen() {
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [forgotOpen, setForgotOpen] = useState(false);
   const [demoAccounts, setDemoAccounts] = useState<DemoAccount[]>([]);
 
   useEffect(() => {
@@ -157,7 +151,7 @@ export function LoginScreen() {
     if (password.length === 0) next.password = t.auth.errors.required;
     else if (mode === 'signup') {
       const [issue] = validatePassword(password, { email });
-      if (issue !== undefined) next.password = PASSWORD_MESSAGE[issue];
+      if (issue !== undefined) next.password = PASSWORD_ISSUE_MESSAGE[issue];
     }
     setErrors(next);
     return Object.keys(next).length === 0;
@@ -412,8 +406,16 @@ export function LoginScreen() {
                 >
                   {mode === 'login' ? t.auth.submit : t.auth.signupSubmit}
                 </Button>
-                {mode === 'signup' && (
+                {mode === 'signup' ? (
                   <p className="text-xs text-slate-500 text-center -mt-1">{t.auth.signupLaterHint}</p>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setForgotOpen(true)}
+                    className="text-xs font-semibold text-slate-500 hover:text-ink-900 text-center cursor-pointer"
+                  >
+                    {t.auth.forgot.link}
+                  </button>
                 )}
               </form>
             </>
@@ -468,6 +470,11 @@ export function LoginScreen() {
           )}
         </div>
       </main>
+
+      {/* Montée à la demande : l'e-mail saisi est lu au montage et l'état repart à zéro. */}
+      {forgotOpen && (
+        <ForgotPasswordModal open initialEmail={email} onClose={() => setForgotOpen(false)} />
+      )}
     </div>
   );
 }
