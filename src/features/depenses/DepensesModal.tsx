@@ -6,7 +6,7 @@ import { toIsoDate } from '@/domain/dates';
 import { expensesInRange, useExpensesStore } from '@/store/useExpensesStore';
 import { usePermission } from '@/store/useSessionStore';
 import { useUiStore } from '@/store/useUiStore';
-import { Button, Chip, Modal } from '@/ui';
+import { Button, Chip, ConfirmDialog, Modal } from '@/ui';
 import { ExpenseForm, type ExpenseFormValues } from './ExpenseForm';
 import { ExpenseList } from './ExpenseList';
 
@@ -23,6 +23,7 @@ export function DepensesModal() {
 
   const [activeCategory, setActiveCategory] = useState<string>('all');
   const [showAddForm, setShowAddForm] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<string | null>(null);
 
   // Les données historiques utilisent « Stock » pour « Achat Stock ».
   const matches = (category: string) =>
@@ -76,10 +77,17 @@ export function DepensesModal() {
 
       <ExpenseList
         expenses={filteredExpenses}
-        onDelete={(id) => {
-          removeExpense(id);
-          showToast(t.expenses.removed, 'success');
+        onDelete={(id) => setPendingDelete(id)}
+      />
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        title="Supprimer cette dépense"
+        confirmLabel={t.common.delete}
+        onConfirm={() => {
+          if (pendingDelete) { removeExpense(pendingDelete); showToast(t.expenses.removed, 'success'); }
+          setPendingDelete(null);
         }}
+        onClose={() => setPendingDelete(null)}
       />
     </Modal>
   );
