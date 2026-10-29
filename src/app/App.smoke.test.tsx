@@ -64,8 +64,9 @@ describe('App — smoke de rendu', () => {
 
   it('affiche l’écran de connexion sans session', () => {
     render(<App />);
-    // D2 : l'accès par téléphone est le parcours par défaut.
-    expect(screen.getAllByText(t.auth.phoneTitle).length).toBeGreaterThan(0);
+    // Par défaut, la connexion par téléphone (OTP WhatsApp, D2) est masquée :
+    // seuls e-mail/mot de passe et Google sont proposés (VITE_AUTH_PHONE=on la réactive).
+    expect(screen.getAllByText(t.auth.loginTitle).length).toBeGreaterThan(0);
   });
 
   it('monte les 5 onglets du propriétaire et ouvre/ferme le reçu sans boucle de rendu', async () => {

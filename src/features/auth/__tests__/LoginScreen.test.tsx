@@ -26,7 +26,8 @@ function input(name: string): HTMLInputElement {
 }
 
 async function openEmail() {
-  fireEvent.click(screen.getByRole('button', { name: t.auth.useEmail }));
+  const toggle = screen.queryByRole('button', { name: t.auth.useEmail });
+  if (toggle !== null) fireEvent.click(toggle);
   await waitFor(() => {
     expect(input('auth-email')).toBeTruthy();
   });
@@ -42,13 +43,13 @@ async function openSignup() {
 
 describe('LoginScreen — téléphone (D2)', () => {
   it('affiche un seul champ téléphone par défaut', () => {
-    render(<LoginScreen />);
+    render(<LoginScreen phoneLogin />);
     expect(input('auth-phone')).toBeTruthy();
     expect(document.querySelectorAll('form input')).toHaveLength(1);
   });
 
   it('connecte par code et crée l’espace « Mon commerce » si le numéro est inconnu', async () => {
-    render(<LoginScreen />);
+    render(<LoginScreen phoneLogin />);
 
     fireEvent.change(input('auth-phone'), { target: { value: '77 123 45 67' } });
     fireEvent.click(screen.getByRole('button', { name: t.auth.phoneSubmit }));
@@ -68,7 +69,7 @@ describe('LoginScreen — téléphone (D2)', () => {
   });
 
   it('refuse un code incorrect sans ouvrir de session', async () => {
-    render(<LoginScreen />);
+    render(<LoginScreen phoneLogin />);
 
     fireEvent.change(input('auth-phone'), { target: { value: '771234567' } });
     fireEvent.click(screen.getByRole('button', { name: t.auth.phoneSubmit }));
@@ -85,6 +86,14 @@ describe('LoginScreen — téléphone (D2)', () => {
 });
 
 describe('LoginScreen — e-mail', () => {
+  it('masque la connexion par téléphone par défaut (VITE_AUTH_PHONE absente)', () => {
+    render(<LoginScreen />);
+
+    expect(input('auth-email')).toBeTruthy();
+    expect(document.querySelector('input[name="auth-phone"]')).toBeNull();
+    expect(screen.queryByRole('button', { name: t.auth.usePhone })).toBeNull();
+  });
+
   it('n’affiche que deux champs à l’inscription', async () => {
     render(<LoginScreen />);
     await openSignup();

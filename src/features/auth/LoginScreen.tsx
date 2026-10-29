@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import type { DemoAccount, GoogleIdentity, PhoneChallenge, SignupInput } from '@/types';
 import { t } from '@/content';
-import { isDemoMode } from '@/config/env';
+import { env, isDemoMode } from '@/config/env';
 import { validatePassword } from '@/domain/password';
 import { isValidPhone } from '@/domain/phone';
 import { describeError } from '@/services';
@@ -29,10 +29,13 @@ import { PASSWORD_ISSUE_MESSAGE } from './passwordMessage';
  *   l'ouverture de l'espace (RG-A04) — rien à remplir pour commencer à vendre ;
  * - Google d'abord : un tap, aucun mot de passe à retenir, 0 FCFA de coût ;
  * - erreurs par champ, mot de passe affichable, `autoComplete` renseigné ;
- * - la connexion par téléphone (OTP) arrive avec D2, en conversation WhatsApp.
+ * - la connexion par téléphone (OTP WhatsApp, D2) existe toujours mais est
+ *   **masquée par défaut** (`env.phoneLogin`, `VITE_AUTH_PHONE=on` la réactive)
+ *   tant que les crédits WhatsApp/SMS ne sont pas provisionnés ; le parcours
+ *   téléphone est donc intact, seule son exposition change.
  */
 type Mode = 'login' | 'signup';
-/** Moyen d'accès : téléphone (D2, par défaut) ou e-mail (parcours de transition). */
+/** Moyen d'accès : téléphone (D2, si `phoneLogin`) ou e-mail (défaut). */
 type View = 'phone' | 'email';
 type FieldKey = 'email' | 'password' | 'phone' | 'code';
 type FieldErrors = Partial<Record<FieldKey, string>>;
@@ -96,9 +99,9 @@ function HeroPanel() {
   );
 }
 
-export function LoginScreen() {
+export function LoginScreen({ phoneLogin = env.phoneLogin }: { phoneLogin?: boolean } = {}) {
   const showToast = useUiStore((state) => state.showToast);
-  const [view, setView] = useState<View>('phone');
+  const [view, setView] = useState<View>(phoneLogin ? 'phone' : 'email');
   const [mode, setMode] = useState<Mode>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -283,7 +286,7 @@ export function LoginScreen() {
             </>
           )}
 
-          {view === 'phone' ? (
+          {phoneLogin && view === 'phone' ? (
             challenge === null ? (
               <form onSubmit={submitPhone} className="flex flex-col gap-4" noValidate>
                 <Input
@@ -421,15 +424,17 @@ export function LoginScreen() {
             </>
           )}
 
-          <div className="mt-5 text-center">
-            <button
-              type="button"
-              onClick={switchView}
-              className="text-xs font-semibold text-slate-500 hover:text-ink-900 cursor-pointer"
-            >
-              {view === 'phone' ? t.auth.useEmail : t.auth.usePhone}
-            </button>
-          </div>
+          {phoneLogin && (
+            <div className="mt-5 text-center">
+              <button
+                type="button"
+                onClick={switchView}
+                className="text-xs font-semibold text-slate-500 hover:text-ink-900 cursor-pointer"
+              >
+                {view === 'phone' ? t.auth.useEmail : t.auth.usePhone}
+              </button>
+            </div>
+          )}
 
           {view === 'email' && demoAccounts.length > 0 && (
             <section className="mt-10">

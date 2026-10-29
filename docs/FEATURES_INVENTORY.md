@@ -20,7 +20,8 @@ Légende : ✔ implémenté et fonctionnel · ◐ simulé (UI + toast, aucun eff
 | Élément | Détail | Fichier |
 |---|---|---|
 | Écran | Deux onglets *Se connecter* / *Créer un compte*, panneau marketing (3 arguments) | `features/auth/LoginScreen.tsx` (247 l) |
-| Connexion (défaut) | **Téléphone → code à 6 chiffres** (code `000000` en démo), canal WhatsApp simulé, numéro normalisé E.164, renvoi après 30 s | `features/auth/LoginScreen.tsx`, `domain/phone.ts` |
+| Connexion (défaut) | **E-mail + mot de passe** et **Google**. La connexion par téléphone (OTP WhatsApp) est **présente mais masquée** : `VITE_AUTH_PHONE=on` la réactive (crédits WhatsApp/Twilio non provisionnés) | `features/auth/LoginScreen.tsx`, `config/env.ts` |
+| Connexion téléphone (masquée) | **Téléphone → code à 6 chiffres** (code `000000` en démo), canal WhatsApp simulé, numéro normalisé E.164, renvoi après 30 s — inatteignable sans `VITE_AUTH_PHONE=on` | `features/auth/LoginScreen.tsx`, `domain/phone.ts` |
 | Connexion e-mail | e-mail + mot de passe affichable, erreurs **par champ**, `autoComplete`, erreurs API typées (`invalidCredentials`, `sessionExpired`, `forbidden`…) | idem |
 | Inscription | **2 champs** : e-mail + mot de passe (12 car. min) ; nom, commerce, téléphone, ville et activité sont collectés après l'ouverture (RG-A04). Espace créé sous « Mon commerce » | idem |
 | Connexion 1 clic | 4 comptes de démonstration listés (mot de passe `demo1234`) | `mocks/fixtures/accounts.ts` |

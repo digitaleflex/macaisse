@@ -95,6 +95,16 @@ E.164 (`domain/phone.ts`) pour que `77 123 45 67` et `+221 77 123 45 67`
 désignent le même compte. Restent à brancher : le compte WhatsApp Business, le
 template (palier 2) et les quotas serveur.
 
+**État au lancement — parcours masqué.** Tant que les crédits WhatsApp/Twilio ne
+sont pas provisionnés, l'écran d'accès n'expose que **e-mail + mot de passe** et
+**Google** : ni le champ téléphone, ni la bascule « Utiliser mon téléphone » ne
+sont rendus. Le parcours téléphone (store, services, textes, tests) est
+**intact** et se rallume sans modification de code avec `VITE_AUTH_PHONE=on`
+(`env.phoneLogin`, `src/config/env.ts`). Rien n'est supprimé : la décision D2
+reste la cible, seule son exposition change. Conséquence assumée : RG-A01 (« le
+numéro est la clé de connexion ») n'est pas encore tenu en production, et D3
+(Google) devient le chemin le plus court vers un compte.
+
 **Pourquoi.** Le numéro est déjà nécessaire au produit (ticket, PDF comptable,
 contact client — `receipt.phone(business.phone)`, `lib/export/pdf.ts:52`), alors
 que l'e-mail est peu consulté par la cible et parfois partagé. Un seul canal à
@@ -345,6 +355,7 @@ Identifiants stables : **RG-Axx**, cités par `API_CONTRACT.md` et par les tests
 | Suppression de compte | `src/features/profil/DeleteAccountModal.tsx` | ✅ mot de passe + mot-clé `SUPPRIMER`, anonymisation expliquée |
 | Orchestration | `src/store/auth.ts:95-115` | `login`/`signup` remplacés par `requestOtp`/`verifyOtp` ; `restoreSession` s'appuie sur `GET /auth/me` + cookie |
 | Écran d'accès | `src/features/auth/LoginScreen.tsx` | ✅ **2 champs** (e-mail + mot de passe) + Google + mot de passe affichable + erreurs par champ ; le nom, le commerce et les coordonnées arrivent à l'onboarding (RG-A04) ; reste D2 (téléphone → code) |
+| Exposition du téléphone | `src/config/env.ts`, `src/features/auth/LoginScreen.tsx` | 🟡 **masqué par défaut** : `env.phoneLogin` (`VITE_AUTH_PHONE=on`) conditionne le champ téléphone, le formulaire de code et la bascule « Utiliser mon téléphone ». Code D2 intact, rallumage sans modification |
 | Onboarding | `src/features/accueil/*` | checklist 3 étapes + état vide actionnable (l'écart « atterrissage vide » de la revue UX) |
 | Verrouillage caisse | `src/features/auth/LockScreen.tsx`, `store/lock.ts`, `store/devices.ts` | ✅ écran de verrouillage PIN, verrouillage d'inactivité 15 min, enrôlement d'appareil (3 max) et révocation ; PIN vérifié localement (hash de démonstration) |
 | Contrat | `src/services/contracts.ts`, `endpoints.ts`, `mockApi.ts`, `httpApi.ts` | nouveaux endpoints §2 de `API_CONTRACT.md` ; `mockApi` = spécification exécutable, donc OTP et PIN simulés |

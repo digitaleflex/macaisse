@@ -127,6 +127,7 @@ Toutes les variables *client* sont préfixées `VITE_` et lues **uniquement** da
 | `VITE_API_BASE_URL` | `/api` | URL de base du backend (ex. `https://api.macaisse.app/v1`) |
 | `VITE_API_MOCK_LATENCY_MS` | `250` (`0` en test) | Latence simulée de l'adaptateur démo |
 | `VITE_API_TIMEOUT_MS` | `15000` | Délai maximal avant abandon d'une requête |
+| `VITE_AUTH_PHONE` | `off` | `on` réaffiche la connexion par téléphone (OTP WhatsApp, D2). Masquée tant que les crédits WhatsApp/SMS ne sont pas provisionnés : l'écran d'accès ne montre que e-mail + Google |
 | `DISABLE_HMR` | — | `true` coupe le HMR et le watch (utilisé par l'environnement AI Studio) |
 | `GEMINI_API_KEY` | — | Optionnel ; utilisé par `src/lib/ai/client.ts` (client IA expérimental, non branché à l'UI) |
 

@@ -13,6 +13,11 @@ export interface AppEnv {
   mockLatencyMs: number;
   /** Délai maximal d'une requête HTTP avant abandon (ms). */
   requestTimeoutMs: number;
+  /**
+   * Connexion par téléphone (OTP WhatsApp, D2) : masquée par défaut tant que les
+   * crédits WhatsApp/SMS ne sont pas provisionnés. `VITE_AUTH_PHONE=on` la réaffiche.
+   */
+  phoneLogin: boolean;
 }
 
 type RawEnv = Record<string, string | boolean | undefined>;
@@ -38,6 +43,7 @@ export function readEnv(raw: RawEnv = readRaw()): AppEnv {
     apiBaseUrl: readString(raw, 'VITE_API_BASE_URL', '/api').replace(/\/+$/, ''),
     mockLatencyMs: readNumber(raw, 'VITE_API_MOCK_LATENCY_MS', raw.MODE === 'test' ? 0 : 250),
     requestTimeoutMs: readNumber(raw, 'VITE_API_TIMEOUT_MS', 15000),
+    phoneLogin: readString(raw, 'VITE_AUTH_PHONE', 'off') === 'on',
   };
 }
 
