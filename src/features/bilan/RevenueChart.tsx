@@ -6,6 +6,7 @@ import { DAILY_REVENUE_TARGET } from '@/config/reference';
 import { parseDate } from '@/domain/dates';
 import { formatFCFA } from '@/domain/money';
 import { Card, EmptyState, cn } from '@/ui';
+import { chartColors } from '@/design/tokens';
 
 /** Histogramme des recettes journalières (Recharts) + objectif indicatif. */
 export interface RevenueChartProps {
@@ -63,10 +64,10 @@ export function RevenueChart({ data }: RevenueChartProps) {
           <div className="h-64 -ml-2">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#eef0f4" vertical={false} />
-                <XAxis dataKey="label" stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} interval="preserveStartEnd" minTickGap={8} />
+                <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} vertical={false} />
+                <XAxis dataKey="label" stroke={chartColors.axis} fontSize={11} tickLine={false} axisLine={false} interval="preserveStartEnd" minTickGap={8} />
                 <YAxis
-                  stroke="#94a3b8"
+                  stroke={chartColors.axis}
                   fontSize={11}
                   tickLine={false}
                   axisLine={false}
@@ -74,7 +75,7 @@ export function RevenueChart({ data }: RevenueChartProps) {
                   tickFormatter={(value) => `${Math.round(Number(value) / 1000)}k`}
                 />
                 <Tooltip
-                  cursor={{ fill: '#f1f5f9' }}
+                  cursor={{ fill: chartColors.cursor }}
                   content={({ active, payload }) => {
                     if (!active || !payload || payload.length === 0) return null;
                     const point = payload[0].payload as SeriesPoint;
@@ -88,8 +89,8 @@ export function RevenueChart({ data }: RevenueChartProps) {
                     );
                   }}
                 />
-                {showTarget && <ReferenceLine y={DAILY_REVENUE_TARGET} stroke="#e11d48" strokeDasharray="5 5" strokeWidth={1.5} />}
-                <Bar dataKey="value" fill="#059669" radius={[6, 6, 0, 0]} maxBarSize={36} />
+                {showTarget && <ReferenceLine y={DAILY_REVENUE_TARGET} stroke={chartColors.target} strokeDasharray="5 5" strokeWidth={1.5} />}
+                <Bar dataKey="value" fill={chartColors.positiveStrong} radius={[6, 6, 0, 0]} maxBarSize={36} />
               </BarChart>
             </ResponsiveContainer>
           </div>

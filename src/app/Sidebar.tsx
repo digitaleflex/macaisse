@@ -129,7 +129,7 @@ export function Sidebar() {
           <IconButton
             icon="logout"
             label={t.auth.logout}
-            className="text-slate-500 hover:text-white hover:bg-white/10"
+            variant="ghost-dark"
             onClick={() => void logout()}
           />
         </div>

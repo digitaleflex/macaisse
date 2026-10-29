@@ -66,7 +66,7 @@ export function CreditPaymentModal({ credit, open, onClose, onSubmit }: CreditPa
           onChange={(event) => setAmount(Math.min(credit.remainingAmount, Number(event.target.value) || 0))}
           hint={
             <span>
-              {t.credits.payment.newBalance} : <strong className="text-brand-600 font-num">{formatFCFA(newBalance)}</strong>
+              {t.credits.payment.newBalance} : <strong className="text-brand-700 font-num">{formatFCFA(newBalance)}</strong>
             </span>
           }
         />

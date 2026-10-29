@@ -3,6 +3,7 @@ import type { SeriesPoint } from '@/types';
 import { t } from '@/content';
 import { formatFCFA } from '@/domain/money';
 import { Card } from '@/ui';
+import { chartColors, palette, themeColors } from '@/design/tokens';
 
 export interface SalesTrendProps {
   data: SeriesPoint[];
@@ -33,8 +34,8 @@ export function SalesTrend({ data }: SalesTrendProps) {
           <AreaChart data={data} margin={{ top: 8, right: 8, left: 8, bottom: 0 }}>
             <defs>
               <linearGradient id="trendFill" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#10b981" stopOpacity={0.28} />
-                <stop offset="100%" stopColor="#10b981" stopOpacity={0} />
+                <stop offset="0%" stopColor={chartColors.positive} stopOpacity={0.28} />
+                <stop offset="100%" stopColor={chartColors.positive} stopOpacity={0} />
               </linearGradient>
             </defs>
             <XAxis
@@ -42,12 +43,12 @@ export function SalesTrend({ data }: SalesTrendProps) {
               tickLine={false}
               axisLine={false}
               fontSize={11}
-              stroke="#94a3b8"
+              stroke={chartColors.axis}
               interval="preserveStartEnd"
               minTickGap={16}
             />
             <Tooltip
-              cursor={{ stroke: '#cbd5e1', strokeDasharray: 4 }}
+              cursor={{ stroke: palette.slate300, strokeDasharray: 4 }}
               content={({ active, payload }) => {
                 if (!active || !payload || payload.length === 0) return null;
                 const point = payload[0].payload as SeriesPoint;
@@ -62,10 +63,10 @@ export function SalesTrend({ data }: SalesTrendProps) {
             <Area
               type="monotone"
               dataKey="value"
-              stroke="#059669"
+              stroke={chartColors.positiveStrong}
               strokeWidth={2.5}
               fill="url(#trendFill)"
-              activeDot={{ r: 5, fill: '#059669', stroke: '#fff', strokeWidth: 2 }}
+              activeDot={{ r: 5, fill: chartColors.positiveStrong, stroke: themeColors.surface, strokeWidth: 2 }}
             />
           </AreaChart>
         </ResponsiveContainer>

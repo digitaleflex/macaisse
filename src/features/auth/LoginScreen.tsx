@@ -275,7 +275,7 @@ export function LoginScreen() {
             <>
               <GoogleButton className="mt-6" loading={pending} onClick={handleGoogle} />
               <p className="text-xs text-slate-500 mt-2 text-center">{t.auth.googleHint}</p>
-              <div className="my-5 flex items-center gap-3 text-xs uppercase tracking-wider text-slate-400" aria-hidden="true">
+              <div className="my-5 flex items-center gap-3 text-xs uppercase tracking-wider text-muted" aria-hidden="true">
                 <span className="h-px flex-1 bg-line" />
                 {t.auth.orSeparator}
                 <span className="h-px flex-1 bg-line" />
@@ -461,7 +461,7 @@ export function LoginScreen() {
                           ))}
                         </span>
                       </span>
-                      <Icon name="login" size={20} className="text-slate-400" />
+                      <Icon name="login" size={20} className="text-slate-500" />
                     </button>
                   </li>
                 ))}

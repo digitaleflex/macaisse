@@ -10,7 +10,7 @@ export function ClosingCard({ closed, onToggle }: { closed: boolean; onToggle: (
       <span
         className={cn(
           'size-11 rounded-2xl flex items-center justify-center shrink-0',
-          closed ? 'bg-brand-50 text-brand-600' : 'bg-ink-900 text-zest-400'
+          closed ? 'bg-brand-50 text-brand-700' : 'bg-ink-900 text-zest-400'
         )}
       >
         <Icon name={closed ? 'task_alt' : 'lock_clock'} size={22} />

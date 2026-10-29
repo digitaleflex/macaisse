@@ -86,5 +86,44 @@ export default tseslint.config(
     ['@/app', '@/app/*'],
     'features/ ne doit pas importer le shell applicatif (app/).'
   ),
+
+  /**
+   * Garde palette — P3.1.
+   * Les couleurs vivent dans `src/index.css` (`@theme`) et dans ses deux miroirs
+   * TS autorisés. Tout hex ailleurs est une dérive silencieuse : on casse au lint,
+   * pas à la revue visuelle. Les fichiers de test déclarent légitimement des paires
+   * à comparer ; `mocks/` contient des références produit (`#1042`) qui ne sont
+   * pas des couleurs.
+   */
+  {
+    files: ['src/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: 'Literal[value=/#[0-9a-fA-F]{3,8}/]',
+          message:
+            'Couleur en dur interdite : utiliser un token (classes Tailwind de src/index.css) ou src/design/tokens.ts pour Recharts/jsPDF.',
+        },
+        {
+          selector: 'TemplateElement[value.cooked=/#[0-9a-fA-F]{3,8}/]',
+          message:
+            'Couleur en dur interdite dans un template : utiliser un token de src/index.css.',
+        },
+      ],
+    },
+  },
+  {
+    files: [
+      'src/design/tokens.ts',
+      'src/lib/export/pdfTheme.ts',
+      'src/ui/GoogleMark.tsx',
+      'src/ui/BrandMark.tsx',
+      'src/features/auth/GoogleButton.tsx',
+      'src/mocks/**/*.{ts,tsx}',
+      'src/**/__tests__/**/*.{ts,tsx}',
+    ],
+    rules: { 'no-restricted-syntax': 'off' },
+  },
   prettier,
 );

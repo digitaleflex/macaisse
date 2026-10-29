@@ -4,12 +4,13 @@ import type { BusinessProfile, Expense, SaleTransaction } from '@/types';
 import { t } from '@/content';
 import { toIsoDate } from '@/domain/dates';
 import { buildAccountingRows, type ExportFilterType, type ExportRange } from './accounting';
+import { pdfTheme } from './pdfTheme';
 
 /**
  * Exporte un rapport comptable officiel au format PDF avec jsPDF et autoTable.
  *
- * Les couleurs de marque restent volontairement codées en dur ici (le module
- * `lib/` ne dépend pas du design system de l'app).
+ * Les couleurs viennent de `./pdfTheme`, dérivé de `src/design/tokens` : les
+ * tokens restent la seule source (jsPDF ne sait pas lire les custom properties).
  */
 export function exportToPDF(
   filterType: ExportFilterType,
@@ -37,17 +38,17 @@ export function exportToPDF(
   });
 
   // En-tête de l'entreprise
-  doc.setFillColor(11, 28, 48); // #0b1c30
+  doc.setFillColor(...pdfTheme.ink);
   doc.rect(0, 0, 210, 28, 'F');
 
-  doc.setTextColor(255, 255, 255);
+  doc.setTextColor(...pdfTheme.white);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(16);
   doc.text(business.name.toUpperCase(), 14, 12);
 
   doc.setFontSize(8);
   doc.setFont('helvetica', 'normal');
-  doc.setTextColor(218, 226, 253);
+  doc.setTextColor(...pdfTheme.headerMeta);
   doc.text(`${business.activity} • ${business.address}, ${business.city}`, 14, 18);
   doc.text(d.pdfContact(business.taxId, business.phone, business.email), 14, 23);
 
@@ -56,12 +57,12 @@ export function exportToPDF(
 
   doc.setFontSize(11);
   doc.setFont('helvetica', 'bold');
-  doc.setTextColor(197, 244, 65); // #c5f441
+  doc.setTextColor(...pdfTheme.accent);
   doc.text(docTitle, 210 - 14, 13, { align: 'right' });
 
   doc.setFontSize(8);
   doc.setFont('helvetica', 'normal');
-  doc.setTextColor(255, 255, 255);
+  doc.setTextColor(...pdfTheme.white);
   doc.text(d.pdfIssued(todayFormatted), 210 - 14, 19, { align: 'right' });
   doc.text(d.pdfCurrency, 210 - 14, 24, { align: 'right' });
 
@@ -69,38 +70,38 @@ export function exportToPDF(
   const startY = 35;
 
   // Boîte Ventes
-  doc.setFillColor(240, 253, 244);
+  doc.setFillColor(...pdfTheme.successFill);
   doc.roundedRect(14, startY, 57, 18, 2, 2, 'F');
-  doc.setDrawColor(187, 247, 208);
+  doc.setDrawColor(...pdfTheme.successBorder);
   doc.roundedRect(14, startY, 57, 18, 2, 2, 'S');
 
   doc.setFontSize(7.5);
-  doc.setTextColor(22, 101, 52);
+  doc.setTextColor(...pdfTheme.successText);
   doc.setFont('helvetica', 'bold');
   doc.text(d.pdfTotalIn, 18, startY + 6);
   doc.setFontSize(11);
   doc.text(`+${totalSales.toLocaleString('fr-FR')} F`, 18, startY + 13);
 
   // Boîte Dépenses
-  doc.setFillColor(254, 242, 242);
+  doc.setFillColor(...pdfTheme.dangerFill);
   doc.roundedRect(76, startY, 57, 18, 2, 2, 'F');
-  doc.setDrawColor(254, 202, 202);
+  doc.setDrawColor(...pdfTheme.dangerBorder);
   doc.roundedRect(76, startY, 57, 18, 2, 2, 'S');
 
   doc.setFontSize(7.5);
-  doc.setTextColor(153, 27, 27);
+  doc.setTextColor(...pdfTheme.dangerText);
   doc.text(d.pdfTotalOut, 80, startY + 6);
   doc.setFontSize(11);
   doc.text(`-${totalExpenses.toLocaleString('fr-FR')} F`, 80, startY + 13);
 
   // Boîte Solde Net
-  doc.setFillColor(239, 244, 255);
+  doc.setFillColor(...pdfTheme.infoFill);
   doc.roundedRect(138, startY, 58, 18, 2, 2, 'F');
-  doc.setDrawColor(220, 233, 255);
+  doc.setDrawColor(...pdfTheme.infoBorder);
   doc.roundedRect(138, startY, 58, 18, 2, 2, 'S');
 
   doc.setFontSize(7.5);
-  doc.setTextColor(11, 28, 48);
+  doc.setTextColor(...pdfTheme.ink);
   doc.text(d.pdfNet, 142, startY + 6);
   doc.setFontSize(11);
   doc.text(
@@ -144,13 +145,13 @@ export function exportToPDF(
       fontSize: 8,
       cellPadding: 2,
       font: 'helvetica',
-      textColor: [11, 28, 48],
-      lineColor: [229, 238, 255],
+      textColor: pdfTheme.ink,
+      lineColor: pdfTheme.tableLine,
       lineWidth: 0.2,
     },
     headStyles: {
-      fillColor: [11, 28, 48],
-      textColor: [255, 255, 255],
+      fillColor: pdfTheme.ink,
+      textColor: pdfTheme.white,
       fontStyle: 'bold',
       fontSize: 8,
       halign: 'left',
@@ -166,14 +167,14 @@ export function exportToPDF(
       7: { cellWidth: 16, halign: 'center' },
     },
     alternateRowStyles: {
-      fillColor: [248, 249, 255],
+      fillColor: pdfTheme.tableAlt,
     },
     didParseCell: (data) => {
       // Style spécial pour la dernière ligne de total
       if (data.row.index === tableBody.length - 1) {
         data.cell.styles.fontStyle = 'bold';
-        data.cell.styles.fillColor = [234, 241, 255];
-        data.cell.styles.textColor = [11, 28, 48];
+        data.cell.styles.fillColor = pdfTheme.tableTotal;
+        data.cell.styles.textColor = pdfTheme.ink;
       }
     },
     margin: { left: 14, right: 14, bottom: 25 },
@@ -186,13 +187,13 @@ export function exportToPDF(
   if (finalY < 265) {
     doc.setFontSize(7.5);
     doc.setFont('helvetica', 'italic');
-    doc.setTextColor(86, 94, 116);
+    doc.setTextColor(...pdfTheme.footerMuted);
     doc.text(d.pdfFooterNote, 14, finalY);
 
     // Bloc Signature / Visa
     doc.setFont('helvetica', 'normal');
     doc.text(d.pdfVisa, 140, finalY);
-    doc.setDrawColor(200, 210, 230);
+    doc.setDrawColor(...pdfTheme.signatureBorder);
     doc.rect(140, finalY + 2, 56, 16);
   }
 
@@ -201,7 +202,7 @@ export function exportToPDF(
   for (let i = 1; i <= pageCount; i++) {
     doc.setPage(i);
     doc.setFontSize(7);
-    doc.setTextColor(130, 140, 160);
+    doc.setTextColor(...pdfTheme.pageMuted);
     doc.text(
       d.pdfPage(i, pageCount, business.name),
       105,

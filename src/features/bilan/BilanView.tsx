@@ -169,7 +169,7 @@ export function BilanView() {
         <div className="grid sm:grid-cols-2 gap-3">
           {[
             { title: t.bilan.exports.pdfTitle, text: t.bilan.exports.pdfText, badge: t.bilan.exports.pdfBadge, icon: 'picture_as_pdf', tone: 'bg-rose-50 text-rose-600', onClick: handleExportPDF },
-            { title: t.bilan.exports.csvTitle, text: t.bilan.exports.csvText, badge: t.bilan.exports.csvBadge, icon: 'table_view', tone: 'bg-brand-50 text-brand-600', onClick: handleExportCSV },
+            { title: t.bilan.exports.csvTitle, text: t.bilan.exports.csvText, badge: t.bilan.exports.csvBadge, icon: 'table_view', tone: 'bg-brand-50 text-brand-700', onClick: handleExportCSV },
           ].map((item) => (
             <button
               key={item.title}
@@ -187,7 +187,7 @@ export function BilanView() {
                 </span>
                 <span className="block text-xs text-slate-500 mt-1">{item.text}</span>
               </span>
-              <Icon name="download" size={20} className="text-slate-400 group-hover:text-ink-900 transition-colors" />
+              <Icon name="download" size={20} className="text-slate-500 group-hover:text-ink-900 transition-colors" />
             </button>
           ))}
         </div>

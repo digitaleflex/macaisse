@@ -124,7 +124,7 @@ function StockLevel({ product }: { product: Product }) {
         >
           {t.stock.units(product.stock, product.unit)}
         </span>
-        <span className="text-[11px] text-slate-400 font-num">
+        <span className="text-[11px] text-muted font-num">
           {t.stock.minShort(product.minStockAlert)}
         </span>
       </div>
@@ -390,7 +390,7 @@ export function StockView() {
                         <td className="px-3 py-3 text-right font-num text-slate-500 hidden xl:table-cell">
                           {formatFCFA(product.costPrice)}
                         </td>
-                        <td className="px-3 py-3 text-right font-num font-semibold text-brand-600">
+                        <td className="px-3 py-3 text-right font-num font-semibold text-brand-700">
                           +{marginPercent(product.price, product.costPrice)} %
                         </td>
                       </>
@@ -450,7 +450,7 @@ export function StockView() {
                         </div>
                         <div className="text-right">
                           <div className="text-slate-500">{t.stock.table.margin}</div>
-                          <div className="font-num font-bold text-brand-600">
+                          <div className="font-num font-bold text-brand-700">
                             +{marginPercent(product.price, product.costPrice)} %
                           </div>
                         </div>

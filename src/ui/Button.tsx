@@ -36,7 +36,7 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 const VARIANT_CLASS: Record<ButtonVariant, string> = {
   primary: 'bg-ink-900 text-white hover:bg-ink-800 shadow-sm',
   accent: 'bg-zest-400 text-ink-950 hover:bg-zest-300 shadow-glow',
-  brand: 'bg-brand-600 text-white hover:bg-brand-700 shadow-sm',
+  brand: 'bg-brand-700 text-white hover:bg-brand-800 shadow-sm',
   secondary: 'bg-white text-ink-900 border border-line hover:border-line-strong hover:bg-slate-50 shadow-card',
   ghost: 'text-slate-600 hover:text-ink-900 hover:bg-slate-100',
   danger: 'bg-rose-600 text-white hover:bg-rose-700 shadow-sm',
@@ -89,17 +89,24 @@ export function Button({
 export interface IconButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'children'> {
   icon: string;
   label: string;
-  variant?: 'ghost' | 'secondary' | 'primary' | 'danger-soft' | 'brand-soft';
+  variant?: 'ghost' | 'ghost-dark' | 'secondary' | 'primary' | 'danger-soft' | 'brand-soft';
   size?: 'sm' | 'md' | 'lg';
   badge?: boolean;
   filled?: boolean;
 }
 
 const ICON_BTN_VARIANT: Record<NonNullable<IconButtonProps['variant']>, string> = {
-  ghost: 'text-slate-500 hover:text-ink-900 hover:bg-slate-100',
-  secondary: 'bg-white text-slate-700 border border-line hover:border-line-strong hover:text-ink-900 shadow-card',
+  ghost: 'text-slate-600 hover:text-ink-900 hover:bg-slate-100',
+  /** Même rôle que `ghost`, pour les surfaces `ink-900` (sidebar, en-têtes sombres). */
+  'ghost-dark': 'text-slate-400 hover:text-white hover:bg-white/10',
+  secondary: 'bg-white text-ink-900 border border-line hover:border-line-strong hover:bg-slate-50 shadow-card',
   primary: 'bg-ink-900 text-white hover:bg-ink-800',
-  'danger-soft': 'text-rose-600 hover:bg-rose-50',
+  /**
+   * Texte aligné sur `Button.danger-soft` (`rose-700`), mais fond transparent au
+   * repos : en liste dense, un pavé rose permanent par ligne surcharge la page.
+   * Différence de contexte assumée (icône dans une ligne vs bouton de pied de modale).
+   */
+  'danger-soft': 'text-rose-700 hover:bg-rose-50 hover:text-rose-800',
   'brand-soft': 'bg-brand-50 text-brand-700 hover:bg-brand-100',
 };
 
@@ -125,7 +132,7 @@ export function IconButton({
       aria-label={label}
       title={label}
       className={cn(
-        'relative inline-flex items-center justify-center shrink-0 transition-all cursor-pointer active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed',
+        'relative inline-flex items-center justify-center shrink-0 transition-all cursor-pointer active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100',
         ICON_BTN_VARIANT[variant],
         ICON_BTN_SIZE[size],
         className

@@ -22,7 +22,7 @@ export function EmptyState({ icon, title, description, action, compact = false, 
       )}
     >
       {icon && (
-        <div className="size-12 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center mb-3 ring-8 ring-slate-50">
+        <div className="size-12 rounded-2xl bg-slate-100 text-slate-500 flex items-center justify-center mb-3 ring-8 ring-slate-50">
           <Icon name={icon} size={24} />
         </div>
       )}
@@ -100,7 +100,7 @@ export function Skeleton({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        'rounded-xl bg-[linear-gradient(90deg,#eef0f4_25%,#f6f7f9_50%,#eef0f4_75%)] bg-[length:200%_100%] animate-shimmer',
+        'rounded-xl bg-shimmer-surface animate-shimmer',
         className
       )}
     />

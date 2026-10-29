@@ -50,7 +50,7 @@ export function BottomNav() {
               aria-current={active ? 'page' : undefined}
               className={cn(
                 'flex flex-col items-center justify-center gap-1 cursor-pointer transition-colors',
-                active ? 'text-ink-900' : 'text-slate-400 hover:text-slate-700'
+                active ? 'text-ink-900' : 'text-slate-500 hover:text-slate-700'
               )}
             >
               <Icon name={tab.icon} size={23} filled={active} />

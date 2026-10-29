@@ -34,7 +34,7 @@ export function FieldShell({ id, label, hint, error, required, className, childr
 }
 
 const CONTROL =
-  'w-full h-11 rounded-xl bg-white text-sm text-ink-900 placeholder:text-slate-400 border outline-none transition-all ' +
+  'w-full h-11 rounded-xl bg-white text-sm text-ink-900 placeholder:text-slate-500 border outline-none transition-all ' +
   'focus:border-ink-900 focus:ring-4 focus:ring-ink-900/5';
 
 export interface InputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'onChange' | 'value'> {
@@ -55,7 +55,7 @@ export function Input({ label, error, hint, icon, suffix, action, required, clas
   return (
     <FieldShell id={inputId} label={label} hint={hint} error={error} required={required} className={className}>
       <div className="relative flex items-center">
-        {icon && <Icon name={icon} size={18} className="absolute left-3.5 text-slate-400 pointer-events-none" />}
+        {icon && <Icon name={icon} size={18} className="absolute left-3.5 text-slate-500 pointer-events-none" />}
         <input
           {...rest}
           id={inputId}
@@ -73,7 +73,7 @@ export function Input({ label, error, hint, icon, suffix, action, required, clas
           <span className="absolute right-1.5 flex items-center">{action}</span>
         ) : (
           suffix && (
-            <span className="absolute right-3.5 text-xs font-semibold text-slate-400 pointer-events-none">{suffix}</span>
+            <span className="absolute right-3.5 text-xs font-semibold text-muted pointer-events-none">{suffix}</span>
           )
         )}
       </div>
@@ -122,7 +122,7 @@ export function Select({ label, name, id, value, onChange, options, error, hint,
             </option>
           ))}
         </select>
-        <Icon name="expand_more" size={20} className="absolute right-3 text-slate-400 pointer-events-none" />
+        <Icon name="expand_more" size={20} className="absolute right-3 text-slate-500 pointer-events-none" />
       </div>
     </FieldShell>
   );
@@ -141,7 +141,7 @@ export interface SearchFieldProps {
 export function SearchField({ value, onChange, placeholder, id, className, trailing }: SearchFieldProps) {
   return (
     <div className={cn('relative flex items-center', className)}>
-      <Icon name="search" size={20} className="absolute left-3.5 text-slate-400 pointer-events-none" />
+      <Icon name="search" size={20} className="absolute left-3.5 text-slate-500 pointer-events-none" />
       <input
         id={id}
         type="search"
@@ -156,7 +156,7 @@ export function SearchField({ value, onChange, placeholder, id, className, trail
           type="button"
           onClick={() => onChange('')}
           aria-label={t.common.clearSearch}
-          className="absolute right-2 size-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-ink-900 hover:bg-slate-100 cursor-pointer"
+          className="absolute right-2 size-7 rounded-lg flex items-center justify-center text-slate-500 hover:text-ink-900 hover:bg-slate-100 cursor-pointer"
         >
           <Icon name="close" size={18} />
         </button>

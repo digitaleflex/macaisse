@@ -60,7 +60,7 @@ export function RecentSales({ sales, todayCount, onSelect, onViewAll }: RecentSa
                   </span>
                   <span className="text-right shrink-0">
                     <span className="block font-num font-bold text-sm text-ink-900">{formatFCFA(sale.amount)}</span>
-                    <span className={partial ? 'text-[11px] font-semibold text-amber-600' : 'text-[11px] text-slate-400'}>
+                    <span className={partial ? 'text-[11px] font-semibold text-amber-600' : 'text-[11px] text-muted'}>
                       {partial
                         ? t.dashboard.recent.remaining(formatFCFA(sale.remainingAmount ?? 0))
                         : t.dashboard.recent.receiptIssued}
