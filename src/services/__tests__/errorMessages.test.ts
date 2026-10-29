@@ -54,6 +54,18 @@ describe('describeError', () => {
     });
   });
 
+  it('distingue les deux causes de refus 403', () => {
+    expect(describeError(new ApiError('', 403, 'NOT_A_MEMBER'))).toEqual({
+      message: t.errors.notAMember,
+      retryable: false,
+    });
+    expect(describeError(new ApiError('', 403, 'INSUFFICIENT_ROLE'))).toEqual({
+      message: t.errors.insufficientRole,
+      retryable: false,
+    });
+    // Un code inconnu retombe sur le texte générique de statut.
+    expect(describeError(new ApiError('texte serveur', 403, 'AUTRE_CODE')).message).toBe('texte serveur');
+  });
   it('retombe sur un message générique pour une erreur inconnue', () => {
     expect(describeError(new Error('boum'))).toEqual({ message: 'boum', retryable: false });
     expect(describeError('inconnu')).toEqual({ message: t.errors.unknown, retryable: false });

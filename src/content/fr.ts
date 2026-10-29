@@ -59,6 +59,8 @@ export const fr = {
     session: 'Votre session a expiré : reconnectez-vous.',
     stepUp: 'Confirmez votre identité pour continuer.',
     forbidden: 'Vous n’avez pas les droits pour cette action.',
+    notAMember: 'Vous n’avez pas accès à cette organisation.',
+    insufficientRole: 'Votre rôle ne permet pas cette action. Demandez au propriétaire de l’espace.',
     notFound: 'Cet élément n’existe plus.',
     conflict: 'Les données ont changé entre-temps. Rechargez, puis réessayez.',
     expired: 'Ce code a expiré : demandez-en un nouveau.',

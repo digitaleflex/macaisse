@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+﻿import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { readEnv } from '@/config/env';
 import { createMockApi } from '../adapters/mockApi';
 import { createHttpApi } from '../adapters/httpApi';
@@ -63,7 +63,38 @@ describe('createMockApi — multi-organisation', () => {
     await loginAs(api, 'koffi@superette-baobab.ci');
     await expect(api.session.get('org-etoile')).rejects.toMatchObject({ status: 403 });
     setActiveOrganization('org-etoile');
-    await expect(api.products.list()).rejects.toMatchObject({ status: 403 });
+    await expect(api.products.list()).rejects.toMatchObject({ status: 403, code: 'NOT_A_MEMBER' });
+  });
+
+  it('renvoie INSUFFICIENT_ROLE (et pas NOT_A_MEMBER) pour un refus de rôle', async () => {
+    const api = createMockApi();
+    await loginAs(api, 'awa@boutique-etoile.sn');
+    // Awa est caissière : elle ne peut pas inviter.
+    await expect(
+      api.team.invite('org-etoile', { firstName: 'Ibou', lastName: 'Sarr', email: 'ibou@test.sn', role: 'cashier' })
+    ).rejects.toMatchObject({ status: 403, code: 'INSUFFICIENT_ROLE' });
+  });
+
+  it('renvoie INSUFFICIENT_ROLE quand un caissier tente l onboarding', async () => {
+    const api = createMockApi();
+    await loginAs(api, 'awa@boutique-etoile.sn');
+    setActiveOrganization('org-etoile');
+    await expect(api.onboarding.complete('org-etoile', { name: 'Test', city: '', phone: '', activity: '' })).rejects.toMatchObject({
+      status: 403,
+      code: 'INSUFFICIENT_ROLE',
+    });
+  });
+
+  it('les deux refus 403 portent des messages différents', async () => {
+    const api = createMockApi();
+    await loginAs(api, 'koffi@superette-baobab.ci');
+    setActiveOrganization('org-etoile');
+    const notMember = await api.products.list().catch((e) => e);
+    await loginAs(api, 'awa@boutique-etoile.sn');
+    const badRole = await api.team
+      .invite('org-etoile', { firstName: 'Ibou', lastName: 'Sarr', email: 'ibou@test.sn', role: 'cashier' })
+      .catch((e) => e);
+    expect((notMember as { message?: string }).message).not.toBe((badRole as { message?: string }).message);
   });
 
   it('réserve la gestion de l’équipe au propriétaire et exige une acceptation explicite', async () => {
@@ -81,7 +112,7 @@ describe('createMockApi — multi-organisation', () => {
     const ibou = await loginAs(api, 'ibou@test.sn');
     expect(ibou.memberships).toEqual([]);
     setActiveOrganization('org-etoile');
-    await expect(api.products.list()).rejects.toMatchObject({ status: 403 });
+    await expect(api.products.list()).rejects.toMatchObject({ status: 403, code: 'INVITATION_PENDING' });
 
     // L'acceptation est un acte explicite.
     const accepted = await api.auth.acceptInvitation('org-etoile');

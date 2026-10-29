@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { DEMO_PASSWORD } from '@/mocks';
+import { api, getActiveOrganization } from '@/services';
 import { login, logout, reloadOrganization, switchOrganization } from '../auth';
 import { useAuthStore } from '../useAuthStore';
 import { useCartStore } from '../useCartStore';
@@ -25,6 +26,41 @@ describe('session — bascule d’organisation', () => {
   it('renvoie false et expose l’erreur quand la bascule échoue', async () => {
     await expect(switchOrganization('org-inconnue')).resolves.toBe(false);
     expect(useSessionStore.getState().status).toBe('error');
+  });
+
+  /**
+   * Régression S1 : une bascule refusée ne doit laisser **aucune** trace. Avant
+   * correctif, le tenant pointait sur l'organisation refusée alors que le store
+   * d'auth et la session restaient sur l'ancienne : l'action suivante partait sur
+   * une organisation interdite et affichait « Vous n'avez pas accès à cette
+   * organisation » sans lien avec ce que l'utilisateur venait de faire.
+   */
+  it('laisse les trois sources de vérité intactes quand la bascule est refusée', async () => {
+    await expect(switchOrganization('org-inconnue')).resolves.toBe(false);
+
+    expect(getActiveOrganization()).toBe('org-etoile');
+    expect(useAuthStore.getState().currentOrganizationId).toBe('org-etoile');
+    expect(useSessionStore.getState().session?.business.id).toBe('org-etoile');
+
+    // Preuve qu'aucune organisation interdite n'est restée active : les appels
+    // métier suivants fonctionnent toujours.
+    await expect(api.products.list()).resolves.toBeInstanceOf(Array);
+  });
+
+  it('aligne les trois sources de vérité quand la bascule réussit', async () => {
+    await expect(switchOrganization('org-baobab')).resolves.toBe(true);
+
+    expect(getActiveOrganization()).toBe('org-baobab');
+    expect(useAuthStore.getState().currentOrganizationId).toBe('org-baobab');
+    expect(useSessionStore.getState().session?.business.id).toBe('org-baobab');
+  });
+
+  it('laisse le tenant vide quand aucune organisation n’était ouverte', async () => {
+    await logout();
+
+    await expect(switchOrganization('org-inconnue')).resolves.toBe(false);
+    expect(getActiveOrganization()).toBeNull();
+    expect(useAuthStore.getState().currentOrganizationId).toBeNull();
   });
 
   it('renvoie true sur une demande de rechargement valide', async () => {

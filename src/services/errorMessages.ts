@@ -21,15 +21,27 @@ export function describeError(error: unknown): UserError {
     return { message, retryable: false };
   }
 
+  // Le `code` prime sur le statut : deux refus `403` très différents (non-membre
+  // vs rôle insuffisant) ne doivent pas s'afficher avec le même texte, même si
+  // le serveur omet `message`.
+  switch (error.code) {
+    case 'NOT_A_MEMBER':
+      return { message: error.message || t.errors.notAMember, retryable: false };
+    case 'INSUFFICIENT_ROLE':
+      return { message: error.message || t.errors.insufficientRole, retryable: false };
+    case 'STEP_UP_REQUIRED':
+      return { message: t.errors.stepUp, retryable: true };
+    default:
+      break;
+  }
+
   switch (error.status) {
     case 0:
       return error.code === 'TIMEOUT'
         ? { message: t.errors.timeout, retryable: true }
         : { message: t.errors.network, retryable: true };
     case 401:
-      return error.code === 'STEP_UP_REQUIRED'
-        ? { message: t.errors.stepUp, retryable: true }
-        : { message: error.message || t.errors.session, retryable: false };
+      return { message: error.message || t.errors.session, retryable: false };
     case 403:
       return { message: error.message || t.errors.forbidden, retryable: false };
     case 404:

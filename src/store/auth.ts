@@ -19,7 +19,7 @@ import type {
 } from '@/types';
 import { t } from '@/content';
 import { canAccessTab } from '@/domain/permissions';
-import { api, isApiError, setActiveOrganization } from '@/services';
+import { api, getActiveOrganization, isApiError, setActiveOrganization } from '@/services';
 import { scopeStoresToOrganization } from './tenantScope';
 import { purgeLocalBusinessData } from './localData';
 import { useAuthStore } from './useAuthStore';
@@ -58,17 +58,37 @@ async function loadCollections(): Promise<void> {
  * Ouvre une organisation : cloisonne les stores, charge la session et les données.
  * Renvoie `false` en cas d'échec (la session passe en `error`) pour que l'appelant
  * n'annonce pas un succès qui n'a pas eu lieu (issue #10).
+ *
+ * **Invariant** : le tenant (`services/tenant`), `useAuthStore.currentOrganizationId`
+ * et `useSessionStore.session` désignent toujours la même organisation. L'accès est
+ * donc validé **avant** toute bascule, et un échec survenu après la bascule est
+ * annulé : une activation refusée ne laisse aucune trace, sinon les requêtes
+ * suivantes partent sur une organisation interdite (403 « accès à cette
+ * organisation » sans lien apparent avec l'action de l'utilisateur).
  */
 export async function activateOrganization(organizationId: string): Promise<boolean> {
   const session = useSessionStore.getState();
   session.setStatus('loading');
+
+  const previous = {
+    organizationId: getActiveOrganization(),
+    current: useAuthStore.getState().currentOrganizationId,
+  };
+  let switched = false;
+
   try {
+    // 1. Valider l'accès. `session.get` porte l'`orgId` en clair : il ne dépend
+    // pas du tenant, on peut donc l'appeler avant de basculer quoi que ce soit.
+    const loaded = await api.session.get(organizationId);
+
+    // 2. Basculer les trois sources de vérité ensemble.
     setActiveOrganization(organizationId);
+    useAuthStore.getState().setCurrentOrganization(organizationId);
     useTeamStore.getState().reset();
     await scopeStoresToOrganization(organizationId);
-    const loaded = await api.session.get(organizationId);
+    switched = true;
+
     await loadCollections();
-    useAuthStore.getState().setCurrentOrganization(organizationId);
     const ui = useUiStore.getState();
     ui.closeModal();
     ui.closeReceipt();
@@ -76,10 +96,22 @@ export async function activateOrganization(organizationId: string): Promise<bool
     useSessionStore.getState().setSession(loaded);
     return true;
   } catch (error) {
+    if (switched) await restoreOrganization(previous);
     session.setStatus('error', errorMessage(error, t.auth.errors.generic));
     if (isApiError(error) && error.status === 401) await logout();
     return false;
   }
+}
+
+/** Annule une bascule déjà appliquée (échec survenu après `setActiveOrganization`). */
+async function restoreOrganization(previous: {
+  organizationId: string | null;
+  current: string | null;
+}): Promise<void> {
+  setActiveOrganization(previous.organizationId);
+  useAuthStore.getState().setCurrentOrganization(previous.current);
+  useTeamStore.getState().reset();
+  if (previous.organizationId !== null) await scopeStoresToOrganization(previous.organizationId);
 }
 
 function pickOrganization(result: AuthResult): string | null {

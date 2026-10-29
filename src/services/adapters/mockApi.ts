@@ -279,7 +279,7 @@ export function createMockApi({ latencyMs = 0, persist = false }: MockApiOptions
     const membership = auth.memberships.find(
       (m) => m.userId === account.id && m.organizationId === orgId
     );
-    if (!membership) fail(t.auth.errors.forbidden, 403, 'FORBIDDEN');
+    if (!membership) fail(t.errors.notAMember, 403, 'NOT_A_MEMBER');
     if (membership.status !== 'active') {
       fail(t.auth.errors.invitationPending, 403, 'INVITATION_PENDING');
     }
@@ -287,7 +287,7 @@ export function createMockApi({ latencyMs = 0, persist = false }: MockApiOptions
   };
 
   const requireOwner = (orgId: string): void => {
-    if (requireMembership(orgId).role !== 'owner') fail(t.auth.errors.forbidden, 403, 'FORBIDDEN');
+    if (requireMembership(orgId).role !== 'owner') fail(t.errors.insufficientRole, 403, 'INSUFFICIENT_ROLE');
   };
 
   const teamMember = (m: MockMembership): TeamMember => {
@@ -697,7 +697,7 @@ export function createMockApi({ latencyMs = 0, persist = false }: MockApiOptions
       complete: (orgId, input) =>
         respond(() => {
           const membership = requireMembership(orgId);
-          if (membership.role === 'cashier') fail(t.auth.errors.forbidden, 403, 'FORBIDDEN');
+          if (membership.role === 'cashier') fail(t.errors.insufficientRole, 403, 'INSUFFICIENT_ROLE');
           const org = auth.organizations[orgId] ?? fail(t.auth.errors.notFound, 404, 'NOT_FOUND');
           org.business = {
             ...org.business,
@@ -713,7 +713,7 @@ export function createMockApi({ latencyMs = 0, persist = false }: MockApiOptions
       update: (orgId, input) =>
         respond(() => {
           const membership = requireMembership(orgId);
-          if (membership.role === 'cashier') fail(t.auth.errors.forbidden, 403, 'FORBIDDEN');
+          if (membership.role === 'cashier') fail(t.errors.insufficientRole, 403, 'INSUFFICIENT_ROLE');
           const org = auth.organizations[orgId] ?? fail(t.auth.errors.notFound, 404, 'NOT_FOUND');
           // Édition depuis le profil : `onboardedAt` n'est pas modifié.
           org.business = {
@@ -781,10 +781,10 @@ export function createMockApi({ latencyMs = 0, persist = false }: MockApiOptions
           const actorMembership = auth.memberships.find(
             (m) => m.organizationId === orgId && m.userId === actor.id && m.status === 'active'
           );
-          if (!actorMembership) fail(t.auth.errors.forbidden, 403, 'FORBIDDEN');
+          if (!actorMembership) fail(t.errors.notAMember, 403, 'NOT_A_MEMBER');
           // Un propriétaire définit le PIN d'un membre ; chacun peut définir le sien.
           if (actorMembership.role !== 'owner' && actor.id !== userId) {
-            fail(t.auth.errors.forbidden, 403, 'FORBIDDEN');
+            fail(t.errors.insufficientRole, 403, 'INSUFFICIENT_ROLE');
           }
           const target = auth.memberships.find((m) => m.organizationId === orgId && m.userId === userId);
           if (!target) fail(t.auth.errors.notFound, 404, 'NOT_FOUND');
@@ -802,7 +802,7 @@ export function createMockApi({ latencyMs = 0, persist = false }: MockApiOptions
           const membership = auth.memberships.find(
             (m) => m.userId === memberId && m.organizationId === device.organizationId
           );
-          if (!membership) fail(t.auth.errors.forbidden, 403, 'FORBIDDEN');
+          if (!membership) fail(t.errors.notAMember, 403, 'NOT_A_MEMBER');
 
           if (membership.lockedUntil && Date.parse(membership.lockedUntil) > Date.now()) {
             fail(t.devices.errors.locked, 423, 'PIN_LOCKED');

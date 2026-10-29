@@ -1,4 +1,4 @@
-# Contrat d'API — Ma Caisse (SaaS multi-organisation)
+﻿# Contrat d'API — Ma Caisse (SaaS multi-organisation)
 
 Référence pour l'équipe backend. Types exacts : `src/types/index.ts` ; routes :
 `src/services/endpoints.ts` ; implémentation de référence exécutable :
@@ -280,7 +280,9 @@ l'interface ne peut pas réagir correctement (rejouer, annuler, déconnecter).
 | `401` | `UNAUTHENTICATED` | cookie absent, expiré ou invalide | déconnexion immédiate |
 | `401` | `STEP_UP_REQUIRED` | session valide, action sensible : réauthentification < 5 min requise (RG-A12) | modale de réauthentification, **pas** de déconnexion |
 | `401` | `INVALID_CREDENTIALS`, `INVALID_OTP`, `INVALID_EMAIL_CODE` | échec du facteur présenté | message, compteur de tentatives |
-| `403` | `FORBIDDEN` | session valide, non-membre de `:orgId`, ou rôle insuffisant | toast + retour à la caisse, **pas** de déconnexion |
+| 403 | NOT_A_MEMBER | session valide, mais aucune appartenance active a :orgId (ou appartenance inconnue) | toast + retour a la caisse, **pas** de deconnexion |
+| 403 | INSUFFICIENT_ROLE | appartenance active, mais le role ne permet pas l'action (ex. caissier sur l'onboarding, non-owner sur les appareils) | toast, message dedie, **pas** de deconnexion |
+| 403 | FORBIDDEN | repli generique : ne pas l'utiliser pour des cas couverts par les codes ci-dessus | toast + retour a la caisse, **pas** de deconnexion |
 | `403` | `INVITATION_PENDING` | appartenance non acceptée | écran d'acceptation d'invitation |
 | `404` | `NOT_FOUND` | ressource inexistante dans cette organisation | toast, rafraîchissement de la collection |
 | `409` | `INSUFFICIENT_STOCK`, `DUPLICATE`, `CONFLICT` | état serveur incompatible avec la mutation | toast + rechargement de la ressource |
