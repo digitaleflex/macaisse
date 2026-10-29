@@ -1,4 +1,4 @@
-# Cartographie des flux d'authentification — Ma Caisse
+﻿# Cartographie des flux d'authentification — Ma Caisse
 
 > Document de référence pour le démarrage du backend. Tout ce qui est décrit ici
 > est **normatif** : les règles métier (RG-Axx) et les décisions (Dx) viennent de
@@ -281,40 +281,43 @@ métier fourni par le serveur (4xx) est conservé tel quel.
 
 ## 7. Règles métier (RG-A01 → RG-A29)
 
+Source normative : `docs/AUTH_DECISIONS.md` §3.
+
 | # | Règle (court) | Appliquée dans |
 |---|---|---|
-| RG-A01 | Compte identifié par un numéro de téléphone vérifié, unique, E.164. | `domain/phone.ts`, `mockApi.ts:243-253` |
+| RG-A01 | Compte identifié par un numéro de téléphone vérifié, unique, E.164. | `domain/phone.ts`, `mockApi.ts` |
 | RG-A02 | E-mail unique et vérifié ; Google rattaché après OTP. | `mockApi.ts` (signup/login) |
-| RG-A03 | Encaissement impossible sans contact téléphonique (modale). | `features/ventes/PhoneRequiredModal.tsx`, `domain/sales.ts` |
+| RG-A03 | Pas de vente/encaissement sans contact téléphonique (modale). | `features/ventes/PhoneRequiredModal.tsx`, `domain/sales.ts` |
 | RG-A04 | Inscription 1 champ (tél.) ou 2 (e-mail+mdp) ; onboarding 2 étapes + checklist. | `features/auth/LoginScreen.tsx`, `features/onboarding/OnboardingModal.tsx` |
-| RG-A05 | Essai 14 j à la création de l'org, jamais de réessai. | `mockApi.ts` (signup) |
-| RG-A06 | (voir RG-A05) | — |
-| RG-A07 | OTP 6 chiffres, TTL 5 min, 5 tentatives. | `mockApi.ts` (verifyPhoneCode) |
-| RG-A08 | Canal WhatsApp, palier 1 (conversation initiée) 0 FCFA. | `AUTH_DECISIONS.md` §D2 |
-| RG-A09 | Réponse constante (pas d'énumération de comptes). | `mockApi.ts` (login, requestPhoneCode) |
-| RG-A10 | Rate limit 3/min/numéro. | `mockApi.ts` |
-| RG-A11 | Verrouillage après 5 échecs / 15 min. | `mockApi.ts` (login) |
-| RG-A12 | 401 déconnecte ; 403 ne déconnecte pas. | `store/auth.ts:151-159` |
-| RG-A13 | Purge des données locales au logout. | `store/auth.ts:238-262`, `store/localData.ts` |
-| RG-A14 | Invitation n'active rien tant qu'acceptée explicitement. | `mockApi.ts:277-287`, `store/auth.ts:112-114` |
-| RG-A15 | PIN 4-6 chiffres, distinct du téléphone et des suites triviales. | `domain/pin.ts` |
-| RG-A16 | 5 échecs PIN → verrouillage 15 min + notification owner. | `mockApi.ts:781-805` |
-| RG-A17 | 3 appareils max, révocation par owner. | `mockApi.ts` (enroll/revoke) |
-| RG-A18 | Step-up < 5 min pour actions sensibles. | `store/stepUp.ts` |
-| RG-A19 | Journal des connexions 90 j. | `mockApi.ts` (events) |
-| RG-A20 | 10 derniers événements exposés au titulaire. | `features/profil/ProfilModal.tsx` |
-| RG-A21 | Anonymisation sous 30 j à la suppression de compte. | `mockApi.ts:607-625` |
+| RG-A05 | Une org a exactement un propriétaire actif minimum (`422 OWNER_LOCKED`). | `mockApi.ts` (team) |
+| RG-A06 | Essai 14 j démarre à la création de l'org, jamais de réessai. | `mockApi.ts` (signup) |
+| RG-A07 | OTP 6 chiffres, TTL 5 min, usage unique, comparaison temps constant. | `mockApi.ts` (verifyPhoneCode) |
+| RG-A08 | 5 tentatives/code, renvoi après 30 s, 3/numéro/h, 10/IP/h, `429` + `Retry-After`. | `mockApi.ts` |
+| RG-A09 | Demande d'OTP ne révèle jamais si le numéro possède un compte (202). | `mockApi.ts` (requestPhoneCode) |
+| RG-A10 | Access token 15 min (cookie HttpOnly), refresh rotatif, réutilisation = révocation famille. | `services/http/httpClient.ts` |
+| RG-A11 | Durées refresh : owner/manager 30 j glissant/90 j absolu ; appareil 90/180 j. | `AUTH_DECISIONS.md` §3.3 |
+| RG-A12 | `401 UNAUTHENTICATED` déconnecte ; `401 STEP_UP_REQUIRED` et `403` ne déconnectent pas. | `store/auth.ts:151-159` |
+| RG-A13 | Purge locale complète au logout (toutes collections, toutes orgs). | `store/auth.ts:238-262`, `store/localData.ts` |
+| RG-A14 | Verrouillage d'inactivité : 15 min (appareil enrôlé) / 8 h (personnel). | `useInactivityLock` (D6) |
+| RG-A15 | Enrôlement d'appareil : owner + step-up, 3 max/org, nommé + dernière activité. | `mockApi.ts` (devices) |
+| RG-A16 | PIN 4-6 chiffres, distinct du tél. et des suites triviales ; 5 échecs -> verrouillage 15 min + notif owner. | `domain/pin.ts`, `mockApi.ts:781-805` |
+| RG-A17 | Révocation d'appareil immédiate + effacement cache ; hors ligne au plus 24 h. | `mockApi.ts` (revoke) |
+| RG-A18 | Caissier ne s'auto-enrôle pas, ne change pas de rôle, ne voit pas les marges. | `domain/permissions.ts` |
+| RG-A19 | Limitation globale : 5 échecs/identifiant/15 min, 20/IP/15 min, `429` + `Retry-After`. | `mockApi.ts` (login) |
+| RG-A20 | Journal de connexion 90 j, 10 derniers exposés au titulaire. | `mockApi.ts` (events), `features/profil/ProfilModal.tsx` |
+| RG-A21 | Suppression de compte : anonymisation sous 30 j, conservation 10 ans anonymisée. | `mockApi.ts:607-625` |
 | RG-A22 | Aucun secret dans les URLs/logs ; démo expose `demo1234`. | `mockApi.ts` |
-| RG-A23 | SMS repli désactivé par défaut. | `AUTH_DECISIONS.md` §D2 |
-| RG-A24 | Budget OTP 20/org/mois, plafond global, dégradation gracieuse. | `AUTH_DECISIONS.md` §7 |
-| RG-A25 | (réservé) | — |
-| RG-A26 | Mot de passe 12 car. min, liste noire. | `domain/password.ts` |
-| RG-A27 | Vérification e-mail par code 6 chiffres, TTL 10 min, 5 essais, 3/h. | `mockApi.ts` (email verify) |
-| RG-A28 | Grâce de 72 h non bloquante. | `types/index.ts:146-150` |
-| RG-A29 | Politique de mot de passe (longueur + liste noire). | `domain/password.ts` |
+| RG-A23 | Canal WhatsApp (2 paliers) ; SMS désactivé par défaut, max 2/org/mois. | `AUTH_DECISIONS.md` section 3.6 |
+| RG-A24 | Budget OTP 20/org/mois (alerte 80 %, `429` a 100 %), plafond global, dégradation. | `AUTH_DECISIONS.md` section 3.6 |
+| RG-A25 | Séparation des usages : auth != marketing/notifications (template `utility` distinct). | `AUTH_DECISIONS.md` section 3.6 |
+| RG-A26 | Changement de numéro : vérification ancien + nouveau + step-up ; notif a l'ancien. | `AUTH_DECISIONS.md` section 3.6 |
+| RG-A27 | Vérification e-mail par code : 6 chiffres, TTL 10 min, 5 essais, 3/adresse/h. | `mockApi.ts` (email verify) |
+| RG-A28 | Grâce de 72 h non bloquante (caisse jamais bloquée par e-mail non vérifié). | `types/index.ts:146-150` |
+| RG-A29 | Mot de passe : 12-64 car., pas de composition, liste noire + Pwned, Argon2id, pas de question secrète. | `domain/password.ts` |
+
+> Invitation : la règle « une invitation n'active rien tant qu'elle n'est pas acceptée explicitement » est documentée dans `AUTH_DECISIONS.md` (milestone #20) sans numéro RG dédié ; appliquée par `requireMembership` (`mockApi.ts:277-287`) et `store/auth.ts:112-114`.
 
 ---
-
 ## 8. Décisions D1–D9
 
 | # | Décision |
