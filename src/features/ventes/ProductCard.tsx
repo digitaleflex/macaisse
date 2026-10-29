@@ -54,7 +54,7 @@ export function ProductCard({ product, quantityInCart, onAdd }: ProductCardProps
         <div className="flex items-end justify-between gap-2 mt-auto">
           <span className="font-num font-bold text-[15px] text-ink-900">
             {formatFCFA(product.price, { withSuffix: false })}
-            <span className="text-[11px] font-semibold text-slate-400 ml-1">{t.common.currencyShort}</span>
+            <span className="text-[11px] font-semibold text-muted ml-1">{t.common.currencyShort}</span>
           </span>
           <span className="size-8 rounded-lg bg-slate-100 text-ink-900 flex items-center justify-center group-hover:bg-ink-900 group-hover:text-zest-400 transition-colors">
             <Icon name="add" size={20} />

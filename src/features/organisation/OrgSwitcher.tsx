@@ -193,7 +193,7 @@ export function OrgSwitcher() {
           aria-label={t.org.yourSpaces}
           className="absolute left-0 right-0 top-full mt-2 z-50 rounded-2xl bg-white text-ink-900 shadow-overlay ring-1 ring-black/5 p-2 animate-pop"
         >
-          <div className="px-2.5 pt-1.5 pb-2 flex items-center justify-between text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+          <div className="px-2.5 pt-1.5 pb-2 flex items-center justify-between text-[11px] font-semibold uppercase tracking-wider text-muted">
             {t.org.yourSpaces}
             <span className="normal-case tracking-normal font-medium">{t.org.count(memberships.length)}</span>
           </div>

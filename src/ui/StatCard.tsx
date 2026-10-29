@@ -19,7 +19,7 @@ export interface StatCardProps {
 
 const ICON_TONE: Record<StatTone, string> = {
   neutral: 'bg-slate-100 text-slate-600',
-  brand: 'bg-brand-50 text-brand-600',
+  brand: 'bg-brand-50 text-brand-700',
   danger: 'bg-rose-50 text-rose-600',
   warning: 'bg-amber-50 text-amber-600',
   info: 'bg-sky-50 text-sky-600',
@@ -51,7 +51,7 @@ export function StatCard({ label, value, icon, tone = 'neutral', trend, hint, fo
             <span
               className={cn(
                 'inline-flex items-center gap-0.5 font-semibold shrink-0',
-                trend.positive ? 'text-brand-600' : 'text-rose-600'
+                trend.positive ? 'text-brand-700' : 'text-rose-600'
               )}
             >
               <Icon name={trend.positive ? 'arrow_upward' : 'arrow_downward'} size={14} />

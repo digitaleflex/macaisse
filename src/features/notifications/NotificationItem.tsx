@@ -10,7 +10,7 @@ const TYPE_STYLE: Record<NotificationType, { icon: string; tone: string }> = {
   alert: { icon: 'error', tone: 'bg-rose-50 text-rose-600' },
   warning: { icon: 'warning', tone: 'bg-amber-50 text-amber-600' },
   info: { icon: 'info', tone: 'bg-sky-50 text-sky-600' },
-  success: { icon: 'check_circle', tone: 'bg-brand-50 text-brand-600' },
+  success: { icon: 'check_circle', tone: 'bg-brand-50 text-brand-700' },
 };
 
 /** Ligne de notification du tiroir. */
@@ -32,7 +32,7 @@ export function NotificationItem({ notification, onSelect }: NotificationItemPro
       <span className="flex-1 min-w-0">
         <span className="flex items-start justify-between gap-2">
           <span className={cn('text-sm text-ink-900', read ? 'font-medium' : 'font-semibold')}>{title}</span>
-          <span className="text-[11px] text-slate-400 whitespace-nowrap mt-0.5">{time}</span>
+          <span className="text-[11px] text-muted whitespace-nowrap mt-0.5">{time}</span>
         </span>
         <span className="block text-[13px] text-slate-500 mt-0.5 line-clamp-2">{notification.message ?? notification.description}</span>
       </span>

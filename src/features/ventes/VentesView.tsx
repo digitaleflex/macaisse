@@ -151,7 +151,7 @@ export function VentesView() {
         <div className="flex items-center justify-between">
           <h2 className="font-display font-bold text-[15px] text-ink-900">
             {t.pos.catalogTitle}
-            <span className="ml-2 text-sm font-medium text-slate-400 font-num">{t.pos.catalogCount(filteredProducts.length)}</span>
+            <span className="ml-2 text-sm font-medium text-muted font-num">{t.pos.catalogCount(filteredProducts.length)}</span>
           </h2>
           <div className="hidden sm:flex items-center gap-1.5 text-xs text-slate-500">
             <span>{t.pos.acceptedMethods}</span>

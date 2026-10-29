@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { cn } from './cn';
 import { Icon } from './Icon';
 
-export type BadgeTone = 'success' | 'warning' | 'danger' | 'info' | 'neutral' | 'dark' | 'zest';
+export type BadgeTone = 'success' | 'warning' | 'danger' | 'info' | 'neutral' | 'dark' | 'zest' | 'zest-soft';
 
 export interface BadgeProps {
   tone?: BadgeTone;
@@ -21,6 +21,7 @@ const TONE_CLASS: Record<BadgeTone, string> = {
   neutral: 'bg-slate-100 text-slate-600 ring-slate-500/10',
   dark: 'bg-ink-900 text-white ring-ink-900',
   zest: 'bg-zest-400/15 text-zest-300 ring-zest-400/30',
+  'zest-soft': 'bg-zest-400/25 text-ink-900 ring-zest-500/30',
 };
 
 const DOT_CLASS: Record<BadgeTone, string> = {
@@ -31,6 +32,7 @@ const DOT_CLASS: Record<BadgeTone, string> = {
   neutral: 'bg-slate-400',
   dark: 'bg-zest-400',
   zest: 'bg-zest-400',
+  'zest-soft': 'bg-zest-500',
 };
 
 export function Badge({ tone = 'neutral', dot = false, icon, size = 'sm', className, children }: BadgeProps) {

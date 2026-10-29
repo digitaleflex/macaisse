@@ -141,7 +141,7 @@ export function CreditsView() {
           <div className="rounded-card bg-surface border border-line shadow-card p-5">
             <div className="flex items-center justify-between text-sm text-slate-500">
               {t.credits.summary.debtors}
-              <Icon name="group" size={20} className="text-slate-400" />
+              <Icon name="group" size={20} className="text-slate-500" />
             </div>
             <div className="font-num font-bold text-2xl text-ink-900 mt-2">{activeRows.length}</div>
             <div className="text-xs text-slate-500">{t.credits.summary.debtorsHint(activeRows.length)}</div>

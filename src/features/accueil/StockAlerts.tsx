@@ -74,7 +74,7 @@ export function StockAlerts() {
                 <span className="block text-sm font-semibold text-ink-900 truncate">{item.title}</span>
                 <span className="block text-xs text-slate-500 truncate mt-0.5">{item.text}</span>
               </span>
-              <Icon name="chevron_right" size={20} className="text-slate-400 group-hover:translate-x-0.5 transition-transform" />
+              <Icon name="chevron_right" size={20} className="text-slate-500 group-hover:translate-x-0.5 transition-transform" />
             </button>
           ))}
         </div>

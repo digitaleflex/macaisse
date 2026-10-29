@@ -44,8 +44,8 @@ export function Topbar() {
         </button>
 
         <div className="hidden lg:block min-w-0 flex-1">
-          <div className="text-xs text-slate-500">
-            {business.name} <span className="text-slate-300 mx-1">/</span>
+          <div className="text-xs text-muted">
+            {business.name} <span className="text-slate-500 mx-1">/</span>
             <span className="text-ink-900 font-semibold">{page.title}</span>
           </div>
         </div>

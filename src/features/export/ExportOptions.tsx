@@ -78,7 +78,7 @@ export function ExportOptions(props: ExportOptionsProps) {
           {showSales && (
             <div>
               <div className="text-[11px] text-slate-500">{t.exportModal.income}</div>
-              <div className="font-num font-bold text-sm text-brand-600">+{formatFCFA(props.totalSales)}</div>
+              <div className="font-num font-bold text-sm text-brand-700">+{formatFCFA(props.totalSales)}</div>
             </div>
           )}
           {showExpenses && (

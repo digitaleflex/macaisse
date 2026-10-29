@@ -3,6 +3,7 @@ import type { SeriesPoint } from '@/types';
 import { t } from '@/content';
 import { formatFCFA } from '@/domain/money';
 import { Card, EmptyState } from '@/ui';
+import { chartColors, palette } from '@/design/tokens';
 
 /** Solde net quotidien (recettes − dépenses), barres positives / négatives. */
 export interface CashFlowChartProps {
@@ -22,7 +23,7 @@ export function CashFlowChart({ data }: CashFlowChartProps) {
             {t.bilan.cashflow.surplus}
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="size-2.5 rounded-sm bg-rose-400" />
+            <span className="size-2.5 rounded-sm bg-rose-500" />
             {t.bilan.cashflow.deficit}
           </span>
         </div>
@@ -34,10 +35,10 @@ export function CashFlowChart({ data }: CashFlowChartProps) {
         <div className="h-52 -mx-2">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={data} margin={{ top: 8, right: 8, left: 8, bottom: 0 }}>
-              <XAxis dataKey="label" stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} interval="preserveStartEnd" minTickGap={8} />
-              <ReferenceLine y={0} stroke="#cbd5e1" />
+              <XAxis dataKey="label" stroke={chartColors.axis} fontSize={11} tickLine={false} axisLine={false} interval="preserveStartEnd" minTickGap={8} />
+              <ReferenceLine y={0} stroke={palette.slate300} />
               <Tooltip
-                cursor={{ fill: '#f1f5f9' }}
+                cursor={{ fill: chartColors.cursor }}
                 content={({ active, payload }) => {
                   if (!active || !payload || payload.length === 0) return null;
                   const point = payload[0].payload as SeriesPoint;
@@ -51,7 +52,7 @@ export function CashFlowChart({ data }: CashFlowChartProps) {
               />
               <Bar dataKey="value" radius={[4, 4, 4, 4]} maxBarSize={28}>
                 {data.map((point) => (
-                  <Cell key={point.date} fill={point.value >= 0 ? '#10b981' : '#fb7185'} />
+                  <Cell key={point.date} fill={point.value >= 0 ? chartColors.positive : chartColors.negative} />
                 ))}
               </Bar>
             </BarChart>

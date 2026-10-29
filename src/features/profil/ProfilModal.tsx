@@ -99,7 +99,7 @@ export function ProfilModal() {
             <span className="block text-sm font-semibold text-ink-900">{t.team.title}</span>
             <span className="block text-xs text-slate-500">{t.roleDescriptions.owner}</span>
           </span>
-          <Icon name="chevron_right" size={20} className="text-slate-400" />
+          <Icon name="chevron_right" size={20} className="text-slate-500" />
         </button>
       )}
 
