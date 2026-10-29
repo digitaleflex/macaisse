@@ -9,6 +9,89 @@
 
 ---
 
+## 0. Vue d'ensemble — diagrammes de flux
+
+### 0.1 Connexion et ouverture d'un espace
+
+```mermaid
+flowchart TD
+    A[Écran d'accès] -->|e-mail + mot de passe| B[POST /auth/login]
+    A -->|Google| C[POST /auth/google PKCE]
+    A -->|téléphone si VITE_AUTH_PHONE=on| D[POST /auth/otp/request]
+    D --> E[POST /auth/otp/verify]
+    B --> F[AuthResult: user + memberships + expiresAt]
+    C --> F
+    E --> F
+    F --> G{memberships ?}
+    G -->|vide| H[status=error, noOrgText]
+    G -->|>=1| I[pickOrganization]
+    I --> J[activateOrganization]
+    J --> K[GET /orgs/:orgId/session]
+    K -->|200| L[scopeStoresToOrganization + loadCollections]
+    K -->|401| M[logout]
+    K -->|403| N[status=error, accessLost, pas de déconnexion]
+    L --> O[session prête - caisse]
+```
+
+### 0.2 Restauration de session au démarrage
+
+```mermaid
+flowchart TD
+    S[App mount] --> R[restoreSession]
+    R --> M{user persisté ?}
+    M -->|non| L[LoginScreen]
+    M -->|oui| ME[GET /auth/me]
+    ME -->|200| A[applyAuth → pickOrganization → activateOrganization]
+    ME -->|401| LOGOUT[logout + purge locale]
+    ME -->|403| ERR[status=error, accessLost, liste des espaces]
+    A -->|succès| O[caisse]
+    A -->|échec| SP[SplashScreen : choisir un espace ou se déconnecter]
+```
+
+### 0.3 Changement d'espace (switchOrganization)
+
+```mermaid
+flowchart TD
+    U[OrgSwitcher] --> SW[switchOrganization orgId]
+    SW --> SAME{même org + session ?}
+    SAME -->|oui| RE[GET /orgs/:orgId/session]
+    RE -->|200| UP[setSession] --> OK[true]
+    RE -->|403| ACC[status=error, accessLost] --> KO[false]
+    SAME -->|non| ACT[activateOrganization]
+    ACT --> V[GET /orgs/:orgId/session validation]
+    V -->|403/404| KEEP[tenant inchangé, status=error] --> KO
+    V -->|200| SW2[setActiveOrganization + setCurrentOrganization + scopeStores + loadCollections]
+    SW2 -->|succès| OK
+    SW2 -->|échec réseau| RB[restoreOrganization : rollback tenant + stores] --> KO
+```
+
+### 0.4 Enrôlement d'appareil et PIN (D6)
+
+```mermaid
+flowchart TD
+    O[Owner authentifié + step-up] --> E[POST /orgs/:orgId/devices]
+    E --> ENR[DeviceEnrollment: device + pinSetupToken]
+    ENR --> PIN[POST /orgs/:orgId/members/:userId/pin]
+    PIN --> DEV[Appareil enrôlé, PIN défini]
+    DEV --> LOCK[15 min d'inactivité → LockScreen]
+    LOCK --> VERIFY{PIN local}
+    VERIFY -->|ok| OPEN[Caisse déverrouillée]
+    VERIFY -->|5 échecs| BLOCK[Verrouillage 15 min + notif owner]
+    BLOCK --> OTP[OTP du titulaire ou nouveau PIN par owner]
+```
+
+### 0.5 Suppression de compte (RG-A21)
+
+```mermaid
+flowchart TD
+    U[Profil → Supprimer] --> M[DeleteAccountModal: mot de passe + SUPPRIMER]
+    M --> D[POST /auth/account/delete]
+    D -->|200| ANO[Anonymisation sous 30 j, identifiants effacés]
+    D -->|401/403| ERR[message, pas de suppression]
+    ANO --> LOGOUT[logout + purge locale]
+```
+
+---
 ## 1. Acteurs et rôles
 
 | Rôle | Code | Périmètre |
