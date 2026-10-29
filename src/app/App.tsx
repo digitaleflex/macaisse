@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, type ComponentType } from 'react';
+import { lazy, Suspense, useEffect, useState, type ComponentType } from 'react';
 import type { TabType } from '@/types';
 import { t } from '@/content';
 import { canAccessTab } from '@/domain/permissions';
@@ -13,7 +13,7 @@ import { NotificationDrawer } from '@/features/notifications';
 import { OnboardingModal } from '@/features/onboarding';
 import { TeamModal } from '@/features/equipe';
 import { api, flushSyncQueue } from '@/services';
-import { logout, reloadOrganization, restoreSession } from '@/store/auth';
+import { logout, reloadOrganization, restoreSession, switchOrganization } from '@/store/auth';
 import { selectIsAuthenticated, useAuthStore } from '@/store/useAuthStore';
 import { selectSession, useSessionStore } from '@/store/useSessionStore';
 import { selectTab, useUiStore } from '@/store/useUiStore';
@@ -52,8 +52,20 @@ const VIEWS: Record<TabType, ComponentType> = {
 function SplashScreen() {
   const status = useSessionStore((state) => state.status);
   const error = useSessionStore((state) => state.error);
+  const memberships = useAuthStore((state) => state.memberships);
+  const [switching, setSwitching] = useState<string | null>(null);
+
+  const trySwitch = async (organizationId: string) => {
+    setSwitching(organizationId);
+    try {
+      await switchOrganization(organizationId);
+    } finally {
+      setSwitching(null);
+    }
+  };
+
   return (
-    <div className="min-h-dvh flex flex-col items-center justify-center gap-5 bg-canvas p-6">
+    <div className="min-h-dvh flex flex-col items-center justify-center gap-5 bg-canvas p-6" role={status === 'error' ? 'alert' : 'status'} aria-live={status === 'error' ? 'assertive' : 'polite'}>
       <BrandMark className="size-14" />
       {status === 'error' ? (
         <EmptyState
@@ -61,13 +73,30 @@ function SplashScreen() {
           title={t.app.loadErrorTitle}
           description={error ?? undefined}
           action={
-            <div className="flex gap-2">
-              <Button variant="secondary" icon="logout" onClick={() => void logout()}>
-                {t.auth.logout}
-              </Button>
-              <Button icon="refresh" onClick={() => void reloadOrganization()}>
-                {t.app.retry}
-              </Button>
+            <div className="flex flex-col items-center gap-2 w-full max-w-xs">
+              {memberships.length > 1 && (
+                <div className="w-full flex flex-col gap-2" role="group" aria-label={t.org.switcher}>
+                  {memberships.map((m) => (
+                    <Button
+                      key={m.organizationId}
+                      variant="secondary"
+                      loading={switching === m.organizationId}
+                      disabled={switching !== null}
+                      onClick={() => void trySwitch(m.organizationId)}
+                    >
+                      {m.organizationName}
+                    </Button>
+                  ))}
+                </div>
+              )}
+              <div className="flex gap-2">
+                <Button variant="secondary" icon="logout" onClick={() => void logout()}>
+                  {t.auth.logout}
+                </Button>
+                <Button icon="refresh" onClick={() => void reloadOrganization()}>
+                  {t.app.retry}
+                </Button>
+              </div>
             </div>
           }
         />

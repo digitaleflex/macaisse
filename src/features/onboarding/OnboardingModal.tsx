@@ -28,7 +28,7 @@ export function OnboardingModal() {
   const [phone, setPhone] = useState(business?.phone || session?.user.phone || '');
   const [activity, setActivity] = useState(business?.activity ?? '');
 
-  if (dismissed || !session || !needsOnboarding(session.business)) return null;
+  if (dismissed || !session || session.role === 'cashier' || !needsOnboarding(session.business)) return null;
 
   const next = () => {
     if (name.trim().length < 2) {

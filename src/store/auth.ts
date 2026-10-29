@@ -185,8 +185,14 @@ export async function restoreSession(): Promise<void> {
   try {
     await applyAuth(await api.auth.me());
   } catch (error) {
-    if (isApiError(error) && (error.status === 401 || error.status === 403)) await logout();
-    else useSessionStore.getState().setStatus('error', errorMessage(error, t.auth.errors.generic));
+    if (isApiError(error) && error.status === 401) await logout();
+    else if (isApiError(error) && error.status === 403) {
+      // Accès perdu à l'espace courant : on ne déconnecte PAS (RG-A12), on
+      // laisse l'utilisateur choisir un autre espace depuis l'écran de secours.
+      useSessionStore.getState().setStatus('error', t.auth.errors.accessLost);
+    } else {
+      useSessionStore.getState().setStatus('error', errorMessage(error, t.auth.errors.generic));
+    }
   }
 }
 
@@ -247,8 +253,18 @@ export async function verifyEmail(code: string): Promise<void> {
 }
 
 export async function switchOrganization(organizationId: string): Promise<boolean> {
+  // Revalider l'accès à chaque bascule, même pour l'espace déjà courant : un
+  // membre peut avoir été retiré entre-temps, et le masquer renverrait un 403
+  // hors contexte au prochain appel métier (RG-A12 : pas de déconnexion).
   if (organizationId === useAuthStore.getState().currentOrganizationId && useSessionStore.getState().session) {
-    return true;
+    try {
+      const loaded = await api.session.get(organizationId);
+      useSessionStore.getState().setSession(loaded);
+      return true;
+    } catch (error) {
+      useSessionStore.getState().setStatus('error', errorMessage(error, t.auth.errors.accessLost));
+      return false;
+    }
   }
   return activateOrganization(organizationId);
 }

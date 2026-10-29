@@ -1,4 +1,4 @@
-// Contenu textuel de l'interface (français) — SOURCE UNIQUE de tous les libellés,
+﻿// Contenu textuel de l'interface (français) — SOURCE UNIQUE de tous les libellés,
 // messages, placeholders et toasts. Aucun composant n'écrit de texte en dur :
 // il lit `t.<section>.<clé>`. Les textes paramétrés sont des fonctions pures.
 // Pour une nouvelle langue : dupliquer ce fichier en respectant le type `Content`.
@@ -776,6 +776,7 @@ export const fr = {
       invitationNotFound: 'Cette invitation n’existe plus ou a déjà été acceptée.',
       emailTaken: 'Un compte existe déjà avec cette adresse e-mail.',
       sessionExpired: 'Votre session a expiré, reconnectez-vous.',
+      accessLost: "Vous avez perdu l'accès à cet espace. Choisissez un autre espace ou reconnectez-vous.",
       forbidden: 'Vous n’avez pas accès à cette organisation.',
       notFound: 'Élément introuvable.',
       passwordShort: 'Le mot de passe doit contenir au moins 12 caractères.',
