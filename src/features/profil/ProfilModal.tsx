@@ -297,7 +297,7 @@ export function ProfilModal() {
                   <Icon
                     name={event.result === 'success' ? 'check_circle' : 'error'}
                     size={16}
-                    className={event.result === 'success' ? 'text-brand-600' : 'text-rose-500'}
+                    className={event.result === 'success' ? 'text-brand-700' : 'text-rose-500'}
                   />
                   <span className="min-w-0 flex-1">
                     <span className="block text-ink-900 truncate">{t.connections.methods[event.method]}</span>

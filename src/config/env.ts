@@ -17,6 +17,8 @@ export interface AppEnv {
    * crédits WhatsApp/SMS ne sont pas provisionnés. `VITE_AUTH_PHONE=on` la réaffiche.
    */
   phoneLogin: boolean;
+  /** Vrai en build de production : le mode par défaut bascule sur `http`. */
+  production: boolean;
 }
 
 type RawEnv = Record<string, string | boolean | undefined>;
@@ -35,14 +37,54 @@ function readNumber(raw: RawEnv, key: string, fallback: number): number {
   return Number.isFinite(value) && value >= 0 ? value : fallback;
 }
 
-export function readEnv(raw: RawEnv = readRaw()): AppEnv {
-  const mode = readString(raw, 'VITE_API_MODE', 'mock');
+/** URL manifestement factice : mieux vaut refuser de démarrer que viser dans le vide. */
+function isPlaceholderBaseUrl(baseUrl: string): boolean {
+  return (
+    baseUrl === '' ||
+    baseUrl === '/api' ||
+    baseUrl === '#' ||
+    baseUrl.includes('example.com') ||
+    baseUrl.includes('api.example')
+  );
+}
+
+export interface ReadEnvOptions {
+  /** Build de production : `http` devient le défaut, les mocks doivent être demandés. */
+  production?: boolean;
+}
+
+/**
+ * Résout la configuration.
+ *
+ * Règle de sûreté : en production, le défaut est `http` — un oubli de variable ne
+ * doit jamais expédier des données de démonstration à de vrais utilisateurs.
+ * Pour un déploiement de démonstration, il faut l'écrire explicitement :
+ * `VITE_API_MODE=mock`.
+ */
+export function readEnv(raw: RawEnv = readRaw(), options: ReadEnvOptions = {}): AppEnv {
+  const production = options.production ?? (raw.PROD === true || raw.PROD === 'true');
+  const requested = readString(raw, 'VITE_API_MODE', '').toLowerCase();
+  const apiMode: ApiMode =
+    requested === 'http' ? 'http' : requested === 'mock' ? 'mock' : production ? 'http' : 'mock';
+
+  const apiBaseUrl = readString(raw, 'VITE_API_BASE_URL', '/api').replace(/\/+$/, '');
+
+  if (apiMode === 'http' && isPlaceholderBaseUrl(apiBaseUrl)) {
+    throw new Error(
+      'Configuration invalide : le mode « http » est actif mais VITE_API_BASE_URL est absente ou ' +
+        `factice (« ${apiBaseUrl} »). Renseignez l’URL réelle du backend, ou définissez ` +
+        'VITE_API_MODE=mock pour un déploiement de démonstration. Les mocks ne prennent pas le ' +
+        'relais silencieusement.',
+    );
+  }
+
   return {
-    apiMode: mode === 'http' ? 'http' : 'mock',
-    apiBaseUrl: readString(raw, 'VITE_API_BASE_URL', '/api').replace(/\/+$/, ''),
+    apiMode,
+    apiBaseUrl,
     mockLatencyMs: readNumber(raw, 'VITE_API_MOCK_LATENCY_MS', raw.MODE === 'test' ? 0 : 250),
     requestTimeoutMs: readNumber(raw, 'VITE_API_TIMEOUT_MS', 15000),
     phoneLogin: readString(raw, 'VITE_AUTH_PHONE', 'off') === 'on',
+    production,
   };
 }
 

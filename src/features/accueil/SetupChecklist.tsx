@@ -76,7 +76,7 @@ export function SetupChecklist() {
                 <Icon
                   name={item.done ? 'check_circle' : item.icon}
                   size={18}
-                  className={item.done ? 'text-brand-600' : 'text-slate-500'}
+                  className={item.done ? 'text-brand-700' : 'text-slate-500'}
                 />
                 <span className={`text-sm font-semibold ${item.done ? 'text-brand-700' : 'text-ink-900'}`}>
                   {item.label}

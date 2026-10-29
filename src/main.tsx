@@ -9,6 +9,12 @@ import './index.css';
 // La couche services ne connaît pas l'UI : le bootstrap décide de l'affichage.
 setErrorReporter((message) => pushToast(message, 'error'));
 
+// Enregistrement du service worker (PWA) — best-effort, jamais bloquant.
+if ('serviceWorker' in navigator && import.meta.env.PROD) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => {});
+  });
+}
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ErrorBoundary>
