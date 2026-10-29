@@ -18,6 +18,7 @@ import {
   Button,
   Card,
   EmptyState,
+  ConfirmDialog,
   Icon,
   IconButton,
   PageHeader,
@@ -161,6 +162,7 @@ export function StockView() {
   const [formInstance, setFormInstance] = useState(0);
   const [restockProduct, setRestockProduct] = useState<Product | null>(null);
   const [restockInstance, setRestockInstance] = useState(0);
+  const [pendingDelete, setPendingDelete] = useState<Product | null>(null);
 
   const lowStockCount = filterProducts(products, { status: 'faible' }).length;
   const outOfStockCount = filterProducts(products, { status: 'rupture' }).length;
@@ -216,6 +218,13 @@ export function StockView() {
   };
 
   const handleDeleteProduct = (product: Product) => {
+    setPendingDelete(product);
+  };
+
+  const confirmDeleteProduct = () => {
+    if (!pendingDelete) return;
+    const product = pendingDelete;
+    setPendingDelete(null);
     removeProduct(product.id);
     showToast(t.stock.toasts.removed(product.name));
   };
@@ -498,6 +507,13 @@ export function StockView() {
         onClose={() => setRestockProduct(null)}
         product={restockProduct}
         onSubmit={handleRestockSubmit}
+      />
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        title={t.stock.remove(pendingDelete?.name ?? '')}
+        confirmLabel={t.common.delete}
+        onConfirm={confirmDeleteProduct}
+        onClose={() => setPendingDelete(null)}
       />
     </div>
   );

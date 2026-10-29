@@ -14,6 +14,7 @@ import { OnboardingModal } from '@/features/onboarding';
 import { TeamModal } from '@/features/equipe';
 import { api, flushSyncQueue } from '@/services';
 import { logout, reloadOrganization, restoreSession, switchOrganization } from '@/store/auth';
+import { alertOverdueCredits } from '@/store/useCreditsStore';
 import { selectIsAuthenticated, useAuthStore } from '@/store/useAuthStore';
 import { selectSession, useSessionStore } from '@/store/useSessionStore';
 import { selectTab, useUiStore } from '@/store/useUiStore';
@@ -53,6 +54,7 @@ function SplashScreen() {
   const status = useSessionStore((state) => state.status);
   const error = useSessionStore((state) => state.error);
   const memberships = useAuthStore((state) => state.memberships);
+  const currentOrgId = useAuthStore((state) => state.currentOrganizationId);
   const [switching, setSwitching] = useState<string | null>(null);
 
   const trySwitch = async (organizationId: string) => {
@@ -93,9 +95,11 @@ function SplashScreen() {
                 <Button variant="secondary" icon="logout" onClick={() => void logout()}>
                   {t.auth.logout}
                 </Button>
-                <Button icon="refresh" onClick={() => void reloadOrganization()}>
-                  {t.app.retry}
-                </Button>
+                {currentOrgId && (
+                  <Button icon="refresh" onClick={() => void reloadOrganization()}>
+                    {t.app.retry}
+                  </Button>
+                )}
               </div>
             </div>
           }
@@ -174,6 +178,10 @@ export default function App() {
   useEffect(() => {
     if (isOnline) void flushSyncQueue(api);
   }, [isOnline]);
+
+  useEffect(() => {
+    if (session) void alertOverdueCredits();
+  }, [session?.business.id, session]);
 
   if (!isAuthenticated) {
     return (

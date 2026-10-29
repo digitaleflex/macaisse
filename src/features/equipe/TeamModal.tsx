@@ -8,7 +8,7 @@ import { isApiError } from '@/services';
 import { useCurrentSession, usePermission } from '@/store/useSessionStore';
 import { useTeamStore } from '@/store/useTeamStore';
 import { selectModal, useUiStore } from '@/store/useUiStore';
-import { Avatar, Badge, Button, EmptyState, IconButton, Input, Modal, Select, Skeleton } from '@/ui';
+import { Avatar, Badge, Button, ConfirmDialog, EmptyState, IconButton, Input, Modal, Select, Skeleton } from '@/ui';
 
 /**
  * Gestion de l'équipe de l'organisation active (propriétaire uniquement) :
@@ -84,7 +84,16 @@ export function TeamModal() {
     }
   };
 
+  const [pendingRemove, setPendingRemove] = useState<TeamMember | null>(null);
+
   const handleRemove = async (member: TeamMember) => {
+    setPendingRemove(member);
+  };
+
+  const confirmRemove = async () => {
+    if (!pendingRemove) return;
+    const member = pendingRemove;
+    setPendingRemove(null);
     try {
       await removeMember(business.id, member.userId);
       showToast(t.team.removed(`${member.firstName} ${member.lastName}`));
@@ -209,6 +218,13 @@ export function TeamModal() {
           ))}
         </div>
       </section>
+      <ConfirmDialog
+        open={pendingRemove !== null}
+        title={t.team.remove(pendingRemove ? `${pendingRemove.firstName} ${pendingRemove.lastName}` : '')}
+        confirmLabel={t.common.delete}
+        onConfirm={() => void confirmRemove()}
+        onClose={() => setPendingRemove(null)}
+      />
     </Modal>
   );
 }

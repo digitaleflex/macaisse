@@ -45,6 +45,7 @@ export {
   type FormErrorProps,
 } from './Feedback';
 export { Modal, type ModalProps, type ModalSize, type ModalHeaderVariant } from './Modal';
+export { ConfirmDialog, type ConfirmDialogProps } from './ConfirmDialog';
 export { Drawer, type DrawerProps } from './Drawer';
 export { Toast, ToastHost } from './Toast';
 export { BrandMark } from './BrandMark';

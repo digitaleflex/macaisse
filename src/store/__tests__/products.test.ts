@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+﻿import { beforeEach, describe, expect, it } from 'vitest';
 import type { Product, ProductInput } from '@/types';
 import {
   retailValueOf,
@@ -86,25 +86,6 @@ describe('useProductsStore — CRUD', () => {
   });
 });
 
-describe('useProductsStore — decrementStock', () => {
-  beforeEach(reset);
-
-  it('décrémente et borne le stock à 0 (jamais négatif)', () => {
-    useProductsStore.setState({ products: [makeProduct({ id: 'p1', stock: 2 })] });
-    useProductsStore.getState().decrementStock([{ productId: 'p1', quantity: 5 }]);
-    expect(useProductsStore.getState().products[0].stock).toBe(0);
-  });
-
-  it('cumule les mises à jour dupliquées et ignore les produits inconnus', () => {
-    useProductsStore.setState({ products: [makeProduct({ id: 'p1', stock: 10 })] });
-    useProductsStore.getState().decrementStock([
-      { productId: 'p1', quantity: 2 },
-      { productId: 'p1', quantity: 3 },
-      { productId: 'inconnu', quantity: 9 },
-    ]);
-    expect(useProductsStore.getState().products[0].stock).toBe(5);
-  });
-});
 
 describe('statut de stock dérivé', () => {
   beforeEach(() => {

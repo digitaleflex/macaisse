@@ -1,6 +1,5 @@
 // Configuration d'exécution lue depuis les variables Vite (`VITE_*`).
-// Point d'entrée unique : aucun autre module ne lit `import.meta.env` directement
-// (à l'exception de `lib/ai/client.ts`, historique).
+// Point d'entrée unique : aucun autre module ne lit `import.meta.env` directement.
 
 export type ApiMode = 'mock' | 'http';
 

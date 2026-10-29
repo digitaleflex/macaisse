@@ -1,4 +1,4 @@
-// Store des crédits clients. Statut, paiements et synthèse sont calculés par
+﻿// Store des crédits clients. Statut, paiements et synthèse sont calculés par
 // `@/domain/credits`.
 
 import { create } from 'zustand';
@@ -140,3 +140,19 @@ function toCredit(value: unknown): ClientCredit | null {
 
   return credit;
 }
+
+export function alertOverdueCredits(): void {
+  const credits = useCreditsStore.getState().credits;
+  const push = useNotificationsStore.getState().push;
+  for (const credit of credits) {
+    if (computeCreditStatus(credit.remainingAmount, credit.totalInitial, credit.dueDate) === 'En retard') {
+      push({
+        title: t.notifications.feed.creditOverdue(credit.clientName),
+        description: t.notifications.feed.creditOverdueText,
+        type: 'warning',
+        relatedTab: 'credits',
+      });
+    }
+  }
+}
+

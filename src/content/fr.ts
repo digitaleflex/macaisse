@@ -644,6 +644,8 @@ export const fr = {
       creditCreatedText: (amount: string) => `${amount} à recouvrer.`,
       creditSettled: (name: string) => `Crédit soldé : ${name}`,
       creditSettledText: 'La créance est intégralement réglée.',
+      creditOverdue: (name: string) => `Échéance dépassée : ${name}`,
+      creditOverdueText: 'La créance est en retard — à recouvrer.',
     },
     title: 'Notifications',
     markAll: 'Tout marquer comme lu',

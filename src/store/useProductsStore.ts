@@ -27,8 +27,6 @@ export interface ProductsState {
   removeProduct: (id: string) => void;
   /** Exception française si l'id est inconnu ou la quantité ≤ 0. */
   restock: (id: string, quantity: number) => void;
-  /** Décrémente le stock (usage ventes) : ne lève jamais, borne à 0. */
-  decrementStock: (updates: { productId: string; quantity: number }[]) => void;
   setProducts: (products: Product[]) => void;
 }
 
@@ -89,22 +87,6 @@ export const useProductsStore = create<ProductsState>()(
           ),
         }));
         syncRemote((api) => api.products.restock(id, quantity), 'Réapprovisionnement non synchronisé.');
-      },
-
-      decrementStock: (updates) => {
-        if (updates.length === 0) return;
-        const deltas = new Map<string, number>();
-        for (const { productId, quantity } of updates) {
-          deltas.set(productId, (deltas.get(productId) ?? 0) + quantity);
-        }
-        set((state) => ({
-          products: state.products.map((product) => {
-            const delta = deltas.get(product.id);
-            if (!delta) return product;
-            const stock = Math.max(0, product.stock - delta);
-            return sanitizeProduct({ ...product, stock });
-          }),
-        }));
       },
 
       setProducts: (products) => set({ products: products.map(sanitizeProduct) }),

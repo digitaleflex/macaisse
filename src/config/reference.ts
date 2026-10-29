@@ -117,4 +117,4 @@ export const QUICK_RESTOCK_STEPS = [5, 10, 20] as const;
 export const QUICK_CREDIT_PAYMENTS = [5000, 10000, 20000] as const;
 
 /** Mot de passe attribué aux membres invités en mode démo (voir `mocks/`). */
-export const DEMO_INVITE_PASSWORD = 'demo1234';
+export { DEMO_PASSWORD as DEMO_INVITE_PASSWORD } from '@/mocks/fixtures/accounts';
