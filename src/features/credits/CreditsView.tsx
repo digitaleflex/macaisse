@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+﻿import { useMemo, useState } from 'react';
 import type { ClientCredit, CreditStatus } from '@/types';
 import { t } from '@/content';
 import { appliedPaymentAmount, creditProgress, creditRows, creditSummary } from '@/domain/credits';
@@ -117,7 +117,7 @@ export function CreditsView() {
           <div className="absolute -right-10 -bottom-20 size-64 rounded-full bg-zest-400/15 blur-3xl pointer-events-none" />
           <div className="relative h-full flex flex-col justify-between gap-8">
             <div>
-              <div className="flex items-center gap-2 text-sm text-slate-400">
+              <div className="flex items-center gap-2 text-sm text-slate-500">
                 <Icon name="account_balance_wallet" size={18} />
                 {t.credits.summary.outstanding}
               </div>
@@ -125,7 +125,7 @@ export function CreditsView() {
             </div>
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
-                <span className="text-slate-400">{t.credits.summary.recovered}</span>
+                <span className="text-slate-500">{t.credits.summary.recovered}</span>
                 <span className="font-num font-bold text-zest-400">{formatFCFA(summary.settled)}</span>
               </div>
               <ProgressBar value={recoveredRatio} tone="zest" className="bg-white/10 h-2" label={t.credits.summary.recovered} />

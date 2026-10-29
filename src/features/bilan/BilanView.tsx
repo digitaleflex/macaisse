@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+﻿import { useMemo, useState } from 'react';
 import type { SeriesPoint } from '@/types';
 import { t } from '@/content';
 import { addDays, parseDate } from '@/domain/dates';
@@ -114,16 +114,16 @@ export function BilanView() {
         <div className="absolute -left-10 -top-24 size-72 rounded-full bg-brand-500/20 blur-3xl pointer-events-none" />
         <div className="relative grid lg:grid-cols-[1.4fr_1fr_1fr_1fr] gap-6 lg:gap-0 lg:divide-x lg:divide-white/10">
           <div className="lg:pr-6">
-            <div className="text-sm text-slate-400">{t.bilan.netTitle(periodLabel)}</div>
+            <div className="text-sm text-slate-500">{t.bilan.netTitle(periodLabel)}</div>
             <div className="font-num font-extrabold text-4xl mt-2 tracking-tight">
               {stats.net >= 0 ? '+' : ''}
               {formatFCFA(stats.net)}
             </div>
             <div className="mt-3">
               {growth === null ? (
-                <Badge tone="zest">{t.common.insufficientHistory}</Badge>
+                <Badge tone="zest-soft">{t.common.insufficientHistory}</Badge>
               ) : (
-                <Badge tone={growth >= 0 ? 'zest' : 'danger'} icon={growth >= 0 ? 'trending_up' : 'trending_down'}>
+                <Badge tone={growth >= 0 ? 'zest-soft' : 'danger'} icon={growth >= 0 ? 'trending_up' : 'trending_down'}>
                   {t.bilan.growth(`${growth >= 0 ? '+' : ''}${growth.toFixed(1)} %`)}
                 </Badge>
               )}
@@ -135,7 +135,7 @@ export function BilanView() {
             { label: t.bilan.margin, value: `${stats.marginRate.toFixed(1)} %`, icon: 'percent', tone: 'text-zest-400' },
           ].map((item) => (
             <div key={item.label} className="lg:px-6 flex lg:flex-col items-center lg:items-start justify-between gap-2">
-              <div className="flex items-center gap-2 text-sm text-slate-400">
+              <div className="flex items-center gap-2 text-sm text-slate-500">
                 <Icon name={item.icon} size={18} />
                 {item.label}
               </div>

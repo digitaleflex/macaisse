@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { t } from '@/content';
 import { describeError } from '@/services';
 import { completeOnboarding, needsOnboarding } from '@/store/onboarding';
@@ -61,7 +61,7 @@ export function OnboardingModal() {
       size="md"
     >
       <div className="flex flex-col gap-4">
-        <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-400">
+        <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-500">
           <span>{t.onboarding.step(step, 2)}</span>
           <span className="flex-1 h-1 rounded-full bg-slate-100 overflow-hidden">
             <span className="block h-full bg-ink-900 transition-all" style={{ width: step === 1 ? '50%' : '100%' }} />

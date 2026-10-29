@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import type { ClientCredit } from '@/types';
 import { t } from '@/content';
 import { QUICK_CREDIT_PAYMENTS } from '@/config/reference';
@@ -47,7 +47,7 @@ export function CreditPaymentModal({ credit, open, onClose, onSubmit }: CreditPa
     >
       <div className="rounded-2xl bg-ink-900 text-white p-5 bg-grid-ink flex items-center justify-between gap-3">
         <div>
-          <div className="text-xs text-slate-400">{t.credits.payment.remaining}</div>
+          <div className="text-xs text-slate-500">{t.credits.payment.remaining}</div>
           <div className="font-num font-extrabold text-2xl mt-0.5">{formatFCFA(credit.remainingAmount)}</div>
         </div>
         <Button variant="accent" size="sm" onClick={() => setAmount(credit.remainingAmount)}>

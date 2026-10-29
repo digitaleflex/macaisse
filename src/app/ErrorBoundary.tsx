@@ -1,4 +1,4 @@
-import { Component, type ErrorInfo, type ReactNode } from 'react';
+﻿import { Component, type ErrorInfo, type ReactNode } from 'react';
 import { t } from '@/content';
 import { BrandMark, Button, Icon } from '@/ui';
 import { reportError } from '@/services';
@@ -61,7 +61,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
             <h1 className="font-display font-extrabold text-xl">{t.crash.title}</h1>
           </div>
           <p className="text-sm text-slate-500 mt-2">{t.crash.text}</p>
-          <p className="text-xs text-slate-400 mt-3 font-num break-words">{this.state.error.message}</p>
+          <p className="text-xs text-slate-500 mt-3 font-num break-words">{this.state.error.message}</p>
         </div>
         <div className="flex flex-wrap items-center justify-center gap-2">
           <Button icon="refresh" onClick={this.reload}>

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+﻿import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Invitation, Membership } from '@/types';
 import { t } from '@/content';
 import { acceptInvitation, loadInvitations, switchOrganization } from '@/store/auth';
@@ -180,11 +180,11 @@ export function OrgSwitcher() {
         <Avatar initials={initialsOf(business.name)} tone="zest" size="md" />
         <span className="flex-1 min-w-0">
           <span className="block text-sm font-semibold text-white truncate">{business.name}</span>
-          <span className="block text-xs text-slate-400 truncate">
+          <span className="block text-xs text-slate-500 truncate">
             {t.roles[role]} · {business.registerLabel}
           </span>
         </span>
-        <Icon name="unfold_more" size={20} className="text-slate-400" />
+        <Icon name="unfold_more" size={20} className="text-slate-500" />
       </button>
 
       {open && (

@@ -1,4 +1,4 @@
-import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis } from 'recharts';
+﻿import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis } from 'recharts';
 import type { SeriesPoint } from '@/types';
 import { t } from '@/content';
 import { formatFCFA } from '@/domain/money';
@@ -54,7 +54,7 @@ export function SalesTrend({ data }: SalesTrendProps) {
                 const point = payload[0].payload as SeriesPoint;
                 return (
                   <div className="rounded-xl bg-ink-900 text-white px-3 py-2 text-xs shadow-overlay">
-                    <div className="text-slate-400">{point.label}</div>
+                    <div className="text-slate-500">{point.label}</div>
                     <div className="font-num font-bold">{formatFCFA(point.value)}</div>
                   </div>
                 );

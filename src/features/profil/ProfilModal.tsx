@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { t } from '@/content';
 import { parseDate } from '@/domain/dates';
 import { personDisplayName, personInitials } from '@/domain/users';
@@ -126,9 +126,9 @@ export function ProfilModal() {
             <span className="font-display font-bold text-lg">
               {personDisplayName(user.firstName, user.lastName)}
             </span>
-            <Badge tone="zest">{t.roles[role]}</Badge>
+            <Badge tone="zest-soft">{t.roles[role]}</Badge>
           </div>
-          <div className="text-sm text-slate-400 truncate">{user.email}</div>
+          <div className="text-sm text-slate-500 truncate">{user.email}</div>
           <div className="text-xs text-slate-500">{user.phone}</div>
         </div>
       </div>
@@ -289,7 +289,7 @@ export function ProfilModal() {
         <div className="rounded-2xl border border-line p-4 space-y-2">
           <p className="text-xs text-slate-500">{t.connections.subtitle}</p>
           {events.length === 0 ? (
-            <p className="text-xs text-slate-400">{t.connections.empty}</p>
+            <p className="text-xs text-slate-500">{t.connections.empty}</p>
           ) : (
             <ul className="divide-y divide-line">
               {events.map((event) => (

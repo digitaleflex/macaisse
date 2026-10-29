@@ -1,4 +1,4 @@
-import type { BillingCycle, Subscription } from '@/types';
+﻿import type { BillingCycle, Subscription } from '@/types';
 import { t } from '@/content';
 import { parseDate } from '@/domain/dates';
 import { formatFCFA } from '@/domain/money';
@@ -20,7 +20,7 @@ export function PlanCard({ subscription, cycle }: PlanCardProps) {
     <div className="relative overflow-hidden rounded-2xl bg-ink-900 text-white p-5 bg-grid-ink">
       <div className="absolute -right-12 -top-12 size-44 rounded-full bg-zest-400/20 blur-3xl pointer-events-none" />
       <div className="relative flex items-center justify-between">
-        <Badge tone="zest">{t.subscription.activePlan}</Badge>
+        <Badge tone="zest-soft">{t.subscription.activePlan}</Badge>
         {subscription.autoRenew && (
           <span className="flex items-center gap-1.5 text-xs text-zest-400 font-semibold">
             <span className="size-2 rounded-full bg-zest-400 animate-pulse" />
@@ -32,9 +32,9 @@ export function PlanCard({ subscription, cycle }: PlanCardProps) {
         <h3 className="font-display font-extrabold text-2xl">{plan.name}</h3>
         <div className="mt-1 flex items-baseline gap-1">
           <span className="font-num font-extrabold text-3xl text-zest-400">{formatFCFA(price)}</span>
-          <span className="text-sm text-slate-400">{cycle === 'monthly' ? t.subscription.perMonth : t.subscription.perYear}</span>
+          <span className="text-sm text-slate-500">{cycle === 'monthly' ? t.subscription.perMonth : t.subscription.perYear}</span>
         </div>
-        <p className="text-xs text-slate-400 mt-1">{t.subscription.nextBilling(renewalLabel, subscription.paymentMethod)}</p>
+        <p className="text-xs text-slate-500 mt-1">{t.subscription.nextBilling(renewalLabel, subscription.paymentMethod)}</p>
       </div>
       <ul className="relative mt-4 pt-4 border-t border-white/10 grid sm:grid-cols-2 gap-2 text-sm text-slate-300">
         {plan.features.map((feature) => (
