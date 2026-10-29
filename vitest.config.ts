@@ -12,6 +12,16 @@ export default defineConfig({
     globals: true,
     setupFiles: ['./src/test/setup.ts'],
     include: ['src/**/*.test.{ts,tsx}'],
+    // jsdom coûte ~350 s quand 37 workers démarrent en parallèle sur Windows :
+    // certains expiraient au démarrage et leurs fichiers de test n'étaient
+    // jamais exécutés, alors que le reste passait. On garde l'isolation par
+    // fichier (vmThreads casse `instanceof Array` : realms distincts) et on
+    // borne la concurrence.
+    maxWorkers: 4,
+    // Un worker bloqué ne doit plus faire sortir la suite en erreur après coup.
+    teardownTimeout: 10_000,
+    hookTimeout: 20_000,
+    testTimeout: 20_000,
     coverage: {
       provider: 'v8',
       reporter: ['text-summary', 'text', 'json-summary'],
