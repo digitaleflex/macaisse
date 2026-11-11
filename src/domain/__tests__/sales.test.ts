@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import type { CartLine, Product, SaleTransaction } from '../../types';
 import {
+  DEFAULT_SALES_FILTERS,
+  SELLER_UNKNOWN,
+  type SalesPeriod,
   activeSales,
   addToCart,
   assessCancellation,
@@ -8,9 +11,12 @@ import {
   cartTotals,
   completeSale,
   dailyRevenue,
+  filterSales,
   hasContactPhone,
   removeFromCart,
+  sellerOptions,
   setCartQuantity,
+  summarizeSales,
 } from '../sales';
 
 function makeProduct(overrides: Partial<Product>): Product {
@@ -408,5 +414,77 @@ describe('annulation de vente (EF-14 à EF-17, RG-09)', () => {
           .denial,
       ).toBe('already-cancelled');
     });
+  });
+});
+
+describe('historique des ventes (EF-13)', () => {
+  const NOW = new Date('2026-03-10T15:00:00');
+
+  const history: SaleTransaction[] = [
+    makeSale({ id: 'a', saleNumber: 'V-1', date: '2026-03-10', time: '09:00', amount: 1000, sellerId: 'u1', sellerName: 'Awa Fall' }),
+    makeSale({ id: 'b', saleNumber: 'V-2', date: '2026-03-10', time: '14:30', amount: 2000, sellerId: 'u2', sellerName: 'Ibou Diop', clientName: 'M. Ba' }),
+    makeSale({ id: 'c', saleNumber: 'V-3', date: '2026-03-08', time: '11:00', amount: 3000, status: 'Partiel', sellerId: 'u1', sellerName: 'Awa Fall' }),
+    makeSale({ id: 'd', saleNumber: 'V-4', date: '2026-02-01', time: '10:00', amount: 4000, status: 'Annulée' }),
+  ];
+  const ids = (list: SaleTransaction[]) => list.map((sale) => sale.id);
+
+  it('trie de la plus récente à la plus ancienne (date puis heure)', () => {
+    expect(ids(filterSales(history, DEFAULT_SALES_FILTERS, NOW))).toEqual(['b', 'a', 'c', 'd']);
+  });
+
+  it('filtre par période : aujourd’hui, 7 jours, 30 jours', () => {
+    const run = (period: SalesPeriod) => ids(filterSales(history, { ...DEFAULT_SALES_FILTERS, period }, NOW));
+    expect(run('today')).toEqual(['b', 'a']);
+    expect(run('7d')).toEqual(['b', 'a', 'c']);
+    expect(run('30d')).toEqual(['b', 'a', 'c']);
+    expect(run('all')).toEqual(['b', 'a', 'c', 'd']);
+  });
+
+  it('filtre par période personnalisée, bornes incluses', () => {
+    const custom = { ...DEFAULT_SALES_FILTERS, period: 'custom' as const };
+    expect(ids(filterSales(history, { ...custom, from: '2026-03-08', to: '2026-03-08' }, NOW))).toEqual(['c']);
+    expect(ids(filterSales(history, { ...custom, from: '2026-03-09' }, NOW))).toEqual(['b', 'a']);
+    expect(ids(filterSales(history, { ...custom, to: '2026-02-01' }, NOW))).toEqual(['d']);
+  });
+
+  it('filtre par vendeur, y compris les ventes sans vendeur enregistré', () => {
+    expect(ids(filterSales(history, { ...DEFAULT_SALES_FILTERS, seller: 'u1' }, NOW))).toEqual(['a', 'c']);
+    expect(ids(filterSales(history, { ...DEFAULT_SALES_FILTERS, seller: SELLER_UNKNOWN }, NOW))).toEqual(['d']);
+  });
+
+  it('filtre par statut', () => {
+    expect(ids(filterSales(history, { ...DEFAULT_SALES_FILTERS, status: 'Annulée' }, NOW))).toEqual(['d']);
+    expect(ids(filterSales(history, { ...DEFAULT_SALES_FILTERS, status: 'Partiel' }, NOW))).toEqual(['c']);
+  });
+
+  it('recherche par numéro de ticket ou client, sans tenir compte de la casse', () => {
+    expect(ids(filterSales(history, { ...DEFAULT_SALES_FILTERS, query: ' v-3 ' }, NOW))).toEqual(['c']);
+    expect(ids(filterSales(history, { ...DEFAULT_SALES_FILTERS, query: 'm. ba' }, NOW))).toEqual(['b']);
+  });
+
+  it('combine les filtres', () => {
+    const filters = { ...DEFAULT_SALES_FILTERS, period: '7d' as const, seller: 'u1', status: 'Partiel' as const };
+    expect(ids(filterSales(history, filters, NOW))).toEqual(['c']);
+  });
+
+  it('liste les vendeurs distincts par ordre alphabétique', () => {
+    expect(sellerOptions(history)).toEqual([
+      { key: 'u1', name: 'Awa Fall' },
+      { key: 'u2', name: 'Ibou Diop' },
+    ]);
+  });
+
+  it('résume : le total exclut les ventes annulées, qui sont comptées à part', () => {
+    expect(summarizeSales(history)).toEqual({ count: 4, cancelledCount: 1, total: 6000 });
+  });
+
+  it('enregistre le vendeur sur la vente', () => {
+    const { sale } = completeSale({
+      lines: [{ productId: 'p1', name: 'Lait', price: 1000, quantity: 1, unit: 'brique' }],
+      products: [makeProduct({ id: 'p1', stock: 5 })],
+      paymentMethod: 'Espèces',
+      seller: { id: 'u1', name: 'Awa Fall' },
+    });
+    expect(sale).toMatchObject({ sellerId: 'u1', sellerName: 'Awa Fall' });
   });
 });

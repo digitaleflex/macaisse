@@ -52,6 +52,9 @@ export interface SaleTransaction {
   clientName?: string;
   remainingAmount?: number;
   itemsCount: number;
+  /** Vendeur ayant encaissé (renseigné à la vente ; absent des ventes plus anciennes). */
+  sellerId?: string;
+  sellerName?: string;
   /**
    * Détail des articles vendus (client uniquement : le serveur détient les siens).
    * Permet de remettre le stock à jour à l'annulation ; absent pour les ventes

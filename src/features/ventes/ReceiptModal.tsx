@@ -136,7 +136,7 @@ export function ReceiptModal() {
         <div className="py-3 border-b border-dashed border-line-strong space-y-1">
           <Row label={t.receipt.ticket} value={sale.saleNumber} strong />
           <Row label={t.receipt.dateTime} value={timeLabel ? `${dateLabel} · ${timeLabel}` : dateLabel} />
-          <Row label={t.receipt.cashier} value={`${personDisplayName(user.firstName, user.lastName)} (${business.registerLabel})`} />
+          <Row label={t.receipt.cashier} value={`${sale.sellerName ?? personDisplayName(user.firstName, user.lastName)} (${business.registerLabel})`} />
           {sale.clientName && <Row label={t.receipt.client} value={sale.clientName} strong />}
         </div>
 

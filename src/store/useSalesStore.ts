@@ -78,6 +78,7 @@ export const useSalesStore = create<SalesState>()(
         const { products } = useProductsStore.getState();
         const sequence = get().sequence + 1;
         const now = new Date();
+        const user = useSessionStore.getState().session?.user;
 
         // Le domaine valide le stock et calcule la vente AVANT toute mutation.
         const { sale, products: updatedProducts } = buildSale({
@@ -86,6 +87,7 @@ export const useSalesStore = create<SalesState>()(
           paymentMethod: input.paymentMethod,
           clientName: input.clientName,
           creditAmount: input.creditAmount,
+          seller: user ? { id: user.id, name: personDisplayName(user.firstName, user.lastName) } : undefined,
           date: now,
           saleNumber: nextSaleNumber(sequence, now),
         });
@@ -245,6 +247,11 @@ function toSale(value: unknown): SaleTransaction | null {
 
   const creditId = coerceString(value.creditId);
   if (creditId.length > 0) sale.creditId = creditId;
+
+  const sellerId = coerceString(value.sellerId);
+  if (sellerId.length > 0) sale.sellerId = sellerId;
+  const sellerName = coerceString(value.sellerName);
+  if (sellerName.length > 0) sale.sellerName = sellerName;
 
   const lines = toCartLines(value.lines);
   if (lines) sale.lines = lines;

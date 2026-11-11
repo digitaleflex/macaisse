@@ -272,6 +272,23 @@ structurantes pour le backend :
 > Pour un caissier, le serveur peut omettre `costPrice` des produits renvoyés ;
 > le client ne l'affiche pas.
 
+## Historique des ventes
+
+L'écran « Caisse → Historique » (EF-13) filtre par **période** (aujourd'hui, 7 j, 30 j, tout,
+dates libres), **vendeur** et **statut** (`Validé`, `Partiel`, `En attente`, `Annulée`), avec une
+recherche par numéro de ticket ou nom du client. Il trie de la plus récente à la plus ancienne.
+
+- Chaque vente porte **`sellerId`** et **`sellerName`** : le serveur les renseigne **depuis la
+  session** (jamais depuis le corps de la requête, qui est ignoré sur ces champs). Les ventes
+  antérieures peuvent ne pas en avoir ; le client les regroupe sous « Non renseigné ».
+- Les ventes annulées restent dans `GET /sales` (voir ci-dessous) : l'historique les affiche
+  barrées, hors du total.
+- **Aujourd'hui le client charge toute la liste et filtre en local.** Dès que le volume le justifie,
+  le serveur DOIT accepter sur `GET /orgs/:orgId/sales` les paramètres optionnels `from` et `to`
+  (`YYYY-MM-DD`, dans le fuseau du commerce, bornes incluses), `sellerId`, `status`, `q`, `limit` et
+  `cursor`, et renvoyer les ventes de la plus récente à la plus ancienne. Un paramètre absent
+  n'applique aucun filtre ; les résultats doivent être identiques à ceux du filtrage client.
+
 ## Annulation d'une vente
 
 Une vente **ne se supprime ni ne se modifie jamais** (RG-04, EF-14) : il n'existe aucune

@@ -35,6 +35,11 @@ Légende : **P0** bloquant · **P1** fiabilité/exploitation · **P2** dette · 
 | [#16](https://github.com/digitaleflex/macaisse/issues/16) | Scan de code-barres réel | R | M | champ produit |
 | [#18](https://github.com/digitaleflex/macaisse/issues/18) | Annulation / remboursement d'une vente — ✅ **annulation livrée (front + mock)** ; reste côté serveur : transaction, journal d'audit (EF-36) ; le remboursement monétaire n'est pas traité | R | M/L | backend |
 
+✅ **Historique des ventes livré** (EF-13) — onglet Caisse → Historique : filtres période / vendeur /
+statut, recherche ticket ou client, regroupement par jour, ventes annulées visibles hors total,
+accès au ticket. Reste côté serveur : filtrage et pagination de `GET /sales` (voir
+`API_CONTRACT.md` §Historique des ventes).
+
 **Fini quand** une vente se scanne, s'encaisse, s'imprime et peut être annulée
 avec réintégration du stock et trace d'audit.
 

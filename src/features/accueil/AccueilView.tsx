@@ -60,6 +60,7 @@ export function AccueilView() {
   const credits = useCreditsStore((state) => state.credits);
   const products = useProductsStore((state) => state.products);
   const setTab = useUiStore((state) => state.setTab);
+  const openSalesHistory = useUiStore((state) => state.openSalesHistory);
   const registerClosedAt = useUiStore((state) => state.registerClosedAt);
   const toggleRegisterClosed = useUiStore((state) => state.toggleRegisterClosed);
   const closed = registerClosedAt === toIsoDate(now);
@@ -199,7 +200,7 @@ export function AccueilView() {
             // Les ventes historiques ne portent pas le détail des lignes : le reçu
             // retombe sur l'affichage « articles divers ».
             onSelect={(sale) => openReceipt(sale, [])}
-            onViewAll={canSeeFinance ? () => setTab('bilan') : undefined}
+            onViewAll={openSalesHistory}
           />
         </div>
       </div>

@@ -79,6 +79,8 @@ export interface CompleteSaleInput {
   clientName?: string;
   saleNumber?: string;
   creditAmount?: number;
+  /** Vendeur qui encaisse (historique filtrable par vendeur, EF-13). */
+  seller?: { id: string; name: string };
 }
 
 export interface CompleteSaleResult {
@@ -99,6 +101,7 @@ export function completeSale(input: CompleteSaleInput): CompleteSaleResult {
     clientName,
     saleNumber,
     creditAmount = 0,
+    seller,
   } = input;
 
   if (lines.length === 0) {
@@ -156,6 +159,7 @@ export function completeSale(input: CompleteSaleInput): CompleteSaleResult {
     clientName: trimmedClient ? trimmedClient : undefined,
     remainingAmount: normalizedCredit > 0 ? normalizedCredit : undefined,
     itemsCount: itemCount,
+    ...(seller ? { sellerId: seller.id, sellerName: seller.name } : {}),
     // Copie figée des lignes : l'annulation en a besoin pour remettre le stock.
     lines: lines.map((line) => ({ ...line })),
   };
@@ -294,6 +298,137 @@ export function cancelSale(input: CancelSaleInput): CancelSaleResult {
   delete cancelled.remainingAmount;
   delete cancelled.creditId;
   return { sale: cancelled, products: updatedProducts, stockRestored: lines.length > 0 };
+}
+
+// ---------------------------------------------------------------------------
+// Historique des ventes (EF-13) : filtres par période, vendeur et statut
+// ---------------------------------------------------------------------------
+
+export type SalesPeriod = 'today' | '7d' | '30d' | 'all' | 'custom';
+
+/** Valeur du filtre « vendeur » pour les ventes sans vendeur enregistré. */
+export const SELLER_UNKNOWN = '__unknown__';
+
+export interface SalesFilters {
+  period: SalesPeriod;
+  /** Bornes « YYYY-MM-DD » inclusives, utilisées si `period === 'custom'`. */
+  from: string;
+  to: string;
+  /** `'all'`, une clé de vendeur (`sellerKey`) ou `SELLER_UNKNOWN`. */
+  seller: string;
+  status: SaleStatus | 'all';
+  /** Recherche libre : numéro de ticket ou nom du client. */
+  query: string;
+}
+
+export const DEFAULT_SALES_FILTERS: SalesFilters = {
+  period: 'all',
+  from: '',
+  to: '',
+  seller: 'all',
+  status: 'all',
+  query: '',
+};
+
+/** Clé stable d'un vendeur (identifiant, à défaut le nom) ; `''` si inconnu. */
+export function sellerKey(sale: SaleTransaction): string {
+  return sale.sellerId ?? sale.sellerName ?? '';
+}
+
+export interface SellerOption {
+  key: string;
+  name: string;
+}
+
+/** Vendeurs distincts présents dans les ventes, triés par nom. */
+export function sellerOptions(sales: readonly SaleTransaction[]): SellerOption[] {
+  const byKey = new Map<string, string>();
+  for (const sale of sales) {
+    const key = sellerKey(sale);
+    if (key !== '' && !byKey.has(key)) byKey.set(key, sale.sellerName ?? key);
+  }
+  return [...byKey.entries()]
+    .map(([key, name]) => ({ key, name }))
+    .sort((a, b) => a.name.localeCompare(b.name, 'fr'));
+}
+
+/** Bornes « YYYY-MM-DD » (inclusives) d'une période ; `null` = pas de borne. */
+function periodBounds(filters: SalesFilters, now: Date): { from: string | null; to: string | null } {
+  switch (filters.period) {
+    case 'today':
+      return { from: toIsoDate(now), to: toIsoDate(now) };
+    case '7d':
+      return { from: toIsoDate(addDays(now, -6)), to: toIsoDate(now) };
+    case '30d':
+      return { from: toIsoDate(addDays(now, -29)), to: toIsoDate(now) };
+    case 'custom':
+      return { from: filters.from || null, to: filters.to || null };
+    default:
+      return { from: null, to: null };
+  }
+}
+
+/**
+ * Ventes correspondant aux filtres, de la plus récente à la plus ancienne
+ * (date puis heure). Les ventes annulées restent listées : seul le filtre de
+ * statut permet de les masquer.
+ */
+export function filterSales(
+  sales: readonly SaleTransaction[],
+  filters: SalesFilters,
+  now: Date = new Date()
+): SaleTransaction[] {
+  const { from, to } = periodBounds(filters, now);
+  const query = filters.query.trim().toLowerCase();
+
+  const matches = sales.filter((sale) => {
+    if (from !== null || to !== null) {
+      const date = parseDate(sale.date);
+      if (!date) return false;
+      const key = toIsoDate(date);
+      if (from !== null && key < from) return false;
+      if (to !== null && key > to) return false;
+    }
+    if (filters.status !== 'all' && sale.status !== filters.status) return false;
+    if (filters.seller !== 'all') {
+      const key = sellerKey(sale);
+      if (filters.seller === SELLER_UNKNOWN ? key !== '' : key !== filters.seller) return false;
+    }
+    if (query !== '') {
+      const haystack = `${sale.saleNumber} ${sale.clientName ?? ''}`.toLowerCase();
+      if (!haystack.includes(query)) return false;
+    }
+    return true;
+  });
+
+  const stamp = (sale: SaleTransaction): string => {
+    const date = parseDate(sale.date);
+    return `${date ? toIsoDate(date) : ''} ${sale.time}`;
+  };
+  // Tri stable : à égalité de date et d'heure, l'ordre d'origine est conservé.
+  return matches
+    .map((sale, index) => ({ sale, index, stamp: stamp(sale) }))
+    .sort((a, b) => (a.stamp < b.stamp ? 1 : a.stamp > b.stamp ? -1 : a.index - b.index))
+    .map((entry) => entry.sale);
+}
+
+export interface SalesSummary {
+  /** Ventes affichées, annulées comprises. */
+  count: number;
+  /** Ventes annulées parmi elles. */
+  cancelledCount: number;
+  /** Total des ventes non annulées. */
+  total: number;
+}
+
+export function summarizeSales(sales: readonly SaleTransaction[]): SalesSummary {
+  let total = 0;
+  let cancelledCount = 0;
+  for (const sale of sales) {
+    if (isActiveSale(sale)) total += sale.amount;
+    else cancelledCount += 1;
+  }
+  return { count: sales.length, cancelledCount, total };
 }
 
 /** Série des revenus journaliers sur les `days` derniers jours (jours vides à 0). */

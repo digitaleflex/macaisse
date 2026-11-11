@@ -189,6 +189,20 @@ describe('completeSale — notifications métier', () => {
   });
 });
 
+describe('useSalesStore.completeSale — vendeur', () => {
+  it('enregistre le vendeur de la session sur la vente', () => {
+    useSessionStore.setState({
+      session: { role: 'cashier', user: { id: 'u-awa', firstName: 'Awa', lastName: 'Fall' } } as unknown as Session,
+      status: 'ready',
+    });
+    useCartStore.setState({ lines: [line()] });
+
+    const sale = useSalesStore.getState().completeSale({ paymentMethod: 'Espèces' });
+
+    expect(sale).toMatchObject({ sellerId: 'u-awa', sellerName: 'Awa Fall' });
+  });
+});
+
 describe('useSalesStore.cancelSale', () => {
   function signIn(role: Role) {
     useSessionStore.setState({
