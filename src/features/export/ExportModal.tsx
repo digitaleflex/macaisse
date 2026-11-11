@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { t } from '@/content';
 import { addDays, toIsoDate } from '@/domain/dates';
+import { activeSales } from '@/domain/sales';
 import { exportToCSV, type ExportFilterType } from '@/lib/export';
 import { useExpensesStore } from '@/store/useExpensesStore';
 import { useSalesStore } from '@/store/useSalesStore';
@@ -38,10 +39,12 @@ export function ExportModal() {
   }, [period, now]);
 
   const scopedSales = useMemo(() => {
-    if (period === 'all') return sales;
+    // Les ventes annulées ne sont pas exportées (ni recette ni écriture).
+    const counted = activeSales(sales);
+    if (period === 'all') return counted;
     const fromKey = range.from ? toIsoDate(range.from) : '';
     const toKey = range.to ? toIsoDate(range.to) : '';
-    return sales.filter((sale) => sale.date >= fromKey && sale.date <= toKey);
+    return counted.filter((sale) => sale.date >= fromKey && sale.date <= toKey);
   }, [sales, period, range]);
 
   const scopedExpenses = useMemo(() => {

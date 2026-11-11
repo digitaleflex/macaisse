@@ -33,7 +33,12 @@ Légende : **P0** bloquant · **P1** fiabilité/exploitation · **P2** dette · 
 |---|---|---|---|---|
 | [#15](https://github.com/digitaleflex/macaisse/issues/15) | Impression réelle du ticket | R | M/L | cible thermique |
 | [#16](https://github.com/digitaleflex/macaisse/issues/16) | Scan de code-barres réel | R | M | champ produit |
-| [#18](https://github.com/digitaleflex/macaisse/issues/18) | Annulation / remboursement d'une vente | R | M/L | contrat API |
+| [#18](https://github.com/digitaleflex/macaisse/issues/18) | Annulation / remboursement d'une vente — ✅ **annulation livrée (front + mock)** ; reste côté serveur : transaction, journal d'audit (EF-36) ; le remboursement monétaire n'est pas traité | R | M/L | backend |
+
+✅ **Historique des ventes livré** (EF-13) — onglet Caisse → Historique : filtres période / vendeur /
+statut, recherche ticket ou client, regroupement par jour, ventes annulées visibles hors total,
+accès au ticket. Reste côté serveur : filtrage et pagination de `GET /sales` (voir
+`API_CONTRACT.md` §Historique des ventes).
 
 **Fini quand** une vente se scanne, s'encaisse, s'imprime et peut être annulée
 avec réintégration du stock et trace d'audit.
@@ -197,3 +202,20 @@ n'est livré, et que la déconnexion ne laisse pas de panier derrière elle.
 
 **Règle de gestion** : on ferme un jalon avant d'en ouvrir deux nouveaux ; une
 issue fermée sans test (ou sans mise à jour de `docs/`) n'est pas « terminée ».
+
+---
+
+## Hors jalon — Identifiants d'API stables et moyens de paiement
+
+✅ **Livré (front)** : moyens de paiement et statuts de vente / crédit / facture en identifiants
+stables ; catalogue avec le **mobile money en premier** (MTN, Moov, Orange, Wave, Celtiis), carte,
+espèces, crédit ; conversion automatique des anciennes données locales (stores en version 3).
+
+✅ **Paiement de l'abonnement via FedaPay / KKiaPay livré (front + mock)** : écran « Payer mon
+abonnement » (forfait, durée, mobile money d'abord puis carte), suivi jusqu'à confirmation,
+annulation, refus et expiration gérés, facture et échéance mises à jour. Périmètre limité à
+l'abonnement de la plateforme ; les ventes en boutique restent manuelles.
+
+**À faire** : le backend réel (appel aux deux agrégateurs, webhooks signés — voir `API_CONTRACT.md`) ;
+décisions P1, P3, P5 ; widget d'agrégateur, renouvellement automatique, blocage à l'expiration ;
+conversion des catégories de produit et de dépense, encore en libellés français.

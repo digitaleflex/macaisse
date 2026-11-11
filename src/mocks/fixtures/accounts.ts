@@ -97,6 +97,9 @@ const STARTER_PLAN = {
   features: ['500 ventes / mois', 'Jusqu’à 2 membres', 'Reçus numériques', 'Export CSV'],
 };
 
+/** Forfaits proposés à l'abonnement (démonstration). */
+export const MOCK_PLANS = [STARTER_PLAN, PRO_PLAN];
+
 export const MOCK_ORGANIZATIONS: Record<string, MockOrganization> = {
   'org-etoile': {
     business: {
@@ -118,12 +121,12 @@ export const MOCK_ORGANIZATIONS: Record<string, MockOrganization> = {
       plan: PRO_PLAN,
       cycle: 'monthly',
       renewalDate: day(31),
-      paymentMethod: 'Wave',
+      paymentMethod: 'wave',
       autoRenew: true,
       invoices: [
-        { id: 'INV-0012', date: day(-1), amount: 15000, paymentMethod: 'Wave', status: 'Payée' },
-        { id: 'INV-0011', date: day(-31), amount: 15000, paymentMethod: 'Wave', status: 'Payée' },
-        { id: 'INV-0010', date: day(-62), amount: 15000, paymentMethod: 'Orange Money', status: 'Payée' },
+        { id: 'INV-0012', date: day(-1), amount: 15000, paymentMethod: 'wave', status: 'paid' },
+        { id: 'INV-0011', date: day(-31), amount: 15000, paymentMethod: 'wave', status: 'paid' },
+        { id: 'INV-0010', date: day(-62), amount: 15000, paymentMethod: 'orange_money', status: 'paid' },
       ],
     },
   },
@@ -147,9 +150,9 @@ export const MOCK_ORGANIZATIONS: Record<string, MockOrganization> = {
       plan: STARTER_PLAN,
       cycle: 'yearly',
       renewalDate: day(140),
-      paymentMethod: 'Orange Money',
+      paymentMethod: 'orange_money',
       autoRenew: true,
-      invoices: [{ id: 'INV-B-0003', date: day(-225), amount: 50000, paymentMethod: 'Orange Money', status: 'Payée' }],
+      invoices: [{ id: 'INV-B-0003', date: day(-225), amount: 50000, paymentMethod: 'orange_money', status: 'paid' }],
     },
   },
 };
@@ -169,7 +172,7 @@ export function trialSubscription(): Subscription {
     plan: STARTER_PLAN,
     cycle: 'monthly',
     renewalDate: day(14),
-    paymentMethod: 'Essai gratuit',
+    paymentMethod: null,
     autoRenew: false,
     invoices: [],
   };

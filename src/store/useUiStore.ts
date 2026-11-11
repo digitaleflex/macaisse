@@ -19,6 +19,9 @@ import {
   persistOptions,
 } from './storeUtils';
 
+/** Volet de l'onglet Caisse : encaisser ou consulter l'historique des ventes. */
+export type SalesView = 'pos' | 'history';
+
 export type UiModal = 'depenses' | 'export' | 'profil' | 'abonnement' | 'notifications' | 'equipe';
 
 /**
@@ -49,6 +52,8 @@ export interface UiPreferences {
 
 export interface UiState {
   tab: TabType;
+  /** Volet courant de l'onglet Caisse (transitoire, non persisté). */
+  salesView: SalesView;
   modal: UiModal | null;
   /**
    * Reçu global transitoire (NON persisté) : il n'existe qu'en mémoire le temps
@@ -61,6 +66,9 @@ export interface UiState {
   /** Date (ISO) de la dernière clôture de caisse ; `null` = caisse ouverte. */
   registerClosedAt: string | null;
   setTab: (tab: TabType) => void;
+  setSalesView: (view: SalesView) => void;
+  /** Ouvre l'historique des ventes (onglet Caisse, volet historique). */
+  openSalesHistory: () => void;
   openModal: (modal: UiModal) => void;
   closeModal: () => void;
   toggleModal: (modal: UiModal) => void;
@@ -91,6 +99,7 @@ export const useUiStore = create<UiState>()(
   persist(
     (set, get) => ({
       tab: 'accueil',
+      salesView: 'pos',
       modal: null,
       receipt: null,
       registerClosedAt: null,
@@ -98,6 +107,8 @@ export const useUiStore = create<UiState>()(
       preferences: { ...DEFAULT_PREFERENCES },
 
       setTab: (tab) => set({ tab }),
+      setSalesView: (salesView) => set({ salesView }),
+      openSalesHistory: () => set({ tab: 'ventes', salesView: 'history' }),
       // Le reçu et une modale ne se superposent jamais : ouvrir l'un referme
       // l'autre. L'app n'a aucune pile d'overlays et rouvrir coûte un clic ; le
       // dernier geste de l'utilisateur prime donc sur l'overlay encore ouvert.

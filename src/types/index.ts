@@ -5,16 +5,45 @@ export type TabType = 'accueil' | 'ventes' | 'stock' | 'credits' | 'bilan';
 
 export type StockStatus = 'disponible' | 'faible' | 'rupture';
 
-export type CreditStatus = 'En retard' | 'Partiel' | 'En attente' | 'Réglé';
+/**
+ * Statut d'un crédit. Identifiants d'API stables (anglais, snake_case) ; les
+ * libellés français vivent dans `@/content` (`t.status.credit`).
+ */
+export type CreditStatus = 'overdue' | 'partial' | 'pending' | 'settled';
 
+/**
+ * Moyen de paiement. Identifiants d'API stables : ils ne changent jamais, même
+ * si un libellé est retraduit ou reformulé (libellés : `config/reference.ts`).
+ *
+ * `credit` n'est pas un instrument de paiement mais le choix « à crédit » de la
+ * caisse (reste dû lié à un client) ; voir `TenderMethod` pour l'argent reçu.
+ */
 export type PaymentMethod =
-  | 'Espèces'
-  | 'Mobile Money (Wave)'
-  | 'Orange Money'
-  | 'Carte Bancaire'
-  | 'Crédit Partiel';
+  | 'cash'
+  | 'mtn_money'
+  | 'moov_money'
+  | 'orange_money'
+  | 'wave'
+  | 'celtiis_cash'
+  | 'card'
+  | 'credit'
+  | 'other';
 
-export type SaleStatus = 'Validé' | 'Partiel' | 'En attente';
+/** Moyen par lequel de l'argent a réellement été reçu ou versé (tout sauf `credit`). */
+export type TenderMethod = Exclude<PaymentMethod, 'credit'>;
+
+/** Famille d'un moyen de paiement. */
+export type PaymentKind = 'cash' | 'mobile_money' | 'card' | 'credit' | 'other';
+
+/**
+ * Canal d'encaissement : `manual` = l'argent est reçu directement par le
+ * commerçant (espèces, transfert sur son numéro) ; `fedapay` / `kkiapay` =
+ * collecte en ligne via un agrégateur, avec transaction et statut.
+ */
+export type PaymentProvider = 'manual' | 'fedapay' | 'kkiapay';
+
+/** Statut d'une vente. Identifiants d'API stables (libellés : `t.status.sale`). */
+export type SaleStatus = 'completed' | 'partial' | 'pending' | 'cancelled';
 
 export type Category = 'Frais' | 'Épicerie' | 'Boissons' | 'Hygiène';
 
@@ -52,6 +81,21 @@ export interface SaleTransaction {
   clientName?: string;
   remainingAmount?: number;
   itemsCount: number;
+  /** Vendeur ayant encaissé (renseigné à la vente ; absent des ventes plus anciennes). */
+  sellerId?: string;
+  sellerName?: string;
+  /**
+   * Détail des articles vendus (client uniquement : le serveur détient les siens).
+   * Permet de remettre le stock à jour à l'annulation ; absent pour les ventes
+   * chargées depuis le serveur ou antérieures à cette fonction.
+   */
+  lines?: CartLine[];
+  /** Crédit né de cette vente (règlement partiel), s'il existe. */
+  creditId?: string;
+  /** Renseignés uniquement quand `status === 'Annulée'` (EF-15, RG-09). */
+  cancelledAt?: string; // ISO 8601
+  cancelledBy?: string; // nom de l'auteur
+  cancelReason?: string;
 }
 
 export interface Expense {
@@ -61,7 +105,7 @@ export interface Expense {
   time?: string;
   amount: number;
   category: string;
-  paymentMethod: string;
+  paymentMethod: TenderMethod;
   status?: string;
   hasReceipt?: boolean;
 }
@@ -77,6 +121,8 @@ export interface ClientCredit {
   dueDate: string;
   daysLate?: number;
   status: CreditStatus;
+  /** Vente d'origine quand le crédit naît d'un règlement partiel. */
+  saleId?: string;
 }
 
 export interface NotificationItem {
@@ -267,17 +313,59 @@ export interface Invoice {
   id: string;
   date: string;
   amount: number;
-  paymentMethod: string;
-  status: 'Payée' | 'En attente';
+  paymentMethod: TenderMethod;
+  /** `paid` = payée, `pending` = en attente (libellés : `t.status.invoice`). */
+  status: 'paid' | 'pending';
 }
 
 export interface Subscription {
   plan: SubscriptionPlan;
   cycle: BillingCycle;
   renewalDate: string;
-  paymentMethod: string;
+  /** Moyen enregistré pour le renouvellement ; `null` pendant l'essai gratuit. */
+  paymentMethod: TenderMethod | null;
   autoRenew: boolean;
   invoices: Invoice[];
+}
+
+/** Statut d'une tentative de paiement en ligne (identifiants d'API stables). */
+export type PaymentIntentStatus = 'pending' | 'succeeded' | 'failed' | 'expired' | 'cancelled';
+
+/**
+ * Ce que le client doit faire pour finir le paiement :
+ * - `push` : l'opérateur mobile money envoie une demande de validation sur le téléphone ;
+ * - `redirect` : le client termine sur la page de paiement sécurisée de l'agrégateur (carte).
+ */
+export type CheckoutInstruction = { type: 'push' } | { type: 'redirect'; url: string };
+
+/** Demande de paiement de l'abonnement de la plateforme. Le montant n'est JAMAIS envoyé : le serveur le calcule. */
+export interface SubscriptionPaymentInput {
+  /** Identifiant généré par le client : rejouer la demande ne débite pas deux fois. */
+  id: string;
+  planId: string;
+  cycle: BillingCycle;
+  paymentMethod: TenderMethod;
+  /** Numéro qui reçoit la demande de validation, format international ; requis pour le mobile money. */
+  phone?: string;
+}
+
+/** Tentative de paiement de l'abonnement via un agrégateur (FedaPay ou KKiaPay, choisi par le serveur). */
+export interface PaymentIntent {
+  id: string;
+  purpose: 'subscription';
+  provider: Exclude<PaymentProvider, 'manual'>;
+  status: PaymentIntentStatus;
+  paymentMethod: TenderMethod;
+  planId: string;
+  cycle: BillingCycle;
+  /** FCFA entiers, calculés par le serveur. */
+  amount: number;
+  createdAt: string;
+  /** Au-delà, une tentative encore `pending` passe à `expired`. */
+  expiresAt: string;
+  checkout: CheckoutInstruction;
+  /** Message lisible en français quand `status` vaut `failed`. */
+  failureReason?: string;
 }
 
 // ---------------------------------------------------------------------------

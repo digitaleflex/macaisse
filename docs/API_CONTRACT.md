@@ -27,6 +27,8 @@ VITE_API_TIMEOUT_MS=15000
 | Permission | owner | manager | cashier |
 |---|:-:|:-:|:-:|
 | Encaisser une vente, encaisser un règlement de crédit | ✓ | ✓ | ✓ |
+| Annuler une vente (le jour même) | ✓ | ✓ | |
+| Annuler une vente d'un autre jour | ✓ | | |
 | Créer / modifier / supprimer des articles, réapprovisionner, voir les prix d'achat | ✓ | ✓ | |
 | Créer un crédit, gérer les dépenses, voir le bilan, exporter | ✓ | ✓ | |
 | Gérer l'équipe, l'abonnement | ✓ | | |
@@ -78,6 +80,144 @@ VITE_API_TIMEOUT_MS=15000
 
 **Changement d'espace** : étapes 3–4 avec un autre `orgId` ; les données locales
 restent cloisonnées par organisation (`localStorage['ma-caisse/<orgId>/…']`).
+
+## Identifiants stables (valeurs d'énumération)
+
+Toute valeur d'énumération échangée avec l'API est un **identifiant stable** (anglais,
+`snake_case`) : il ne change jamais, même si un libellé est retraduit. Le client affiche les
+libellés français (`src/config/reference.ts`, `src/content/fr.ts`) ; **le serveur ne reçoit ni
+n'envoie jamais un libellé** (`"Espèces"`, `"Partiel"`…). Une valeur inconnue est refusée en
+`422 VALIDATION_ERROR`.
+
+### Moyens de paiement (`paymentMethod`)
+
+Le mobile money est prioritaire : il est listé et proposé en premier à la caisse.
+
+| Identifiant | Libellé affiché | Famille | Encaissable via agrégateur |
+|---|---|---|---|
+| `mtn_money` | MTN Mobile Money | mobile money | FedaPay, KKiaPay |
+| `moov_money` | Moov Money | mobile money | FedaPay, KKiaPay |
+| `orange_money` | Orange Money | mobile money | FedaPay |
+| `wave` | Wave | mobile money | FedaPay |
+| `celtiis_cash` | Celtiis Cash | mobile money | FedaPay, KKiaPay |
+| `card` | Carte bancaire | carte | FedaPay, KKiaPay |
+| `cash` | Espèces | espèces | — |
+| `credit` | À crédit | crédit | — |
+| `other` | Autre moyen | autre | — |
+
+- `credit` n'est **pas** un instrument de paiement : c'est le choix « à crédit » de la caisse
+  (reste dû lié à un client). Il est valide sur une vente, **jamais** sur une dépense, un
+  règlement de crédit ou un abonnement : ces champs n'acceptent que les huit autres valeurs
+  (`TenderMethod`).
+- Ajouter un opérateur (Mixx by Yas, Free Money, Coris Money…) = ajouter une valeur à cette
+  énumération ; aucune autre valeur ne change.
+- La colonne « agrégateur » (paiement de l'abonnement uniquement) reprend la couverture publiée : FedaPay —
+  [Payment methods](https://docs.fedapay.com/payments/payment-methods) (par pays : Bénin MTN,
+  Moov, Celtiis ; Côte d'Ivoire MTN, Moov, Wave, Orange ; Sénégal Wave, Orange ; cartes
+  Visa/Mastercard) ; KKiaPay — [Méthodes de paiement](https://docs.kkiapay.me/v1/paiements/methodes-de-paiement)
+  (MTN, Moov, cartes ; Celtiis Cash d'après les CGU ; Orange et Wave non confirmés). **Elle varie
+  selon le pays : à revérifier avant la mise en production.**
+
+### Statuts
+
+| Objet | Identifiants | Libellés |
+|---|---|---|
+| Vente (`status`) | `completed`, `partial`, `pending`, `cancelled` | Validé, Partiel, En attente, Annulée |
+| Crédit (`status`) | `pending`, `partial`, `overdue`, `settled` | En attente, Partiel, En retard, Réglé |
+| Facture d'abonnement (`status`) | `paid`, `pending` | Payée, En attente |
+
+`Subscription.paymentMethod` vaut `null` pendant l'essai gratuit.
+
+> Le statut de crédit `overdue` est **calculé** (échéance dépassée et reste dû > 0) ; le serveur
+> le renvoie à jour à chaque lecture. Autres champs encore en libellés français, à convertir
+> ensuite : `Product.category` (`Épicerie`, `Boissons`, `Frais`, `Hygiène`) et `Expense.category`.
+
+## Paiement de l'abonnement via un agrégateur (FedaPay, KKiaPay)
+
+**Périmètre : uniquement l'abonnement de la plateforme**, payé par le propriétaire d'une
+boutique. Les ventes en boutique, les règlements de crédit et les dépenses restent **manuels**
+(espèces, ou mobile money reçu directement) : aucun agrégateur n'intervient. Les deux
+agrégateurs sont pris en charge ; **le client n'en choisit aucun** : il envoie un moyen de
+paiement et c'est le serveur qui route vers un agrégateur compatible (voir le tableau des moyens).
+
+Implémentation de référence exécutable : `mockApi` (`billing`), couverte par
+`src/services/__tests__/contract.test.ts` et `src/features/abonnement/__tests__`.
+
+### Règles
+
+1. **Le montant n'est jamais envoyé par le client.** Le serveur le calcule depuis le forfait et la
+   durée (`planPrice`), en FCFA entiers (XOF).
+2. **Secrets côté serveur uniquement.** Clés secrètes/privées et secrets de webhook ne quittent jamais
+   le backend ; le client ne reçoit rien de confidentiel.
+3. **Le client n'est jamais cru sur parole.** Une redirection ou un retour de page n'est qu'un
+   signal : le serveur confirme la transaction auprès de l'agrégateur (appel d'API) et/ou par
+   webhook dont il **vérifie la signature**, puis seulement passe la tentative à `succeeded`,
+   prolonge l'abonnement et crée la facture, **dans une seule transaction**.
+4. **Idempotence** : la tentative est créée avec un `id` généré par le client. Rejouer la même
+   demande renvoie la tentative existante (jamais un second débit), même si le corps diffère.
+5. **Réservé au propriétaire** (`billing.manage`) : `403 INSUFFICIENT_ROLE` sinon. Une réauthentification
+   récente (`401 STEP_UP_REQUIRED`) peut être exigée.
+6. Une tentative `pending` n'est pas un paiement : elle ne prolonge rien. Elle passe à `expired`
+   après 10 minutes sans confirmation (`PAYMENT_INTENT_TTL_MS`) ; un paiement tardif reçu après
+   expiration doit être remboursé ou rattaché manuellement (à définir côté exploitation).
+7. Le numéro du mobile money est au **format international** (`+` ou `00`) ; le pays n'est jamais
+   deviné. Il n'est pas conservé au-delà de la tentative.
+
+### Routes (sous `/orgs/:orgId/billing`)
+
+| Méthode | Route | Corps | Réponse |
+|---|---|---|---|
+| GET | `/plans` | — | `SubscriptionPlan[]` |
+| POST | `/payments` | `{ id, planId, cycle, paymentMethod, phone? }` | `201 PaymentIntent` (`pending`) · `200` si l'`id` existe déjà · `422 VALIDATION_ERROR` (forfait inconnu, moyen non payable en ligne, numéro absent ou non international) |
+| GET | `/payments/:id` | — | `PaymentIntent` — à interroger toutes les 3 s tant que `pending` · `404 NOT_FOUND` |
+| POST | `/payments/:id/cancel` | — | `PaymentIntent` au statut `cancelled` · `409 CONFLICT` si déjà terminée |
+| POST | `/webhooks/fedapay`, `/webhooks/kkiapay` | corps de l'agrégateur | `200` — **hors cookie**, authentifié par signature ; idempotent |
+
+`paymentMethod` : `mtn_money`, `moov_money`, `orange_money`, `wave`, `celtiis_cash`, `card`
+(`cash`, `credit`, `other` → `422`). `phone` est obligatoire pour le mobile money, inutile pour `card`.
+
+```jsonc
+// POST /orgs/org-etoile/billing/payments
+{ "id": "payment-7f3c", "planId": "pro", "cycle": "monthly",
+  "paymentMethod": "mtn_money", "phone": "+229 97 00 00 01" }
+
+// 201
+{ "id": "payment-7f3c", "purpose": "subscription", "provider": "fedapay",
+  "status": "pending", "paymentMethod": "mtn_money", "planId": "pro", "cycle": "monthly",
+  "amount": 15000, "createdAt": "2026-11-11T17:30:00Z", "expiresAt": "2026-11-11T17:40:00Z",
+  "checkout": { "type": "push" } }
+```
+
+`checkout` dit au client quoi faire : `{ "type": "push" }` = l'opérateur envoie une demande de
+validation sur le téléphone (le client affiche l'attente et interroge) ; `{ "type": "redirect",
+"url": "…" }` = ouvrir la page de paiement sécurisée de l'agrégateur (carte, 3-D Secure). Les
+statuts de `PaymentIntent` sont `pending`, `succeeded`, `failed` (avec `failureReason` en français),
+`expired`, `cancelled`.
+
+### Effet d'un paiement réussi
+
+- l'abonnement est prolongé : **à partir de l'échéance actuelle** si le même forfait est encore en
+  cours (aucun jour perdu, essai gratuit compris), sinon à partir d'aujourd'hui ; durée = 1 mois
+  ou 12 mois (`nextRenewalDate`) ;
+- `Subscription.plan`, `cycle`, `paymentMethod` sont mis à jour et `autoRenew` passe à `true` ;
+- une facture `paid` est ajoutée ; son numéro **continue la suite existante** (INV-0012 → INV-0013) ;
+- le client relit `GET /orgs/:orgId/session` pour afficher l'abonnement à jour.
+
+### Démonstration (`mockApi`)
+
+Une tentative aboutit à la 2e interrogation ; un numéro dont la forme normalisée finit par `0000`
+simule un refus de l'opérateur ; le paiement par carte renvoie `redirect` vers `about:blank`.
+
+### Reste à faire / décisions ouvertes
+
+| # | Point | Statut |
+|---|---|---|
+| P1 | Quel agrégateur pour quel moyen en production (coût, disponibilité par pays) | à décider côté exploitation ; le client n'en dépend pas |
+| P3 | Frais de l'agrégateur (la FAQ FedaPay mentionne 1,8 % sur le mobile money au Bénin, à vérifier) : absorbés par la plateforme ou répercutés dans le prix | à décider |
+| P5 | Conduite en cas de paiement reçu après expiration | à définir |
+| W | Widget JavaScript d'un agrégateur (KKiaPay propose un widget) : non géré par le client, qui ne sait faire que `push` et `redirect` ; nécessite le SDK, la clé publique et une politique CSP | à faire si le backend choisit ce mode |
+| R | Renouvellement automatique : l'API ne prélève pas seule un mobile money ; `autoRenew` n'est aujourd'hui qu'un indicateur | à concevoir |
+| E | Rappel avant échéance, blocage d'accès à l'expiration (EF-37) | à faire |
 
 ## Routes — authentification
 
@@ -161,7 +301,7 @@ n'introduisent aucune règle nouvelle.
   "enrolledAt": "2026-10-25", "lastSeenAt": "2026-10-25T17:40:00Z", "revokedAt": null }
 
 // AuthEvent (10 dernières exposées au titulaire, RG-A20)
-{ "at": "2026-10-25T17:40:00Z", "method": "otp_whatsapp", "result": "success",
+{ "at": "2026-10-25T17:40:00Z", "method": "otp_phone", "result": "success",
   "ip": "196.20.0.0", "userAgent": "…", "deviceId": null }
 ```
 
@@ -255,6 +395,7 @@ structurantes pour le backend :
 | POST | `/products/:id/restock` | `{ quantity }` | `Product` | manager |
 | GET | `/sales` | — | `SaleTransaction[]` | cashier |
 | POST | `/sales` | `{ sale, lines: CartLine[], credit?: ClientCredit }` | `SaleTransaction` (le serveur décrémente le stock et crée la créance) · `422 CONTACT_PHONE_REQUIRED` si le commerce n'a aucun téléphone (RG-A03) | cashier |
+| POST | `/sales/:id/cancel` | `{ reason }` | `SaleTransaction` au statut `Annulée` — voir [Annulation d'une vente](#annulation-dune-vente) | manager (le jour même), owner (tout jour) |
 | GET | `/expenses` | — | `Expense[]` | manager |
 | POST | `/expenses` | `Expense` | `Expense` | manager |
 | DELETE | `/expenses/:id` | — | `204` | manager |
@@ -268,6 +409,56 @@ structurantes pour le backend :
 
 > Pour un caissier, le serveur peut omettre `costPrice` des produits renvoyés ;
 > le client ne l'affiche pas.
+
+## Historique des ventes
+
+L'écran « Caisse → Historique » (EF-13) filtre par **période** (aujourd'hui, 7 j, 30 j, tout,
+dates libres), **vendeur** et **statut** (`completed`, `partial`, `pending`, `cancelled`), avec une
+recherche par numéro de ticket ou nom du client. Il trie de la plus récente à la plus ancienne.
+
+- Chaque vente porte **`sellerId`** et **`sellerName`** : le serveur les renseigne **depuis la
+  session** (jamais depuis le corps de la requête, qui est ignoré sur ces champs). Les ventes
+  antérieures peuvent ne pas en avoir ; le client les regroupe sous « Non renseigné ».
+- Les ventes annulées restent dans `GET /sales` (voir ci-dessous) : l'historique les affiche
+  barrées, hors du total.
+- **Aujourd'hui le client charge toute la liste et filtre en local.** Dès que le volume le justifie,
+  le serveur DOIT accepter sur `GET /orgs/:orgId/sales` les paramètres optionnels `from` et `to`
+  (`YYYY-MM-DD`, dans le fuseau du commerce, bornes incluses), `sellerId`, `status`, `q`, `limit` et
+  `cursor`, et renvoyer les ventes de la plus récente à la plus ancienne. Un paramètre absent
+  n'applique aucun filtre ; les résultats doivent être identiques à ceux du filtrage client.
+
+## Annulation d'une vente
+
+Une vente **ne se supprime ni ne se modifie jamais** (RG-04, EF-14) : il n'existe aucune
+route `PATCH` ou `DELETE` sur `/sales`. Seule l'annulation est possible
+(`POST /orgs/:orgId/sales/:id/cancel`, corps `{ "reason": "…" }`).
+
+Le serveur DOIT, dans **une seule transaction** :
+
+1. refuser un `reason` vide ou de moins de 3 caractères une fois les espaces retirés → `422 VALIDATION_ERROR` (RG-09) ;
+2. refuser une vente déjà annulée → `409 CONFLICT` ;
+3. vérifier le rôle : `sales.cancel` (gérant, propriétaire), et pour une vente d'un autre jour (fuseau de la boutique) `sales.cancelAnyDay` (propriétaire) → sinon `403 INSUFFICIENT_ROLE` ;
+4. refuser si le crédit lié (`credit.saleId` = id de la vente) a reçu au moins un remboursement → `409 CONFLICT` (EF-16 : annulation bloquée) ;
+5. remettre en stock les quantités des lignes de la vente (trace de mouvement de type `return`, RG-05) ;
+6. supprimer (ou marquer annulé) le crédit lié, qui sort des « créances à recouvrer » ;
+7. passer la vente à `status: "cancelled"` avec `cancelledAt` (ISO 8601), `cancelledBy` (nom de l'auteur) et `cancelReason`, et supprimer `remainingAmount` / `creditId` ;
+8. écrire l'action dans le journal d'audit (EF-36) : qui, quand, pourquoi.
+
+La vente annulée **reste dans `GET /sales`**. Elle ne compte dans aucun total (chiffre
+d'affaires, canaux de paiement, export comptable) : le client les exclut déjà, le
+serveur doit faire de même dans ses rapports.
+
+```jsonc
+// POST /orgs/org-etoile/sales/sale-1/cancel   { "reason": "erreur de produit" }
+{ "id": "sale-1", "saleNumber": "V-20261111-0001", "status": "cancelled",
+  "date": "2026-11-11", "time": "17:32", "paymentMethod": "cash", "amount": 1900,
+  "itemsCount": 2,
+  "cancelledAt": "2026-11-11T17:32:10Z", "cancelledBy": "Mamadou Konaté",
+  "cancelReason": "erreur de produit" }
+```
+
+Lien vente ↔ crédit : `POST /sales` reçoit `credit.saleId` (id de la vente) et la vente porte
+`creditId`. Le détail `lines` est envoyé à côté de `sale`, pas dans `sale`.
 
 ## Sémantique des erreurs (normative)
 
@@ -285,7 +476,7 @@ l'interface ne peut pas réagir correctement (rejouer, annuler, déconnecter).
 | 403 | FORBIDDEN | repli generique : ne pas l'utiliser pour des cas couverts par les codes ci-dessus | toast + retour a la caisse, **pas** de deconnexion |
 | `403` | `INVITATION_PENDING` | appartenance non acceptée | écran d'acceptation d'invitation |
 | `404` | `NOT_FOUND` | ressource inexistante dans cette organisation | toast, rafraîchissement de la collection |
-| `409` | `INSUFFICIENT_STOCK`, `DUPLICATE`, `CONFLICT` | état serveur incompatible avec la mutation | toast + rechargement de la ressource |
+| `409` | `INSUFFICIENT_STOCK`, `DUPLICATE`, `CONFLICT` | état serveur incompatible avec la mutation (dont annulation d'une vente déjà annulée ou dont le crédit est remboursé) | toast + rechargement de la ressource |
 | `410` | `OTP_EXPIRED`, `EMAIL_CODE_EXPIRED` | code expiré (5 min téléphone / 10 min e-mail, RG-A07, RG-A27) | proposer un renvoi |
 | `422` | `VALIDATION_ERROR`, `OWNER_LOCKED`, `CREDIT_OVERPAYMENT`, `DEVICE_LIMIT`, `WEAK_PIN` | règle métier violée, requête bien formée | toast, aucune reprise automatique |
 | `423` | `PIN_LOCKED` | 5 échecs PIN, verrouillage 15 min (RG-A16) | message + déblocage par le propriétaire |

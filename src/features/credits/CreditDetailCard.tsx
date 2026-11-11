@@ -21,7 +21,7 @@ function formatDue(iso: string): string {
 }
 
 export function CreditDetailCard({ credit, status, daysLateCount, progress, onPay, onWhatsAppReminder }: CreditDetailCardProps) {
-  const overdue = status === 'En retard';
+  const overdue = status === 'overdue';
   const paid = credit.totalInitial - credit.remainingAmount;
   const due = parseDate(credit.dueDate);
   const daysLeft = due ? fullDaysBetween(new Date(), due) : null;

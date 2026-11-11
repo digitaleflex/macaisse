@@ -1,6 +1,8 @@
 import type { Expense, SaleTransaction } from '@/types';
 import { t } from '@/content';
+import { paymentLabel } from '@/config/reference';
 import { toIsoDate } from '@/domain/dates';
+import { activeSales } from '@/domain/sales';
 
 /** Périmètre de données exportable (journal complet, ventes seules ou dépenses seules). */
 export type ExportFilterType = 'all' | 'sales' | 'expenses';
@@ -48,7 +50,8 @@ export function buildAccountingRows(
   const toKey = range.to ? toIsoDate(range.to) : null;
 
   if (filterType === 'all' || filterType === 'sales') {
-    sales.forEach((s) => {
+    // Une vente annulée n'est ni une recette ni une écriture comptable.
+    activeSales(sales).forEach((s) => {
       if (!inRange(s.date, fromKey, toKey)) return;
       entries.push({
         date: s.date,
@@ -57,10 +60,10 @@ export function buildAccountingRows(
         ref: s.saleNumber,
         description: t.documents.saleDescription(s.itemsCount),
         categoryOrClient: s.clientName ? t.documents.saleClient(s.clientName) : t.documents.counter,
-        paymentMethod: s.paymentMethod,
+        paymentMethod: paymentLabel(s.paymentMethod),
         creditAmount: s.amount,
         debitAmount: 0,
-        status: s.status,
+        status: t.labels.saleStatus[s.status],
       });
     });
   }
@@ -75,7 +78,7 @@ export function buildAccountingRows(
         ref: `#DEP-${e.id.toString().padStart(4, '0')}`,
         description: e.title,
         categoryOrClient: e.category,
-        paymentMethod: e.paymentMethod,
+        paymentMethod: paymentLabel(e.paymentMethod),
         creditAmount: 0,
         debitAmount: e.amount,
         status: e.status || t.documents.defaultStatus,

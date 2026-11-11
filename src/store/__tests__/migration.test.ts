@@ -92,6 +92,8 @@ describe('migration v1 → v2 des données persistées', () => {
 
     expect(credits).toHaveLength(1);
     expect(credits[0].id).toBe('3');
+    // L'ancien libellé « Partiel » devient l'identifiant stable.
+    expect(credits[0].status).toBe('partial');
   });
 
   it('valide l’onglet et la clôture persistés, ignore la modale', async () => {
@@ -133,5 +135,90 @@ describe('migration v1 → v2 des données persistées', () => {
 
     const { useProductsStore } = await import('../useProductsStore');
     expect(useProductsStore.getState().products.every((p) => typeof p.id === 'string')).toBe(true);
+  });
+});
+
+describe('migration v2 → v3 : libellés français → identifiants stables', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    vi.resetModules();
+  });
+
+  it('convertit les moyens de paiement et statuts d’anciennes ventes', async () => {
+    seedStorage(
+      'ma-caisse/sales',
+      {
+        sales: [
+          { id: 's1', saleNumber: 'V-1', time: '09:00', date: '2026-01-01', paymentMethod: 'Espèces', amount: 1000, status: 'Validé', itemsCount: 1 },
+          { id: 's2', saleNumber: 'V-2', time: '09:10', date: '2026-01-01', paymentMethod: 'Mobile Money (Wave)', amount: 2000, status: 'Partiel', itemsCount: 1, remainingAmount: 500 },
+          { id: 's3', saleNumber: 'V-3', time: '09:20', date: '2026-01-01', paymentMethod: 'Orange Money', amount: 3000, status: 'Annulée', itemsCount: 1 },
+          { id: 's4', saleNumber: 'V-4', time: '09:30', date: '2026-01-01', paymentMethod: 'Carte Bancaire', amount: 4000, status: 'Validé', itemsCount: 1 },
+          { id: 's5', saleNumber: 'V-5', time: '09:40', date: '2026-01-01', paymentMethod: 'Crédit Partiel', amount: 5000, status: 'En attente', itemsCount: 1 },
+        ],
+        sequence: 5,
+      },
+      2
+    );
+
+    const { useSalesStore } = await import('../useSalesStore');
+    const { sales } = useSalesStore.getState();
+
+    expect(sales.map((sale) => [sale.paymentMethod, sale.status])).toEqual([
+      ['cash', 'completed'],
+      ['wave', 'partial'],
+      ['orange_money', 'cancelled'],
+      ['card', 'completed'],
+      ['credit', 'pending'],
+    ]);
+  });
+
+  it('laisse intacts les identifiants déjà stables et écarte un moyen inconnu', async () => {
+    seedStorage(
+      'ma-caisse/sales',
+      {
+        sales: [
+          { id: 's1', saleNumber: 'V-1', time: '09:00', date: '2026-01-01', paymentMethod: 'mtn_money', amount: 1000, status: 'cancelled', itemsCount: 1 },
+          { id: 's2', saleNumber: 'V-2', time: '09:00', date: '2026-01-01', paymentMethod: 'Bitcoin', amount: 1000, status: 'completed', itemsCount: 1 },
+        ],
+        sequence: 2,
+      },
+      2
+    );
+
+    const { useSalesStore } = await import('../useSalesStore');
+    const { sales } = useSalesStore.getState();
+
+    expect(sales).toHaveLength(1);
+    expect(sales[0]).toMatchObject({ id: 's1', paymentMethod: 'mtn_money', status: 'cancelled' });
+  });
+
+  it('convertit les statuts de crédits et les moyens de paiement de dépenses', async () => {
+    seedStorage(
+      'ma-caisse/credits',
+      {
+        credits: [
+          { id: 'c1', clientName: 'M. Ba', initials: 'MB', shopOrLocation: '', phone: '', remainingAmount: 0, totalInitial: 100, dueDate: '2999-01-01', status: 'Réglé' },
+          { id: 'c2', clientName: 'M. Sy', initials: 'MS', shopOrLocation: '', phone: '', remainingAmount: 50, totalInitial: 100, dueDate: '2000-01-01', status: 'En retard' },
+        ],
+      },
+      2
+    );
+    seedStorage(
+      'ma-caisse/expenses',
+      {
+        expenses: [
+          { id: 'e1', title: 'Taxi', date: '2026-01-01', amount: 500, category: 'Transport', paymentMethod: 'Orange Money' },
+          { id: 'e2', title: 'Eau', date: '2026-01-01', amount: 800, category: 'Factures', paymentMethod: 'Crédit Partiel' },
+        ],
+      },
+      2
+    );
+
+    const { useCreditsStore } = await import('../useCreditsStore');
+    const { useExpensesStore } = await import('../useExpensesStore');
+
+    expect(useCreditsStore.getState().credits.map((credit) => credit.status)).toEqual(['settled', 'overdue']);
+    // « Crédit Partiel » n'a pas de sens pour une dépense : repli sur les espèces.
+    expect(useExpensesStore.getState().expenses.map((expense) => expense.paymentMethod)).toEqual(['orange_money', 'cash']);
   });
 });

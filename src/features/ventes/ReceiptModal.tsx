@@ -1,10 +1,24 @@
+import { useState } from 'react';
 import { t } from '@/content';
 import { formatFCFA } from '@/domain/money';
 import { formatTime, parseDate } from '@/domain/dates';
+import { can } from '@/domain/permissions';
+import { paymentLabel } from '@/config/reference';
+import { assessCancellation, type CancelDenial } from '@/domain/sales';
 import { personDisplayName } from '@/domain/users';
+import { useCreditsStore } from '@/store/useCreditsStore';
+import { useSalesStore } from '@/store/useSalesStore';
 import { useCurrentSession } from '@/store/useSessionStore';
 import { useUiStore } from '@/store/useUiStore';
-import { BrandMark, Button, Modal } from '@/ui';
+import { Badge, BrandMark, Button, Icon, Modal } from '@/ui';
+import { CancelSaleModal } from './CancelSaleModal';
+
+const DENIAL_TEXT: Record<CancelDenial, string> = {
+  'already-cancelled': t.sales.cancel.errors.alreadyCancelled,
+  role: t.sales.cancel.errors.role,
+  window: t.sales.cancel.errors.window,
+  'credit-repaid': t.sales.cancel.errors.creditRepaid,
+};
 
 /**
  * Reçu (ticket de caisse numérique) piloté par `useUiStore.receipt`. Les valeurs
@@ -28,10 +42,23 @@ export function ReceiptModal() {
   const receipt = useUiStore((state) => state.receipt);
   const closeReceipt = useUiStore((state) => state.closeReceipt);
   const showToast = useUiStore((state) => state.showToast);
-  const { user, business } = useCurrentSession();
+  const { user, business, role } = useCurrentSession();
+  const storedSale = useSalesStore((state) =>
+    state.sales.find((item) => item.id === receipt?.sale.id),
+  );
+  const credits = useCreditsStore((state) => state.credits);
+  const [cancelling, setCancelling] = useState(false);
 
   if (!receipt) return null;
-  const { sale, items } = receipt;
+  // La vente du store prime sur l'instantané : elle reflète une annulation récente.
+  const sale = storedSale ?? receipt.sale;
+  const items = receipt.items.length > 0 ? receipt.items : (sale.lines ?? []);
+  const cancelled = sale.status === 'cancelled';
+  const credit =
+    credits.find((item) => item.id === sale.creditId) ??
+    credits.find((item) => item.saleId === sale.id);
+  const assessment = assessCancellation({ sale, credit, role });
+  const canCancel = !cancelled && can(role, 'sales.cancel');
 
   const parsedDate = parseDate(sale.date);
   const dateLabel = parsedDate
@@ -53,6 +80,17 @@ export function ReceiptModal() {
       bodyClassName="bg-slate-100"
       footer={
         <div className="grid grid-cols-2 gap-2 w-full">
+          {canCancel && (
+            <Button
+              variant="danger"
+              icon="cancel"
+              className="col-span-2"
+              disabled={!assessment.allowed}
+              onClick={() => setCancelling(true)}
+            >
+              {t.sales.cancel.action}
+            </Button>
+          )}
           <Button variant="secondary" icon="print" onClick={() => showToast(t.receipt.printToast(sale.saleNumber))}>
             {t.receipt.print}
           </Button>
@@ -62,7 +100,28 @@ export function ReceiptModal() {
         </div>
       }
     >
-      <article className="bg-white rounded-2xl shadow-card px-5 py-6 text-[13px] relative">
+      {cancelled && (
+        <div role="status" className="mb-3 rounded-2xl bg-rose-50 border border-rose-200 px-4 py-3 text-[13px] text-rose-900">
+          <div className="flex items-center gap-2 font-semibold">
+            <Icon name="cancel" size={18} />
+            <span>{t.sales.cancel.banner.title}</span>
+            <Badge tone="danger">{t.labels.saleStatus.cancelled}</Badge>
+          </div>
+          {sale.cancelledAt && (
+            <div className="mt-1">
+              {t.sales.cancel.banner.detail(
+                new Date(sale.cancelledAt).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' }),
+                sale.cancelledBy ?? ''
+              )}
+            </div>
+          )}
+          {sale.cancelReason && <div className="mt-0.5">{t.sales.cancel.banner.reason(sale.cancelReason)}</div>}
+        </div>
+      )}
+      {canCancel && !assessment.allowed && assessment.denial && (
+        <p className="mb-3 text-xs text-slate-600">{DENIAL_TEXT[assessment.denial]}</p>
+      )}
+      <article className={'bg-white rounded-2xl shadow-card px-5 py-6 text-[13px] relative' + (cancelled ? ' opacity-70' : '')}>
         <header className="text-center pb-4 border-b border-dashed border-line-strong flex flex-col items-center">
           <BrandMark className="size-10 mb-2" />
           <h3 className="font-display font-extrabold text-base text-ink-900 uppercase tracking-wide">{business.name}</h3>
@@ -78,7 +137,7 @@ export function ReceiptModal() {
         <div className="py-3 border-b border-dashed border-line-strong space-y-1">
           <Row label={t.receipt.ticket} value={sale.saleNumber} strong />
           <Row label={t.receipt.dateTime} value={timeLabel ? `${dateLabel} · ${timeLabel}` : dateLabel} />
-          <Row label={t.receipt.cashier} value={`${personDisplayName(user.firstName, user.lastName)} (${business.registerLabel})`} />
+          <Row label={t.receipt.cashier} value={`${sale.sellerName ?? personDisplayName(user.firstName, user.lastName)} (${business.registerLabel})`} />
           {sale.clientName && <Row label={t.receipt.client} value={sale.clientName} strong />}
         </div>
 
@@ -114,7 +173,7 @@ export function ReceiptModal() {
             <span className="font-display font-bold text-ink-900 uppercase">{t.receipt.netTotal}</span>
             <span className="font-num font-extrabold text-xl text-ink-900">{formatFCFA(sale.amount)}</span>
           </div>
-          <Row label={t.receipt.payment} value={sale.paymentMethod} />
+          <Row label={t.receipt.payment} value={paymentLabel(sale.paymentMethod)} />
           {sale.remainingAmount !== undefined && (
             <Row label={t.receipt.remaining} value={formatFCFA(sale.remainingAmount)} strong />
           )}
@@ -130,6 +189,14 @@ export function ReceiptModal() {
           <p className="text-xs text-slate-500 mt-3">{t.receipt.thanks}</p>
         </footer>
       </article>
+      {cancelling && (
+        <CancelSaleModal
+          sale={sale}
+          credit={credit}
+          onClose={() => setCancelling(false)}
+          onCancelled={() => setCancelling(false)}
+        />
+      )}
     </Modal>
   );
 }

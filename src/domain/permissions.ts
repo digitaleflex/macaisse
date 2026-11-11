@@ -5,6 +5,8 @@ import type { Role, TabType } from '../types';
 
 export type Permission =
   | 'sales.create'
+  | 'sales.cancel'
+  | 'sales.cancelAnyDay'
   | 'stock.edit'
   | 'stock.restock'
   | 'stock.viewCost'
@@ -19,6 +21,8 @@ export type Permission =
 const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
   owner: [
     'sales.create',
+    'sales.cancel',
+    'sales.cancelAnyDay',
     'stock.edit',
     'stock.restock',
     'stock.viewCost',
@@ -32,6 +36,7 @@ const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
   ],
   manager: [
     'sales.create',
+    'sales.cancel',
     'stock.edit',
     'stock.restock',
     'stock.viewCost',

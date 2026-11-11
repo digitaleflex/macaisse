@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import type { PaymentMethod } from '@/types';
 import { t } from '@/content';
-import { PAYMENT_METHODS } from '@/config/reference';
+import { SALE_PAYMENT_METHODS } from '@/config/reference';
 import { formatFCFA, parseMontant } from '@/domain/money';
 import { useUiStore } from '@/store/useUiStore';
 import { Button, Icon, Input, Modal, cn } from '@/ui';
+import { PaymentMethodGroup } from '../shared/PaymentMethodGroup';
 
 /**
  * Pavé d'encaissement : mode de règlement, client optionnel, clavier numérique
@@ -27,23 +28,30 @@ export interface PaymentPadProps {
 
 const KEYPAD_KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '00', '0', 'backspace'] as const;
 
+/** Le mobile money passe en premier (priorité produit) ; les autres moyens suivent. */
+const MOBILE_MONEY = SALE_PAYMENT_METHODS.filter((option) => option.kind === 'mobile_money');
+const OTHER_METHODS = SALE_PAYMENT_METHODS.filter((option) => option.kind !== 'mobile_money');
+
+/** Dernier moyen choisi sur cet appareil (le temps de la session) : évite de le re-sélectionner à chaque vente. */
+let lastMethod: PaymentMethod | null = null;
+
 export function PaymentPad({ open, total, onClose, onValidate }: PaymentPadProps) {
   const showToast = useUiStore((state) => state.showToast);
-  const [method, setMethod] = useState<PaymentMethod>('Espèces');
+  const [method, setMethod] = useState<PaymentMethod>(() => lastMethod ?? MOBILE_MONEY[0]?.method ?? 'cash');
   const [clientName, setClientName] = useState('');
-  const [amountText, setAmountText] = useState(() => String(total));
+  const [amountText, setAmountText] = useState(() => ((lastMethod ?? MOBILE_MONEY[0]?.method) === 'cash' ? String(total) : ''));
 
-  const isCredit = method === 'Crédit Partiel';
-  const needsAmount = method === 'Espèces' || isCredit;
+  const isCredit = method === 'credit';
+  const needsAmount = method === 'cash' || isCredit;
   const amount = parseMontant(amountText);
-  const change = method === 'Espèces' ? Math.max(0, amount - total) : 0;
+  const change = method === 'cash' ? Math.max(0, amount - total) : 0;
   const rounded1000 = Math.ceil(total / 1000) * 1000;
   const rounded5000 = Math.max(10000, Math.ceil(total / 5000) * 5000);
   const presets = [...new Set([total, rounded1000, rounded5000])];
 
   const selectMethod = (next: PaymentMethod) => {
     setMethod(next);
-    setAmountText(next === 'Espèces' ? String(total) : '');
+    setAmountText(next === 'cash' ? String(total) : '');
   };
 
   const handleKey = (key: string) => {
@@ -64,6 +72,7 @@ export function PaymentPad({ open, total, onClose, onValidate }: PaymentPadProps
       showToast(t.pos.payment.clientRequired, 'error');
       return;
     }
+    lastMethod = method;
     onValidate({
       paymentMethod: method,
       clientName: trimmed.length > 0 ? trimmed : undefined,
@@ -102,31 +111,10 @@ export function PaymentPad({ open, total, onClose, onValidate }: PaymentPadProps
 
       <div className={cn('grid gap-5', needsAmount && 'sm:grid-cols-2')}>
         <div className="space-y-5">
-          <div>
-            <div className="text-[13px] font-medium text-slate-700 mb-2">{t.pos.payment.method}</div>
-            <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label={t.pos.payment.method}>
-              {PAYMENT_METHODS.map((option) => {
-                const active = method === option.method;
-                return (
-                  <button
-                    key={option.method}
-                    type="button"
-                    role="radio"
-                    aria-checked={active}
-                    onClick={() => selectMethod(option.method)}
-                    className={cn(
-                      'flex flex-col items-center justify-center gap-1 h-[72px] rounded-2xl border transition-all cursor-pointer active:scale-95',
-                      active
-                        ? 'bg-ink-900 border-ink-900 text-white shadow-raised'
-                        : 'bg-white border-line text-slate-700 hover:border-line-strong'
-                    )}
-                  >
-                    <Icon name={option.icon} size={22} className={active ? 'text-zest-400' : 'text-slate-500'} />
-                    <span className="text-xs font-semibold">{option.short}</span>
-                  </button>
-                );
-              })}
-            </div>
+          <div role="radiogroup" aria-label={t.pos.payment.method} className="space-y-3">
+            <div className="text-[13px] font-medium text-slate-700">{t.pos.payment.method}</div>
+            <PaymentMethodGroup label={t.pos.payment.mobileMoney} options={MOBILE_MONEY} value={method} onSelect={selectMethod} />
+            <PaymentMethodGroup label={t.pos.payment.otherMethods} options={OTHER_METHODS} value={method} onSelect={selectMethod} />
           </div>
 
           <Input

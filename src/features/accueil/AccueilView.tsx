@@ -5,6 +5,7 @@ import { addDays, isSameDay, parseDate, toIsoDate } from '@/domain/dates';
 import { activeCredits } from '@/domain/credits';
 import { computeKpis, dailyRevenueSeries } from '@/domain/finances';
 import { formatFCFA } from '@/domain/money';
+import { activeSales } from '@/domain/sales';
 import { marginRatePercent, retailValue } from '@/domain/stock';
 import { expensesInRange, useExpensesStore } from '@/store/useExpensesStore';
 import { useCreditsStore } from '@/store/useCreditsStore';
@@ -59,6 +60,7 @@ export function AccueilView() {
   const credits = useCreditsStore((state) => state.credits);
   const products = useProductsStore((state) => state.products);
   const setTab = useUiStore((state) => state.setTab);
+  const openSalesHistory = useUiStore((state) => state.openSalesHistory);
   const registerClosedAt = useUiStore((state) => state.registerClosedAt);
   const toggleRegisterClosed = useUiStore((state) => state.toggleRegisterClosed);
   const closed = registerClosedAt === toIsoDate(now);
@@ -97,7 +99,7 @@ export function AccueilView() {
   const debtors = useMemo(() => activeCredits(credits, now).length, [credits, now]);
   const todaySales = useMemo(
     () =>
-      sales.filter((sale) => {
+      activeSales(sales).filter((sale) => {
         const date = parseDate(sale.date);
         return date !== null && isSameDay(date, now);
       }),
@@ -198,7 +200,7 @@ export function AccueilView() {
             // Les ventes historiques ne portent pas le détail des lignes : le reçu
             // retombe sur l'affichage « articles divers ».
             onSelect={(sale) => openReceipt(sale, [])}
-            onViewAll={canSeeFinance ? () => setTab('bilan') : undefined}
+            onViewAll={openSalesHistory}
           />
         </div>
       </div>

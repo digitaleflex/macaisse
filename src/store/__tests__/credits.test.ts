@@ -12,7 +12,7 @@ function makeCredit(overrides: Partial<ClientCredit> = {}): ClientCredit {
     remainingAmount: 40000,
     totalInitial: 100000,
     dueDate: '2999-01-01',
-    status: 'Partiel',
+    status: 'partial',
     ...overrides,
   };
 }
@@ -35,7 +35,7 @@ describe('useCreditsStore — mutations', () => {
 
     const [credit] = useCreditsStore.getState().credits;
     expect(credit.id).toMatch(/^credit-/);
-    expect(credit.status).toBe('Partiel');
+    expect(credit.status).toBe('partial');
     expect(credit.daysLate).toBeUndefined();
   });
 
@@ -59,7 +59,7 @@ describe('useCreditsStore — mutations', () => {
 
     const [credit] = useCreditsStore.getState().credits;
     expect(credit.remainingAmount).toBe(0);
-    expect(credit.status).toBe('Réglé');
+    expect(credit.status).toBe('settled');
   });
 
   it('retire un crédit', () => {

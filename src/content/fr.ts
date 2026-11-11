@@ -3,7 +3,7 @@
 // il lit `t.<section>.<clé>`. Les textes paramétrés sont des fonctions pures.
 // Pour une nouvelle langue : dupliquer ce fichier en respectant le type `Content`.
 
-import type { CreditStatus, StockStatus, TabType } from '@/types';
+import type { CreditStatus, SaleStatus, StockStatus, TabType } from '@/types';
 import type { ValidationCode } from '@/domain/validation';
 
 /** « 1 article » / « 3 articles ». */
@@ -45,11 +45,20 @@ const stockStatus: Record<StockStatus, string> = {
 };
 
 const creditStatus: Record<CreditStatus, string> = {
-  'En retard': 'En retard',
-  Partiel: 'Partiel',
-  'En attente': 'En attente',
-  Réglé: 'Réglé',
+  overdue: 'En retard',
+  partial: 'Partiel',
+  pending: 'En attente',
+  settled: 'Réglé',
 };
+
+const saleStatus: Record<SaleStatus, string> = {
+  completed: 'Validé',
+  partial: 'Partiel',
+  pending: 'En attente',
+  cancelled: 'Annulée',
+};
+
+const invoiceStatus = { paid: 'Payée', pending: 'En attente' } as const;
 
 export const fr = {
   errors: {
@@ -196,6 +205,7 @@ export const fr = {
       emptyTitle: 'Aucune vente récente',
       emptyText: 'Les ventes encaissées apparaîtront ici.',
       receiptIssued: 'Reçu émis',
+      cancelled: 'Hors totaux',
       remaining: (amount: string) => `Reste ${amount}`,
       sale: (number: string) => `Vente ${number}`,
     },
@@ -262,6 +272,8 @@ export const fr = {
       title: 'Encaissement',
       amountDue: 'Montant à encaisser',
       method: 'Mode de règlement',
+      mobileMoney: 'Mobile Money',
+      otherMethods: 'Autres moyens',
       client: 'Client',
       clientPlaceholder: 'Nom ou téléphone (reçu SMS / WhatsApp)',
       received: 'Montant reçu',
@@ -275,6 +287,72 @@ export const fr = {
       confirm: 'Valider la vente',
       success: (number: string) => `Vente ${number} validée — reçu généré.`,
       failure: 'Erreur lors de la validation de la vente.',
+    },
+  },
+
+  sales: {
+    views: { label: 'Affichage de la caisse', pos: 'Encaisser', history: 'Historique' },
+    history: {
+      title: 'Historique des ventes',
+      periodLabel: 'Période',
+      periods: { today: 'Aujourd’hui', '7d': '7 jours', '30d': '30 jours', all: 'Tout', custom: 'Choisir' },
+      from: 'Du',
+      to: 'Au',
+      seller: 'Vendeur',
+      allSellers: 'Tous les vendeurs',
+      unknownSeller: 'Non renseigné',
+      status: 'Statut',
+      allStatuses: 'Tous les statuts',
+      searchPlaceholder: 'N° de ticket ou client…',
+      summarySales: 'Ventes',
+      summaryTotal: 'Total encaissé',
+      summaryCancelled: 'Annulées',
+      summaryCancelledHint: 'hors total',
+      today: 'Aujourd’hui',
+      yesterday: 'Hier',
+      by: (name: string) => `par ${name}`,
+      cancelledBy: (name: string) => `Annulée par ${name}`,
+      showMore: (n: number) => `Afficher ${n} ventes de plus`,
+      emptyTitle: 'Aucune vente trouvée',
+      emptyText: 'Aucune vente ne correspond à ces filtres.',
+      emptyNoSalesTitle: 'Aucune vente enregistrée',
+      emptyNoSalesText: 'Les ventes encaissées apparaîtront ici.',
+      reset: 'Réinitialiser les filtres',
+      openReceipt: (number: string) => `Ouvrir le ticket ${number}`,
+    },
+    cancel: {
+      action: 'Annuler la vente',
+      title: 'Annuler la vente',
+      subtitle: (number: string) => `Ticket ${number}`,
+      reasonLabel: 'Motif de l’annulation',
+      reasonHint: 'Obligatoire. Il est conservé avec votre nom, la date et l’heure.',
+      reasonPlaceholder: 'Ex. : erreur de produit',
+      reasonError: 'Indiquez un motif (3 caractères minimum).',
+      effectsTitle: 'Ce qui va se passer',
+      effectStock: 'Les articles de la vente retournent en stock.',
+      effectStockUnknown:
+        'Le détail des articles de cette vente n’est pas disponible ici : vérifiez le stock et ajustez-le si besoin.',
+      effectCredit: (amount: string) => `Le crédit de ${amount} lié à cette vente est supprimé.`,
+      effectKept:
+        'La vente reste dans l’historique, marquée « Annulée ». Elle ne compte plus dans les totaux.',
+      confirm: 'Confirmer l’annulation',
+      back: 'Retour',
+      working: 'Annulation…',
+      done: (number: string) => `Vente ${number} annulée.`,
+      banner: {
+        title: 'Vente annulée',
+        detail: (when: string, by: string) => `Le ${when} par ${by}`,
+        reason: (reason: string) => `Motif : ${reason}`,
+      },
+      errors: {
+        notFound: 'Vente introuvable.',
+        alreadyCancelled: 'Cette vente est déjà annulée.',
+        role: 'Votre rôle ne permet pas d’annuler une vente.',
+        window: 'Seul le propriétaire peut annuler une vente d’un autre jour.',
+        creditRepaid:
+          'Le crédit lié à cette vente a déjà reçu un remboursement : l’annulation est bloquée.',
+        reasonRequired: 'Le motif d’annulation est obligatoire (3 caractères minimum).',
+      },
     },
   },
 
@@ -464,7 +542,6 @@ export const fr = {
       amount: 'Montant perçu',
       newBalance: 'Nouveau solde',
       channel: 'Canal de réception',
-      channels: { especes: 'Espèces', wave: 'Wave', orange_money: 'Orange Money' },
       receipt: 'Reçu instantané WhatsApp',
       receiptHint: 'Envoi automatique non disponible — aucune preuve n’est transmise',
       submit: 'Valider l’encaissement',
@@ -541,7 +618,6 @@ export const fr = {
       category: 'Catégorie',
       receipt: 'Justificatif joint',
       submit: 'Enregistrer',
-      defaultMethod: 'Espèces',
     },
     receiptOk: 'Reçu joint',
     remove: (title: string) => `Supprimer la dépense ${title}`,
@@ -620,12 +696,13 @@ export const fr = {
 
   subscription: {
     title: 'Mon abonnement',
-    demoNotice: 'Démonstration : la facturation n’est pas activée. Aucune transaction réelle n’est effectuée.',
+    demoNotice: 'Démonstration : les paiements sont simulés. Aucune transaction réelle n’est effectuée.',
     activePlan: 'Plan actif',
     autoRenew: 'Renouvellement auto',
     perMonth: '/ mois',
     perYear: '/ an',
     nextBilling: (date: string, method: string) => `Prochaine échéance le ${date} via ${method}`,
+    nextBillingTrial: (date: string) => `Essai gratuit — premier paiement le ${date}`,
     monthly: 'Mensuel',
     yearly: 'Annuel',
     yearlyDiscount: '2 mois offerts',
@@ -634,6 +711,61 @@ export const fr = {
     invoice: (id: string) => `Facture ${id}`,
     invoiceMeta: (date: string, method: string, amount: string) => `${date} · ${method} · ${amount}`,
     download: 'Télécharger',
+  },
+
+  billing: {
+    action: 'Payer mon abonnement',
+    title: 'Payer mon abonnement',
+    demoNotice:
+      'Démonstration : aucun argent n’est réellement débité. Un numéro finissant par 0000 simule un refus de l’opérateur.',
+    planLabel: 'Forfait',
+    cycleLabel: 'Durée',
+    amountDue: 'Montant à payer',
+    methodLabel: 'Moyen de paiement',
+    mobileMoney: 'Mobile Money',
+    otherMethods: 'Carte bancaire',
+    secureNote:
+      'Paiement sécurisé par FedaPay ou KKiaPay selon le moyen choisi. Vos données de paiement ne passent jamais par Ma Caisse.',
+    phoneLabel: 'Numéro Mobile Money',
+    phoneHint: 'Format international, ex. +229 97 00 00 00. Ce numéro reçoit la demande de validation.',
+    phonePlaceholder: '+229 97 00 00 00',
+    plansLoading: 'Chargement des forfaits…',
+    plansError: 'Impossible de charger les forfaits.',
+    pay: (amount: string) => `Payer ${amount}`,
+    starting: 'Démarrage…',
+    provider: { fedapay: 'FedaPay', kkiapay: 'KKiaPay' },
+    processing: {
+      title: 'Paiement en cours',
+      push: (phone: string) =>
+        `Validez le paiement sur votre téléphone (${phone}). Votre opérateur vous envoie une demande de confirmation.`,
+      redirect: 'Terminez le paiement sur la page sécurisée de votre banque, puis revenez ici.',
+      openPage: 'Ouvrir la page de paiement',
+      waiting: 'En attente de confirmation…',
+      via: (provider: string) => `via ${provider}`,
+      cancel: 'Annuler le paiement',
+      networkIssue: 'Connexion instable : le suivi du paiement reprend dès que possible.',
+    },
+    success: {
+      title: 'Paiement reçu',
+      text: (date: string) => `Votre abonnement est actif jusqu’au ${date}.`,
+      toast: 'Paiement reçu — abonnement mis à jour.',
+      close: 'Terminer',
+    },
+    failure: {
+      title: 'Paiement non abouti',
+      failed: 'Le paiement a été refusé. Aucun montant n’a été prélevé.',
+      expired: 'Le délai de confirmation est dépassé. Aucun montant n’a été prélevé.',
+      cancelled: 'Paiement annulé.',
+      retry: 'Réessayer',
+    },
+    errors: {
+      planUnknown: 'Forfait inconnu.',
+      method_unsupported: 'Ce moyen de paiement ne peut pas être payé en ligne.',
+      phone_required: 'Le numéro Mobile Money est obligatoire.',
+      phone_invalid: 'Saisissez le numéro au format international (ex. +229 97 00 00 00).',
+      declined: 'Paiement refusé par l’opérateur (démonstration).',
+      notCancellable: 'Ce paiement n’est plus annulable.',
+    },
   },
 
   notifications: {
@@ -646,6 +778,8 @@ export const fr = {
       creditSettledText: 'La créance est intégralement réglée.',
       creditOverdue: (name: string) => `Échéance dépassée : ${name}`,
       creditOverdueText: 'La créance est en retard — à recouvrer.',
+      saleCancelled: (number: string) => `Vente annulée : ${number}`,
+      saleCancelledText: (by: string) => `Annulée par ${by} ; stock remis à jour.`,
     },
     title: 'Notifications',
     markAll: 'Tout marquer comme lu',
@@ -994,6 +1128,8 @@ export const fr = {
   labels: {
     stockStatus,
     creditStatus,
+    saleStatus,
+    invoiceStatus,
   },
 
   /** Messages de refus des formulaires (codes renvoyés par `domain/validation`). */

@@ -11,6 +11,7 @@ import type {
   SeriesPoint,
 } from '../types';
 import { addDays, isSameDay, isSameMonth, parseDate, startOfDay, toIsoDate } from './dates';
+import { activeSales } from './sales';
 import { computeStockStatus } from './stock';
 
 export interface KpisInput {
@@ -43,7 +44,7 @@ export function computeKpis(input: KpisInput, now: Date = new Date()): Kpis {
 
   let dailyRevenue = 0;
   let monthlyRevenue = 0;
-  for (const sale of sales) {
+  for (const sale of activeSales(sales)) {
     const date = parseDate(sale.date);
     if (!date) continue;
     if (isSameDay(date, now)) dailyRevenue += sale.amount;
@@ -73,7 +74,7 @@ export function dailyRevenueSeries(
   days: number,
   now: Date = new Date()
 ): SeriesPoint[] {
-  const totals = sumByDay(sales);
+  const totals = sumByDay(activeSales(sales));
   const end = startOfDay(now);
   const series: SeriesPoint[] = [];
   for (let i = Math.max(0, days) - 1; i >= 0; i -= 1) {
@@ -125,7 +126,7 @@ export function expenseBreakdown(expenses: Expense[], from?: Date, to?: Date): B
 /** Répartition des encaissements par moyen de paiement, triée décroissante. */
 export function channelSplit(sales: SaleTransaction[]): BreakdownSlice[] {
   const totals = new Map<PaymentMethod, number>();
-  for (const sale of sales) {
+  for (const sale of activeSales(sales)) {
     totals.set(sale.paymentMethod, (totals.get(sale.paymentMethod) ?? 0) + sale.amount);
   }
   return [...totals.entries()]

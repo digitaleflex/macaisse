@@ -74,3 +74,17 @@ describe('useUiStore — état réseau', () => {
     expect(useUiStore.getState().isOnline).toBe(false);
   });
 });
+
+describe('useUiStore — historique des ventes', () => {
+  it('ouvre l’historique dans l’onglet Caisse', () => {
+    useUiStore.setState({ tab: 'accueil', salesView: 'pos' });
+    useUiStore.getState().openSalesHistory();
+    expect(useUiStore.getState()).toMatchObject({ tab: 'ventes', salesView: 'history' });
+  });
+
+  it('ne persiste pas le volet courant', () => {
+    useUiStore.getState().setSalesView('history');
+    const saved = JSON.parse(localStorage.getItem('ma-caisse/ui') ?? '{}') as { state?: Record<string, unknown> };
+    expect(saved.state ?? {}).not.toHaveProperty('salesView');
+  });
+});

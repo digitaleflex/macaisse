@@ -1,4 +1,6 @@
 export { VentesView } from './VentesView';
+export { VentesTab } from './VentesTab';
+export { SalesHistoryView } from './SalesHistoryView';
 export { ProductCard } from './ProductCard';
 export { CartPanel, MobileCartBar } from './CartPanel';
 export { PaymentPad } from './PaymentPad';

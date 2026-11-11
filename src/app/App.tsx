@@ -29,7 +29,7 @@ const AccueilView = lazy(() =>
   import('@/features/accueil').then((module) => ({ default: module.AccueilView }))
 );
 const VentesView = lazy(() =>
-  import('@/features/ventes').then((module) => ({ default: module.VentesView }))
+  import('@/features/ventes').then((module) => ({ default: module.VentesTab }))
 );
 const StockView = lazy(() =>
   import('@/features/stock').then((module) => ({ default: module.StockView }))

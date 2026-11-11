@@ -6,6 +6,7 @@ import { persist } from 'zustand/middleware';
 import type { ClientCredit } from '@/types';
 import { createId } from '@/domain/ids';
 import { applyPayment, computeCreditStatus, daysLate } from '@/domain/credits';
+import { normalizeCreditStatus } from '@/config/reference';
 import { SEED_CREDITS } from '@/mocks';
 import { t } from '@/content';
 import { syncRemote } from '@/services';
@@ -14,7 +15,6 @@ import {
   coerceId,
   coerceNumber,
   coerceString,
-  isCreditStatus,
   isRecord,
   migrateList,
   PERSIST_NAMES,
@@ -130,9 +130,7 @@ function toCredit(value: unknown): ClientCredit | null {
     remainingAmount,
     totalInitial,
     dueDate,
-    status: isCreditStatus(value.status)
-      ? value.status
-      : computeCreditStatus(remainingAmount, totalInitial, dueDate),
+    status: normalizeCreditStatus(value.status) ?? computeCreditStatus(remainingAmount, totalInitial, dueDate),
   };
 
   const late = coerceNumber(value.daysLate, Number.NaN);
@@ -145,7 +143,7 @@ export function alertOverdueCredits(): void {
   const credits = useCreditsStore.getState().credits;
   const push = useNotificationsStore.getState().push;
   for (const credit of credits) {
-    if (computeCreditStatus(credit.remainingAmount, credit.totalInitial, credit.dueDate) === 'En retard') {
+    if (computeCreditStatus(credit.remainingAmount, credit.totalInitial, credit.dueDate) === 'overdue') {
       push({
         title: t.notifications.feed.creditOverdue(credit.clientName),
         description: t.notifications.feed.creditOverdueText,

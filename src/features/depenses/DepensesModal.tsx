@@ -40,7 +40,7 @@ export function DepensesModal() {
       category: values.category,
       amount: values.amount,
       date: toIsoDate(new Date()),
-      paymentMethod: t.expenses.form.defaultMethod,
+      paymentMethod: 'cash',
       hasReceipt: values.hasReceipt,
     });
     showToast(t.expenses.added(formatFCFA(values.amount)), 'success');

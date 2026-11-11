@@ -1,11 +1,12 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import type { CartLine, Product } from '@/types';
+import type { CartLine, Product, Role, Session } from '@/types';
 import { useCartStore } from '../useCartStore';
 import { t } from '@/content';
 import { useCreditsStore } from '../useCreditsStore';
 import { useNotificationsStore } from '../useNotificationsStore';
 import { useProductsStore } from '../useProductsStore';
 import { useSalesStore } from '../useSalesStore';
+import { useSessionStore } from '../useSessionStore';
 
 function makeProduct(overrides: Partial<Product> = {}): Product {
   return {
@@ -49,10 +50,10 @@ describe('useSalesStore.completeSale', () => {
   it('persiste la vente, décrémente le stock, vide le panier et incrémente la séquence', () => {
     useCartStore.setState({ lines: [line()] });
 
-    const sale = useSalesStore.getState().completeSale({ paymentMethod: 'Espèces' });
+    const sale = useSalesStore.getState().completeSale({ paymentMethod: 'cash' });
 
     expect(sale.amount).toBe(2000);
-    expect(sale.status).toBe('Validé');
+    expect(sale.status).toBe('completed');
     expect(sale.saleNumber).toMatch(/^V-\d{8}-0001$/);
 
     expect(useSalesStore.getState().sales[0]).toBe(sale);
@@ -67,7 +68,7 @@ describe('useSalesStore.completeSale', () => {
     useCartStore.setState({ lines: [line({ productId: 'p2', name: 'Riz Parfumé 5kg', price: 4500, quantity: 3, unit: 'sac' })] });
     const productsBefore = useProductsStore.getState().products;
 
-    expect(() => useSalesStore.getState().completeSale({ paymentMethod: 'Espèces' })).toThrowError(
+    expect(() => useSalesStore.getState().completeSale({ paymentMethod: 'cash' })).toThrowError(
       /Stock insuffisant/
     );
 
@@ -79,7 +80,7 @@ describe('useSalesStore.completeSale', () => {
 
   it('refuse un panier vide', () => {
     useCartStore.setState({ lines: [] });
-    expect(() => useSalesStore.getState().completeSale({ paymentMethod: 'Espèces' })).toThrowError(
+    expect(() => useSalesStore.getState().completeSale({ paymentMethod: 'cash' })).toThrowError(
       /sans article/
     );
     expect(useSalesStore.getState().sales).toHaveLength(0);
@@ -89,12 +90,12 @@ describe('useSalesStore.completeSale', () => {
     useCartStore.setState({ lines: [line()] });
 
     const sale = useSalesStore.getState().completeSale({
-      paymentMethod: 'Crédit Partiel',
+      paymentMethod: 'credit',
       creditAmount: 500,
       clientName: 'Mme Diallo',
     });
 
-    expect(sale.status).toBe('Partiel');
+    expect(sale.status).toBe('partial');
     expect(sale.remainingAmount).toBe(500);
     expect(sale.clientName).toBe('Mme Diallo');
   });
@@ -110,13 +111,13 @@ describe('completeSale — vente à crédit', () => {
 
   it('crée la créance correspondante dans le store des crédits', () => {
     const sale = useSalesStore.getState().completeSale({
-      paymentMethod: 'Crédit Partiel',
+      paymentMethod: 'credit',
       clientName: 'M. Ba Ousmane',
       creditAmount: 2000,
     });
 
     expect(sale.remainingAmount).toBe(2000);
-    expect(sale.status).toBe('Partiel');
+    expect(sale.status).toBe('partial');
 
     const credits = useCreditsStore.getState().credits;
     expect(credits).toHaveLength(1);
@@ -125,18 +126,18 @@ describe('completeSale — vente à crédit', () => {
       initials: 'BO',
       remainingAmount: 2000,
       totalInitial: 2000,
-      status: 'En attente',
+      status: 'pending',
     });
   });
 
   it('ne crée aucune créance pour une vente soldée', () => {
-    useSalesStore.getState().completeSale({ paymentMethod: 'Espèces' });
+    useSalesStore.getState().completeSale({ paymentMethod: 'cash' });
     expect(useCreditsStore.getState().credits).toHaveLength(0);
   });
 
   it('vide le panier et décrémente le stock dans le même mouvement', () => {
     useSalesStore.getState().completeSale({
-      paymentMethod: 'Crédit Partiel',
+      paymentMethod: 'credit',
       clientName: 'Awa',
       creditAmount: 1000,
     });
@@ -156,7 +157,7 @@ describe('completeSale — notifications métier', () => {
 
   it('publie une notification quand un règlement partiel ouvre un crédit', () => {
     useSalesStore.getState().completeSale({
-      paymentMethod: 'Crédit Partiel',
+      paymentMethod: 'credit',
       clientName: 'M. Ba Ousmane',
       creditAmount: 500,
     });
@@ -169,7 +170,7 @@ describe('completeSale — notifications métier', () => {
 
   it('publie une alerte quand la vente épuise le stock', () => {
     useCartStore.setState({ lines: [line({ quantity: 2 })] });
-    useSalesStore.getState().completeSale({ paymentMethod: 'Espèces' });
+    useSalesStore.getState().completeSale({ paymentMethod: 'cash' });
 
     const titles = useNotificationsStore.getState().notifications.map((n) => n.title);
     expect(titles).toContain(t.notifications.feed.stockOut('Lait demi-écrémé'));
@@ -177,7 +178,7 @@ describe('completeSale — notifications métier', () => {
 
   it('ne duplique pas une alerte de rupture déjà non lue', () => {
     useCartStore.setState({ lines: [line({ quantity: 2 })] });
-    useSalesStore.getState().completeSale({ paymentMethod: 'Espèces' });
+    useSalesStore.getState().completeSale({ paymentMethod: 'cash' });
     // Deuxième vente impossible (stock à 0) : on republie directement la même alerte.
     useNotificationsStore.getState().push({
       title: t.notifications.feed.stockOut('Lait demi-écrémé'),
@@ -185,5 +186,118 @@ describe('completeSale — notifications métier', () => {
     });
     const titles = useNotificationsStore.getState().notifications.map((n) => n.title);
     expect(titles.filter((title) => title === t.notifications.feed.stockOut('Lait demi-écrémé'))).toHaveLength(1);
+  });
+});
+
+describe('useSalesStore.completeSale — vendeur', () => {
+  it('enregistre le vendeur de la session sur la vente', () => {
+    useSessionStore.setState({
+      session: { role: 'cashier', user: { id: 'u-awa', firstName: 'Awa', lastName: 'Fall' } } as unknown as Session,
+      status: 'ready',
+    });
+    useCartStore.setState({ lines: [line()] });
+
+    const sale = useSalesStore.getState().completeSale({ paymentMethod: 'cash' });
+
+    expect(sale).toMatchObject({ sellerId: 'u-awa', sellerName: 'Awa Fall' });
+  });
+});
+
+describe('useSalesStore.cancelSale', () => {
+  function signIn(role: Role) {
+    useSessionStore.setState({
+      session: { role, user: { firstName: 'Awa', lastName: 'Fall' } } as unknown as Session,
+      status: 'ready',
+    });
+  }
+
+  function sell(creditAmount = 0) {
+    useCartStore.setState({ lines: [line({ quantity: 3 })] });
+    return useSalesStore
+      .getState()
+      .completeSale(
+        creditAmount > 0
+          ? { paymentMethod: 'credit', clientName: 'M. Ba', creditAmount }
+          : { paymentMethod: 'cash' },
+      );
+  }
+
+  const stock = () => useProductsStore.getState().products.find((p) => p.id === 'p1')?.stock;
+
+  beforeEach(() => {
+    useCreditsStore.setState({ credits: [] });
+    useNotificationsStore.setState({ notifications: [] });
+    signIn('manager');
+  });
+
+  it('annule : stock remis, vente conservée avec motif, auteur et date', async () => {
+    const sale = sell();
+    expect(stock()).toBe(7);
+
+    const cancelled = await useSalesStore.getState().cancelSale(sale.id, 'erreur de produit');
+
+    expect(stock()).toBe(10);
+    expect(cancelled).toMatchObject({
+      status: 'cancelled',
+      cancelReason: 'erreur de produit',
+      cancelledBy: 'Awa Fall',
+    });
+    const stored = useSalesStore.getState().sales.find((s) => s.id === sale.id);
+    expect(stored?.status).toBe('cancelled');
+    expect(stored?.cancelledAt).toBeTruthy();
+    expect(useNotificationsStore.getState().notifications[0]?.title).toContain(sale.saleNumber);
+  });
+
+  it('lie le crédit à la vente puis le supprime à l’annulation', async () => {
+    const sale = sell(1000);
+    const credit = useCreditsStore.getState().credits[0];
+    expect(credit?.saleId).toBe(sale.id);
+    expect(sale.creditId).toBe(credit?.id);
+
+    await useSalesStore.getState().cancelSale(sale.id, 'erreur');
+
+    expect(useCreditsStore.getState().credits).toHaveLength(0);
+  });
+
+  it('refuse sans motif et ne modifie rien', async () => {
+    const sale = sell();
+    await expect(useSalesStore.getState().cancelSale(sale.id, ' ')).rejects.toThrow(/motif/i);
+    expect(stock()).toBe(7);
+    expect(useSalesStore.getState().sales[0]?.status).toBe('completed');
+  });
+
+  it('refuse le caissier même en appelant le store directement', async () => {
+    const sale = sell();
+    signIn('cashier');
+    await expect(useSalesStore.getState().cancelSale(sale.id, 'erreur')).rejects.toThrow(/rôle/);
+    expect(stock()).toBe(7);
+  });
+
+  it('bloque l’annulation quand le crédit a reçu un remboursement', async () => {
+    const sale = sell(1000);
+    const credit = useCreditsStore.getState().credits[0];
+    useCreditsStore.getState().payCredit(credit?.id ?? '', 200);
+
+    await expect(useSalesStore.getState().cancelSale(sale.id, 'erreur')).rejects.toThrow(
+      /remboursement/,
+    );
+    expect(stock()).toBe(7);
+    expect(useCreditsStore.getState().credits).toHaveLength(1);
+  });
+
+  it('refuse une seconde annulation', async () => {
+    const sale = sell();
+    await useSalesStore.getState().cancelSale(sale.id, 'doublon');
+    await expect(useSalesStore.getState().cancelSale(sale.id, 'doublon')).rejects.toThrow(
+      /déjà annulée/,
+    );
+    expect(stock()).toBe(10);
+  });
+
+  it('exclut la vente annulée de l’export comptable', async () => {
+    const { buildAccountingRows } = await import('@/lib/export/accounting');
+    const sale = sell();
+    await useSalesStore.getState().cancelSale(sale.id, 'erreur');
+    expect(buildAccountingRows(useSalesStore.getState().sales, [], 'sales')).toHaveLength(0);
   });
 });

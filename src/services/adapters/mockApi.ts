@@ -2,12 +2,14 @@ import type {
   AuthEvent,
   AuthEventMethod,
   AuthResult,
+  CartLine,
   ClientCredit,
   Device,
   EmailChallenge,
   Expense,
   Membership,
   NotificationItem,
+  PaymentIntent,
   Product,
   SaleTransaction,
   TeamMember,
@@ -15,6 +17,19 @@ import type {
 } from '@/types';
 import { t } from '@/content';
 import { applyPayment } from '@/domain/credits';
+import { cancelSale, normalizeCancelReason, repaidAmountOf } from '@/domain/sales';
+import {
+  checkoutKind,
+  chooseProvider,
+  intentExpiry,
+  isExpired,
+  isFinalStatus,
+  nextInvoiceId,
+  nextRenewalDate,
+  planPrice,
+  toPaymentPhone,
+  validatePaymentRequest,
+} from '@/domain/billing';
 import { createId } from '@/domain/ids';
 import { toIsoDate } from '@/domain/dates';
 import { normalizePhone } from '@/domain/phone';
@@ -23,6 +38,7 @@ import {
   MOCK_ACCOUNTS,
   MOCK_MEMBERSHIPS,
   MOCK_ORGANIZATIONS,
+  MOCK_PLANS,
   orgSeed,
   trialSubscription,
   type MockAccount,
@@ -56,6 +72,8 @@ interface AuthDb {
 interface OrgDb {
   products: Product[];
   sales: SaleTransaction[];
+  /** Détail des articles de chaque vente (le serveur garde les lignes de son côté). */
+  saleLines: Record<string, CartLine[]>;
   expenses: Expense[];
   credits: ClientCredit[];
   notifications: NotificationItem[];
@@ -91,6 +109,11 @@ interface MockSession {
   /** Expiration en millisecondes epoch. */
   expiresAt: number;
 }
+
+/** Démo : une tentative de paiement aboutit à la 2e interrogation (≈ 6 s avec le suivi de l'écran). */
+const PAYMENT_SUCCESS_AFTER_POLLS = 2;
+/** Démo : un numéro finissant par ce motif simule un refus de l'opérateur. */
+const DEMO_FAILING_PHONE_SUFFIX = '0000';
 
 const clone = <T>(value: T): T => structuredClone(value);
 
@@ -345,10 +368,44 @@ export function createMockApi({ latencyMs = 0, persist = false }: MockApiOptions
     requireMembership(orgId);
     let data = orgData.get(orgId);
     if (!data) {
-      data = orgSeed(orgId);
+      data = { ...orgSeed(orgId), saleLines: {} };
       orgData.set(orgId, data);
     }
     return data;
+  };
+
+  /** Tentatives de paiement d'abonnement (mémoire seulement ; le serveur réel les persiste). */
+  const paymentIntents = new Map<string, { intent: PaymentIntent; phone: string | null; polls: number }>();
+  const intentKey = (orgId: string, id: string) => `${orgId}:${id}`;
+  const findIntent = (orgId: string, id: string) =>
+    paymentIntents.get(intentKey(orgId, id)) ?? fail(t.auth.errors.notFound, 404, 'NOT_FOUND');
+
+  /** Applique un paiement réussi à l'abonnement de l'organisation (prolongation, facture). */
+  const applySubscriptionPayment = (orgId: string, intent: PaymentIntent): void => {
+    const organization = auth.organizations[orgId];
+    const plan = MOCK_PLANS.find((candidate) => candidate.id === intent.planId);
+    if (!organization || !plan) return;
+    const current = organization.subscription;
+    const now = new Date();
+    organization.subscription = {
+      ...current,
+      plan,
+      cycle: intent.cycle,
+      renewalDate: toIsoDate(nextRenewalDate(current, plan.id, intent.cycle, now)),
+      paymentMethod: intent.paymentMethod,
+      autoRenew: true,
+      invoices: [
+        {
+          id: nextInvoiceId(current.invoices.map((invoice) => invoice.id)),
+          date: toIsoDate(now),
+          amount: intent.amount,
+          paymentMethod: intent.paymentMethod,
+          status: 'paid',
+        },
+        ...current.invoices,
+      ],
+    };
+    saveAuth();
   };
 
   const findProduct = (id: string) => db().products.find((p) => p.id === id) ?? fail(t.auth.errors.notFound, 404, 'NOT_FOUND');
@@ -883,6 +940,75 @@ export function createMockApi({ latencyMs = 0, persist = false }: MockApiOptions
           saveAuth();
         }),
     },
+    billing: {
+      plans: (orgId) =>
+        respond(() => {
+          requireOwner(orgId);
+          return MOCK_PLANS;
+        }),
+      pay: (orgId, input) =>
+        respond(() => {
+          requireOwner(orgId);
+          // Idempotence : le même identifiant renvoie la tentative existante, jamais un second débit.
+          const existing = paymentIntents.get(intentKey(orgId, input.id));
+          if (existing) return existing.intent;
+
+          const plan = MOCK_PLANS.find((candidate) => candidate.id === input.planId);
+          if (!plan) fail(t.billing.errors.planUnknown, 422, 'VALIDATION_ERROR');
+          const issue = validatePaymentRequest({ paymentMethod: input.paymentMethod, phone: input.phone });
+          if (issue) fail(t.billing.errors[issue], 422, 'VALIDATION_ERROR');
+          const provider = chooseProvider(input.paymentMethod) ?? fail(t.billing.errors.method_unsupported, 422, 'VALIDATION_ERROR');
+
+          const now = new Date();
+          const kind = checkoutKind(input.paymentMethod);
+          const intent: PaymentIntent = {
+            id: input.id,
+            purpose: 'subscription',
+            provider,
+            status: 'pending',
+            paymentMethod: input.paymentMethod,
+            planId: plan.id,
+            cycle: input.cycle,
+            amount: planPrice(plan, input.cycle),
+            createdAt: now.toISOString(),
+            expiresAt: intentExpiry(now),
+            checkout: kind === 'push' ? { type: 'push' } : { type: 'redirect', url: 'about:blank' },
+          };
+          paymentIntents.set(intentKey(orgId, input.id), {
+            intent,
+            phone: input.phone ? toPaymentPhone(input.phone) : null,
+            polls: 0,
+          });
+          return intent;
+        }),
+      payment: (orgId, paymentId) =>
+        respond(() => {
+          requireOwner(orgId);
+          const entry = findIntent(orgId, paymentId);
+          if (isExpired(entry.intent)) entry.intent = { ...entry.intent, status: 'expired' };
+          if (!isFinalStatus(entry.intent.status)) {
+            entry.polls += 1;
+            if (entry.polls >= PAYMENT_SUCCESS_AFTER_POLLS) {
+              if (entry.phone?.endsWith(DEMO_FAILING_PHONE_SUFFIX)) {
+                entry.intent = { ...entry.intent, status: 'failed', failureReason: t.billing.errors.declined };
+              } else {
+                entry.intent = { ...entry.intent, status: 'succeeded' };
+                applySubscriptionPayment(orgId, entry.intent);
+              }
+            }
+          }
+          return entry.intent;
+        }),
+      cancel: (orgId, paymentId) =>
+        respond(() => {
+          requireOwner(orgId);
+          const entry = findIntent(orgId, paymentId);
+          if (isExpired(entry.intent)) entry.intent = { ...entry.intent, status: 'expired' };
+          if (entry.intent.status !== 'pending') fail(t.billing.errors.notCancellable, 409, 'CONFLICT');
+          entry.intent = { ...entry.intent, status: 'cancelled' };
+          return entry.intent;
+        }),
+    },
     products: {
       list: () => respond(() => db().products),
       create: (product) =>
@@ -937,10 +1063,44 @@ export function createMockApi({ latencyMs = 0, persist = false }: MockApiOptions
             );
           }
           data.sales = [sale, ...data.sales];
+          data.saleLines[sale.id] = lines.map((line) => ({ ...line }));
           // Transaction unique : la créance d'un règlement partiel est écrite
           // avec la vente, sinon elle n'existerait que dans le navigateur.
           if (credit) data.credits = [credit, ...data.credits];
           return sale;
+        }),
+      cancel: (id, reason) =>
+        respond(() => {
+          const data = db();
+          const sale =
+            data.sales.find((item) => item.id === id) ??
+            fail(t.auth.errors.notFound, 404, 'NOT_FOUND');
+          if (sale.status === 'cancelled') {
+            fail(t.sales.cancel.errors.alreadyCancelled, 409, 'CONFLICT');
+          }
+          if (normalizeCancelReason(reason) === null) {
+            fail(t.sales.cancel.errors.reasonRequired, 422, 'VALIDATION_ERROR');
+          }
+          const credit = data.credits.find(
+            (item) => item.id === sale.creditId || item.saleId === sale.id,
+          );
+          if (repaidAmountOf(credit) > 0) {
+            fail(t.sales.cancel.errors.creditRepaid, 409, 'CONFLICT');
+          }
+          const account = currentAccount();
+          // Remise en stock d'après les lignes détenues par le « serveur ».
+          const result = cancelSale({
+            sale: { ...sale, lines: data.saleLines[id] ?? [] },
+            products: data.products,
+            reason,
+            by: `${account.firstName} ${account.lastName}`.trim(),
+          });
+          data.products = result.products;
+          if (credit) data.credits = data.credits.filter((item) => item.id !== credit.id);
+          const cancelled: SaleTransaction = { ...result.sale };
+          delete cancelled.lines;
+          data.sales = data.sales.map((item) => (item.id === id ? cancelled : item));
+          return cancelled;
         }),
     },
     expenses: {

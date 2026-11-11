@@ -17,6 +17,7 @@ import type {
   Product,
   SaleTransaction,
   Subscription,
+  SubscriptionPlan,
 } from '@/types';
 import type { MockAccount, MockMembership, MockOrganization } from './fixtures/accounts';
 
@@ -33,6 +34,7 @@ export const DEMO_PASSWORD = '';
 export const MOCK_ACCOUNTS: MockAccount[] = [];
 export const MOCK_ORGANIZATIONS: Record<string, MockOrganization> = {};
 export const MOCK_MEMBERSHIPS: MockMembership[] = [];
+export const MOCK_PLANS: SubscriptionPlan[] = [];
 
 export function trialSubscription(): Subscription {
   throw new Error(

@@ -10,10 +10,12 @@ import type {
   Invitation,
   NotificationItem,
   PasswordResetChallenge,
+  PaymentIntent,
   PhoneChallenge,
   Product,
   SaleTransaction,
   Session,
+  SubscriptionPlan,
   TeamMember,
 } from '@/types';
 import type { Api } from '../contracts';
@@ -83,6 +85,12 @@ export function createHttpApi(http: HttpClient): Api {
       updateRole: (orgId, userId, role) => http.patch<TeamMember>(ENDPOINTS.member(orgId, userId), { role }),
       remove: (orgId, userId) => http.delete<void>(ENDPOINTS.member(orgId, userId)),
     },
+    billing: {
+      plans: (orgId) => http.get<SubscriptionPlan[]>(ENDPOINTS.billingPlans(orgId)),
+      pay: (orgId, input) => http.post<PaymentIntent>(ENDPOINTS.billingPayments(orgId), input),
+      payment: (orgId, id) => http.get<PaymentIntent>(ENDPOINTS.billingPayment(orgId, id)),
+      cancel: (orgId, id) => http.post<PaymentIntent>(ENDPOINTS.billingPaymentCancel(orgId, id)),
+    },
     products: {
       list: () => http.get<Product[]>(ENDPOINTS.products(org())),
       create: (product) => http.post<Product>(ENDPOINTS.products(org()), product),
@@ -93,6 +101,8 @@ export function createHttpApi(http: HttpClient): Api {
     sales: {
       list: () => http.get<SaleTransaction[]>(ENDPOINTS.sales(org())),
       create: (payload) => http.post<SaleTransaction>(ENDPOINTS.sales(org()), payload),
+      cancel: (id, reason) =>
+        http.post<SaleTransaction>(ENDPOINTS.saleCancel(org(), id), { reason }),
     },
     expenses: {
       list: () => http.get<Expense[]>(ENDPOINTS.expenses(org())),
