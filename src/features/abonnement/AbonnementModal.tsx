@@ -7,9 +7,11 @@ import { formatFCFA } from '@/domain/money';
 import { useCurrentSession, usePermission } from '@/store/useSessionStore';
 import { selectModal, useUiStore } from '@/store/useUiStore';
 import { Badge, Button, Icon, Modal, SegmentedControl } from '@/ui';
+import { api } from '@/services';
 import { PlanCard } from './PlanCard';
+import { SubscriptionPaymentModal } from './SubscriptionPaymentModal';
 
-/** Abonnement (démonstratif) — données issues de la session, actions signalées par toast. */
+/** Abonnement : forfait actif, historique des factures et paiement en ligne (FedaPay / KKiaPay). */
 export function AbonnementModal() {
   const isOpen = useUiStore(selectModal) === 'abonnement';
   const allowed = usePermission('billing.manage');
@@ -18,15 +20,18 @@ export function AbonnementModal() {
   const showToast = useUiStore((state) => state.showToast);
   const { subscription } = useCurrentSession();
   const [cycle, setCycle] = useState<BillingCycle>(subscription.cycle);
+  const [paying, setPaying] = useState(false);
 
   const formatDate = (iso: string) => parseDate(iso)?.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }) ?? iso;
 
   return (
     <Modal open={open} onClose={closeModal} title={t.subscription.title} icon="workspace_premium" size="lg">
-      <div className="flex items-start gap-2.5 p-3 rounded-2xl bg-amber-50 text-xs text-amber-800">
-        <Icon name="info" size={18} className="text-amber-600" />
-        {t.subscription.demoNotice}
-      </div>
+      {api.mode === 'mock' && (
+        <div className="flex items-start gap-2.5 p-3 rounded-2xl bg-amber-50 text-xs text-amber-800">
+          <Icon name="info" size={18} className="text-amber-600" />
+          {t.subscription.demoNotice}
+        </div>
+      )}
 
       <SegmentedControl
         label={t.subscription.title}
@@ -48,7 +53,9 @@ export function AbonnementModal() {
       />
 
       <PlanCard subscription={subscription} cycle={cycle} />
-      <p className="text-xs text-slate-500 -mt-2">{t.subscription.preview}</p>
+      <Button variant="accent" size="lg" fullWidth icon="lock" onClick={() => setPaying(true)}>
+        {t.billing.action}
+      </Button>
 
       <section className="space-y-2">
         <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 px-1">{t.subscription.invoices}</h3>
@@ -72,6 +79,10 @@ export function AbonnementModal() {
           ))}
         </ul>
       </section>
+
+      {paying && (
+        <SubscriptionPaymentModal open initialCycle={cycle} onClose={() => setPaying(false)} />
+      )}
     </Modal>
   );
 }

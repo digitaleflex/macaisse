@@ -14,6 +14,7 @@ import type {
   NotificationItem,
   OnboardingInput,
   PasswordResetChallenge,
+  PaymentIntent,
   PhoneChallenge,
   PhoneVerifyInput,
   PinVerifyInput,
@@ -21,6 +22,8 @@ import type {
   ProfileInput,
   SaleTransaction,
   StepUpInput,
+  SubscriptionPaymentInput,
+  SubscriptionPlan,
   InviteMemberInput,
   Invitation,
   LoginInput,
@@ -160,6 +163,22 @@ export interface NotificationsRepository {
   markAllRead(): Promise<void>;
 }
 
+/**
+ * Paiement de l'abonnement de la plateforme via un agrégateur (FedaPay, KKiaPay).
+ * Réservé au propriétaire. Le serveur calcule le montant, choisit l'agrégateur et ne
+ * croit jamais le client : il confirme la transaction auprès de l'agrégateur.
+ */
+export interface BillingRepository {
+  /** Forfaits proposés. */
+  plans(organizationId: string): Promise<SubscriptionPlan[]>;
+  /** Démarre un paiement. Idempotent : rejouer le même `id` renvoie la même tentative. */
+  pay(organizationId: string, input: SubscriptionPaymentInput): Promise<PaymentIntent>;
+  /** État d'une tentative ; à interroger tant qu'elle est `pending`. */
+  payment(organizationId: string, paymentId: string): Promise<PaymentIntent>;
+  /** Annule une tentative encore `pending` (`409` sinon). */
+  cancel(organizationId: string, paymentId: string): Promise<PaymentIntent>;
+}
+
 export interface Api {
   /** `mock` ou `http` : utile pour l'affichage d'un badge « Démo ». */
   readonly mode: 'mock' | 'http';
@@ -168,6 +187,7 @@ export interface Api {
   onboarding: OnboardingRepository;
   devices: DevicesRepository;
   team: TeamRepository;
+  billing: BillingRepository;
   products: ProductsRepository;
   sales: SalesRepository;
   expenses: ExpensesRepository;

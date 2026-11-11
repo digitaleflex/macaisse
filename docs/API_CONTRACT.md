@@ -111,7 +111,7 @@ Le mobile money est prioritaire : il est listé et proposé en premier à la cai
   (`TenderMethod`).
 - Ajouter un opérateur (Mixx by Yas, Free Money, Coris Money…) = ajouter une valeur à cette
   énumération ; aucune autre valeur ne change.
-- La colonne « agrégateur » reprend la couverture publiée : FedaPay —
+- La colonne « agrégateur » (paiement de l'abonnement uniquement) reprend la couverture publiée : FedaPay —
   [Payment methods](https://docs.fedapay.com/payments/payment-methods) (par pays : Bénin MTN,
   Moov, Celtiis ; Côte d'Ivoire MTN, Moov, Wave, Orange ; Sénégal Wave, Orange ; cartes
   Visa/Mastercard) ; KKiaPay — [Méthodes de paiement](https://docs.kkiapay.me/v1/paiements/methodes-de-paiement)
@@ -132,50 +132,92 @@ Le mobile money est prioritaire : il est listé et proposé en premier à la cai
 > le renvoie à jour à chaque lecture. Autres champs encore en libellés français, à convertir
 > ensuite : `Product.category` (`Épicerie`, `Boissons`, `Frais`, `Hygiène`) et `Expense.category`.
 
-## Encaissement via un agrégateur de paiement (FedaPay, KKiaPay)
+## Paiement de l'abonnement via un agrégateur (FedaPay, KKiaPay)
 
-> **Statut : conception, non implémenté dans le client.** Le client sait aujourd'hui enregistrer
-> le moyen choisi (mobile money, carte…) mais pas collecter l'argent en ligne : il n'y a ni
-> transaction, ni statut « en attente de paiement ». Cette section fixe ce que le backend devra
-> porter pour qu'on puisse l'ajouter sans changer les identifiants ci-dessus.
+**Périmètre : uniquement l'abonnement de la plateforme**, payé par le propriétaire d'une
+boutique. Les ventes en boutique, les règlements de crédit et les dépenses restent **manuels**
+(espèces, ou mobile money reçu directement) : aucun agrégateur n'intervient. Les deux
+agrégateurs sont pris en charge ; **le client n'en choisit aucun** : il envoie un moyen de
+paiement et c'est le serveur qui route vers un agrégateur compatible (voir le tableau des moyens).
 
-Deux notions distinctes :
+Implémentation de référence exécutable : `mockApi` (`billing`), couverte par
+`src/services/__tests__/contract.test.ts` et `src/features/abonnement/__tests__`.
 
-- **moyen** (`paymentMethod`) : ce que le client utilise (`mtn_money`, `card`…) ;
-- **canal** (`provider`) : `manual` (l'argent arrive directement chez le commerçant : espèces,
-  transfert sur son numéro) ou `fedapay` / `kkiapay` (collecte en ligne avec transaction).
+### Règles
 
-Règles :
+1. **Le montant n'est jamais envoyé par le client.** Le serveur le calcule depuis le forfait et la
+   durée (`planPrice`), en FCFA entiers (XOF).
+2. **Secrets côté serveur uniquement.** Clés secrètes/privées et secrets de webhook ne quittent jamais
+   le backend ; le client ne reçoit rien de confidentiel.
+3. **Le client n'est jamais cru sur parole.** Une redirection ou un retour de page n'est qu'un
+   signal : le serveur confirme la transaction auprès de l'agrégateur (appel d'API) et/ou par
+   webhook dont il **vérifie la signature**, puis seulement passe la tentative à `succeeded`,
+   prolonge l'abonnement et crée la facture, **dans une seule transaction**.
+4. **Idempotence** : la tentative est créée avec un `id` généré par le client. Rejouer la même
+   demande renvoie la tentative existante (jamais un second débit), même si le corps diffère.
+5. **Réservé au propriétaire** (`billing.manage`) : `403 INSUFFICIENT_ROLE` sinon. Une réauthentification
+   récente (`401 STEP_UP_REQUIRED`) peut être exigée.
+6. Une tentative `pending` n'est pas un paiement : elle ne prolonge rien. Elle passe à `expired`
+   après 10 minutes sans confirmation (`PAYMENT_INTENT_TTL_MS`) ; un paiement tardif reçu après
+   expiration doit être remboursé ou rattaché manuellement (à définir côté exploitation).
+7. Le numéro du mobile money est au **format international** (`+` ou `00`) ; le pays n'est jamais
+   deviné. Il n'est pas conservé au-delà de la tentative.
 
-1. **Secrets côté serveur uniquement.** Seule la clé *publique* peut être exposée au client ; la clé
-   secrète/privée et le secret de webhook ne quittent jamais le backend.
-2. **Le client n'est jamais cru sur parole.** Un retour de widget ou de redirection n'est qu'un signal :
-   le serveur confirme la transaction auprès de l'agrégateur (appel d'API) et/ou par webhook dont il
-   **vérifie la signature**, puis seulement marque le paiement réussi.
-3. **Idempotence** : une intention de paiement est créée avec un identifiant généré par le client ;
-   la rejouer renvoie la même intention, jamais un second débit.
-4. **Montants en FCFA entiers** ; la devise est XOF.
-5. Statuts d'une intention : `pending`, `succeeded`, `failed`, `expired`, `cancelled`. Un paiement
-   `pending` n'est pas une vente encaissée : il ne compte dans aucun total.
-
-Routes proposées (toutes sous `/orgs/:orgId`) :
+### Routes (sous `/orgs/:orgId/billing`)
 
 | Méthode | Route | Corps | Réponse |
 |---|---|---|---|
-| POST | `/payments/intents` | `{ id, purpose: "sale" \| "credit_repayment" \| "subscription", amount, paymentMethod, provider, customerPhone?, saleId?, creditId? }` | `201 { id, provider, status: "pending", providerTransactionId, expiresAt, checkout }` — `checkout` = ce dont le client a besoin pour ouvrir le widget ou la page de l'agrégateur (clé publique, montant, référence) |
-| GET | `/payments/intents/:id` | — | `{ id, status, paymentMethod, provider, amount, failureReason? }` — interrogeable en boucle courte tant que `pending` |
-| POST | `/payments/intents/:id/cancel` | — | `200` intention annulée si encore `pending` ; `409 CONFLICT` sinon |
-| POST | `/webhooks/fedapay`, `/webhooks/kkiapay` | corps de l'agrégateur | `200` ; **non authentifié par cookie**, authentifié par signature |
+| GET | `/plans` | — | `SubscriptionPlan[]` |
+| POST | `/payments` | `{ id, planId, cycle, paymentMethod, phone? }` | `201 PaymentIntent` (`pending`) · `200` si l'`id` existe déjà · `422 VALIDATION_ERROR` (forfait inconnu, moyen non payable en ligne, numéro absent ou non international) |
+| GET | `/payments/:id` | — | `PaymentIntent` — à interroger toutes les 3 s tant que `pending` · `404 NOT_FOUND` |
+| POST | `/payments/:id/cancel` | — | `PaymentIntent` au statut `cancelled` · `409 CONFLICT` si déjà terminée |
+| POST | `/webhooks/fedapay`, `/webhooks/kkiapay` | corps de l'agrégateur | `200` — **hors cookie**, authentifié par signature ; idempotent |
 
-Décisions à prendre avant de coder (non tranchées) :
+`paymentMethod` : `mtn_money`, `moov_money`, `orange_money`, `wave`, `celtiis_cash`, `card`
+(`cash`, `credit`, `other` → `422`). `phone` est obligatoire pour le mobile money, inutile pour `card`.
 
-| # | Question | Impact |
+```jsonc
+// POST /orgs/org-etoile/billing/payments
+{ "id": "payment-7f3c", "planId": "pro", "cycle": "monthly",
+  "paymentMethod": "mtn_money", "phone": "+229 97 00 00 01" }
+
+// 201
+{ "id": "payment-7f3c", "purpose": "subscription", "provider": "fedapay",
+  "status": "pending", "paymentMethod": "mtn_money", "planId": "pro", "cycle": "monthly",
+  "amount": 15000, "createdAt": "2026-11-11T17:30:00Z", "expiresAt": "2026-11-11T17:40:00Z",
+  "checkout": { "type": "push" } }
+```
+
+`checkout` dit au client quoi faire : `{ "type": "push" }` = l'opérateur envoie une demande de
+validation sur le téléphone (le client affiche l'attente et interroge) ; `{ "type": "redirect",
+"url": "…" }` = ouvrir la page de paiement sécurisée de l'agrégateur (carte, 3-D Secure). Les
+statuts de `PaymentIntent` sont `pending`, `succeeded`, `failed` (avec `failureReason` en français),
+`expired`, `cancelled`.
+
+### Effet d'un paiement réussi
+
+- l'abonnement est prolongé : **à partir de l'échéance actuelle** si le même forfait est encore en
+  cours (aucun jour perdu, essai gratuit compris), sinon à partir d'aujourd'hui ; durée = 1 mois
+  ou 12 mois (`nextRenewalDate`) ;
+- `Subscription.plan`, `cycle`, `paymentMethod` sont mis à jour et `autoRenew` passe à `true` ;
+- une facture `paid` est ajoutée ; son numéro **continue la suite existante** (INV-0012 → INV-0013) ;
+- le client relit `GET /orgs/:orgId/session` pour afficher l'abonnement à jour.
+
+### Démonstration (`mockApi`)
+
+Une tentative aboutit à la 2e interrogation ; un numéro dont la forme normalisée finit par `0000`
+simule un refus de l'opérateur ; le paiement par carte renvoie `redirect` vers `about:blank`.
+
+### Reste à faire / décisions ouvertes
+
+| # | Point | Statut |
 |---|---|---|
-| P1 | Par quel agrégateur commencer, ou les deux dès la V1 ? FedaPay couvre plus d'opérateurs (Wave, Orange) ; KKiaPay est limité à MTN, Moov, Celtiis et cartes. | Périmètre, pays couverts |
-| P2 | Le stock baisse-t-il à la validation de la vente (comme aujourd'hui) ou à la confirmation du paiement ? | Règle RG-05, vente `pending` |
-| P3 | Qui supporte les frais de l'agrégateur (la FAQ FedaPay mentionne 1,8 % sur le mobile money au Bénin, à vérifier) : le commerçant ou le client ? | Montant affiché et reversé |
-| P4 | Que veut-on payer en ligne : l'encaissement en boutique, le remboursement d'un crédit, l'abonnement, ou les trois ? | Nombre de parcours |
-| P5 | Délai d'expiration d'une intention, et conduite si le client paie après expiration. | Remboursement, rapprochement |
+| P1 | Quel agrégateur pour quel moyen en production (coût, disponibilité par pays) | à décider côté exploitation ; le client n'en dépend pas |
+| P3 | Frais de l'agrégateur (la FAQ FedaPay mentionne 1,8 % sur le mobile money au Bénin, à vérifier) : absorbés par la plateforme ou répercutés dans le prix | à décider |
+| P5 | Conduite en cas de paiement reçu après expiration | à définir |
+| W | Widget JavaScript d'un agrégateur (KKiaPay propose un widget) : non géré par le client, qui ne sait faire que `push` et `redirect` ; nécessite le SDK, la clé publique et une politique CSP | à faire si le backend choisit ce mode |
+| R | Renouvellement automatique : l'API ne prélève pas seule un mobile money ; `autoRenew` n'est aujourd'hui qu'un indicateur | à concevoir |
+| E | Rappel avant échéance, blocage d'accès à l'expiration (EF-37) | à faire |
 
 ## Routes — authentification
 

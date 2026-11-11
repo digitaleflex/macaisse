@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import type { PaymentMethod } from '@/types';
 import { t } from '@/content';
-import { SALE_PAYMENT_METHODS, type PaymentMethodOption } from '@/config/reference';
+import { SALE_PAYMENT_METHODS } from '@/config/reference';
 import { formatFCFA, parseMontant } from '@/domain/money';
 import { useUiStore } from '@/store/useUiStore';
 import { Button, Icon, Input, Modal, cn } from '@/ui';
+import { PaymentMethodGroup } from '../shared/PaymentMethodGroup';
 
 /**
  * Pavé d'encaissement : mode de règlement, client optionnel, clavier numérique
@@ -112,8 +113,8 @@ export function PaymentPad({ open, total, onClose, onValidate }: PaymentPadProps
         <div className="space-y-5">
           <div role="radiogroup" aria-label={t.pos.payment.method} className="space-y-3">
             <div className="text-[13px] font-medium text-slate-700">{t.pos.payment.method}</div>
-            <MethodGroup label={t.pos.payment.mobileMoney} options={MOBILE_MONEY} method={method} onSelect={selectMethod} />
-            <MethodGroup label={t.pos.payment.otherMethods} options={OTHER_METHODS} method={method} onSelect={selectMethod} />
+            <PaymentMethodGroup label={t.pos.payment.mobileMoney} options={MOBILE_MONEY} value={method} onSelect={selectMethod} />
+            <PaymentMethodGroup label={t.pos.payment.otherMethods} options={OTHER_METHODS} value={method} onSelect={selectMethod} />
           </div>
 
           <Input
@@ -171,46 +172,5 @@ export function PaymentPad({ open, total, onClose, onValidate }: PaymentPadProps
         )}
       </div>
     </Modal>
-  );
-}
-
-function MethodGroup({
-  label,
-  options,
-  method,
-  onSelect,
-}: {
-  label: string;
-  options: readonly PaymentMethodOption[];
-  method: PaymentMethod;
-  onSelect: (method: PaymentMethod) => void;
-}) {
-  return (
-    <div>
-      <div className="text-[11px] font-semibold uppercase tracking-wider text-muted mb-1.5">{label}</div>
-      <div className="grid grid-cols-3 gap-2">
-        {options.map((option) => {
-          const active = method === option.method;
-          return (
-            <button
-              key={option.method}
-              type="button"
-              role="radio"
-              aria-checked={active}
-              onClick={() => onSelect(option.method)}
-              className={cn(
-                'flex flex-col items-center justify-center gap-1 h-[72px] rounded-2xl border transition-all cursor-pointer active:scale-95',
-                active
-                  ? 'bg-ink-900 border-ink-900 text-white shadow-raised'
-                  : 'bg-white border-line text-slate-700 hover:border-line-strong'
-              )}
-            >
-              <Icon name={option.icon} size={22} className={active ? 'text-zest-400' : 'text-slate-500'} />
-              <span className="text-xs font-semibold">{option.short}</span>
-            </button>
-          );
-        })}
-      </div>
-    </div>
   );
 }

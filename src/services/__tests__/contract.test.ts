@@ -130,6 +130,32 @@ describe('contrat http — contexte et payload', () => {
     expect(captured[0]?.body).toEqual({ reason: 'erreur de produit' });
   });
 
+  it('démarre, suit et annule un paiement d’abonnement sur les routes /billing', async () => {
+    const intent = { id: 'pay-1', status: 'pending' };
+    const input = { id: 'pay-1', planId: 'pro', cycle: 'monthly' as const, paymentMethod: 'mtn_money' as const, phone: '+22997000001' };
+
+    const created = httpApiWith({ status: 201, body: intent });
+    await created.api.billing.pay(ORG, input);
+    expect(created.captured[0]?.method).toBe('POST');
+    expect(created.captured[0]?.url).toBe(`${BASE_URL}${ENDPOINTS.billingPayments(ORG)}`);
+    // Le montant n'est jamais envoyé : le serveur le calcule.
+    expect(created.captured[0]?.body).toEqual(input);
+    expect(created.captured[0]?.body).not.toHaveProperty('amount');
+
+    const read = httpApiWith({ status: 200, body: intent });
+    await read.api.billing.payment(ORG, 'pay-1');
+    expect(read.captured[0]?.method).toBe('GET');
+    expect(read.captured[0]?.url).toBe(`${BASE_URL}${ENDPOINTS.billingPayment(ORG, 'pay-1')}`);
+
+    const cancelled = httpApiWith({ status: 200, body: { ...intent, status: 'cancelled' } });
+    await cancelled.api.billing.cancel(ORG, 'pay-1');
+    expect(cancelled.captured[0]?.url).toBe(`${BASE_URL}${ENDPOINTS.billingPaymentCancel(ORG, 'pay-1')}`);
+
+    const plans = httpApiWith({ status: 200, body: [] });
+    await plans.api.billing.plans(ORG);
+    expect(plans.captured[0]?.url).toBe(`${BASE_URL}${ENDPOINTS.billingPlans(ORG)}`);
+  });
+
   it('remonte le statut et le message du serveur sans les réécrire', async () => {
     const { api } = httpApiWith({
       status: 409,
@@ -281,6 +307,121 @@ describe('contrat mock — même sémantique que le serveur', () => {
       await expect(api.sales.cancel('sale-inconnue', 'erreur')).rejects.toMatchObject({
         status: 404,
       });
+    });
+  });
+
+  describe('paiement de l’abonnement (FedaPay / KKiaPay)', () => {
+    const MTN = '+22997000001';
+    const pay = (overrides: Partial<Parameters<Api['billing']['pay']>[1]> = {}) =>
+      api.billing.pay(ORG, {
+        id: 'pay-1',
+        planId: 'pro',
+        cycle: 'monthly',
+        paymentMethod: 'mtn_money',
+        phone: MTN,
+        ...overrides,
+      });
+    /** Interroge jusqu'à un statut final (au plus 5 fois). */
+    async function settle(id: string) {
+      let latest = await api.billing.payment(ORG, id);
+      for (let i = 0; i < 5 && latest.status === 'pending'; i += 1) latest = await api.billing.payment(ORG, id);
+      return latest;
+    }
+
+    it('liste les forfaits', async () => {
+      const plans = await api.billing.plans(ORG);
+      expect(plans.map((plan) => plan.id)).toEqual(['starter', 'pro']);
+    });
+
+    it('calcule le montant côté serveur et choisit l’agrégateur', async () => {
+      const intent = await pay();
+      expect(intent).toMatchObject({
+        status: 'pending',
+        purpose: 'subscription',
+        amount: 15000,
+        provider: 'fedapay',
+        checkout: { type: 'push' },
+      });
+      expect((await pay({ id: 'pay-2', cycle: 'yearly', planId: 'starter' })).amount).toBe(50000);
+    });
+
+    it('gère tous les moyens en ligne, mobile money d’abord, carte par page sécurisée', async () => {
+      for (const method of ['mtn_money', 'moov_money', 'orange_money', 'wave', 'celtiis_cash'] as const) {
+        const intent = await pay({ id: `pay-${method}`, paymentMethod: method });
+        expect(intent.checkout.type).toBe('push');
+      }
+      const card = await pay({ id: 'pay-card', paymentMethod: 'card', phone: undefined });
+      expect(card.checkout.type).toBe('redirect');
+    });
+
+    it('est idempotent : rejouer le même identifiant ne crée pas une seconde tentative', async () => {
+      const first = await pay();
+      const again = await pay({ planId: 'starter', cycle: 'yearly' });
+      expect(again.id).toBe(first.id);
+      expect(again.amount).toBe(first.amount);
+    });
+
+    it('aboutit, prolonge l’abonnement et ajoute la facture', async () => {
+      const before = (await api.session.get(ORG)).subscription;
+      const intent = await pay();
+
+      const final = await settle(intent.id);
+
+      expect(final.status).toBe('succeeded');
+      const after = (await api.session.get(ORG)).subscription;
+      expect(after.invoices).toHaveLength(before.invoices.length + 1);
+      expect(after.invoices[0]).toMatchObject({ amount: 15000, paymentMethod: 'mtn_money', status: 'paid' });
+      // La numérotation continue la suite (INV-0012 → INV-0013), elle ne repart pas du nombre de factures.
+      expect(after.invoices[0]?.id).toBe('INV-0013');
+      expect(after.paymentMethod).toBe('mtn_money');
+      // Même forfait encore en cours : on prolonge, aucun jour perdu.
+      expect(after.renewalDate > before.renewalDate).toBe(true);
+    });
+
+    it('simule un refus de l’opérateur sans rien facturer', async () => {
+      const before = (await api.session.get(ORG)).subscription;
+      // Numéro finissant par 0000 : refus simulé de l'opérateur (démonstration).
+      const refused = await pay({ id: 'pay-refus', phone: '+229 97 00 00 00' });
+
+      const final = await settle(refused.id);
+
+      expect(final.status).toBe('failed');
+      expect(final.failureReason).toBeTruthy();
+      expect((await api.session.get(ORG)).subscription.invoices).toHaveLength(before.invoices.length);
+    });
+
+    it('refuse une demande invalide avec un 422', async () => {
+      await expect(pay({ phone: undefined })).rejects.toMatchObject({ status: 422, code: 'VALIDATION_ERROR' });
+      await expect(pay({ id: 'p-b', phone: '97000001' })).rejects.toMatchObject({ status: 422 });
+      await expect(pay({ id: 'p-c', paymentMethod: 'cash' })).rejects.toMatchObject({ status: 422 });
+      await expect(pay({ id: 'p-d', planId: 'inconnu' })).rejects.toMatchObject({ status: 422 });
+    });
+
+    it('annule une tentative en attente, puis refuse de l’annuler à nouveau', async () => {
+      const intent = await pay();
+      expect((await api.billing.cancel(ORG, intent.id)).status).toBe('cancelled');
+      await expect(api.billing.cancel(ORG, intent.id)).rejects.toMatchObject({ status: 409 });
+      // Une tentative annulée n'aboutit jamais.
+      expect((await api.billing.payment(ORG, intent.id)).status).toBe('cancelled');
+    });
+
+    it('refuse d’annuler une tentative déjà payée', async () => {
+      const intent = await pay();
+      await settle(intent.id);
+      await expect(api.billing.cancel(ORG, intent.id)).rejects.toMatchObject({ status: 409 });
+    });
+
+    it('répond 404 pour une tentative inconnue', async () => {
+      await expect(api.billing.payment(ORG, 'inconnue')).rejects.toMatchObject({ status: 404 });
+    });
+
+    it('réserve le paiement au propriétaire', async () => {
+      await api.auth.logout();
+      await api.auth.login({ email: 'awa@boutique-etoile.sn', password: DEMO_PASSWORD });
+      setActiveOrganization(ORG);
+
+      await expect(pay()).rejects.toMatchObject({ status: 403, code: 'INSUFFICIENT_ROLE' });
+      await expect(api.billing.plans(ORG)).rejects.toMatchObject({ status: 403 });
     });
   });
 

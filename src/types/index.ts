@@ -328,6 +328,46 @@ export interface Subscription {
   invoices: Invoice[];
 }
 
+/** Statut d'une tentative de paiement en ligne (identifiants d'API stables). */
+export type PaymentIntentStatus = 'pending' | 'succeeded' | 'failed' | 'expired' | 'cancelled';
+
+/**
+ * Ce que le client doit faire pour finir le paiement :
+ * - `push` : l'opérateur mobile money envoie une demande de validation sur le téléphone ;
+ * - `redirect` : le client termine sur la page de paiement sécurisée de l'agrégateur (carte).
+ */
+export type CheckoutInstruction = { type: 'push' } | { type: 'redirect'; url: string };
+
+/** Demande de paiement de l'abonnement de la plateforme. Le montant n'est JAMAIS envoyé : le serveur le calcule. */
+export interface SubscriptionPaymentInput {
+  /** Identifiant généré par le client : rejouer la demande ne débite pas deux fois. */
+  id: string;
+  planId: string;
+  cycle: BillingCycle;
+  paymentMethod: TenderMethod;
+  /** Numéro qui reçoit la demande de validation, format international ; requis pour le mobile money. */
+  phone?: string;
+}
+
+/** Tentative de paiement de l'abonnement via un agrégateur (FedaPay ou KKiaPay, choisi par le serveur). */
+export interface PaymentIntent {
+  id: string;
+  purpose: 'subscription';
+  provider: Exclude<PaymentProvider, 'manual'>;
+  status: PaymentIntentStatus;
+  paymentMethod: TenderMethod;
+  planId: string;
+  cycle: BillingCycle;
+  /** FCFA entiers, calculés par le serveur. */
+  amount: number;
+  createdAt: string;
+  /** Au-delà, une tentative encore `pending` passe à `expired`. */
+  expiresAt: string;
+  checkout: CheckoutInstruction;
+  /** Message lisible en français quand `status` vaut `failed`. */
+  failureReason?: string;
+}
+
 // ---------------------------------------------------------------------------
 // Multi-organisation (SaaS) : comptes, appartenances, rôles.
 // ---------------------------------------------------------------------------

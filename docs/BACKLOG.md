@@ -211,6 +211,11 @@ issue fermée sans test (ou sans mise à jour de `docs/`) n'est pas « terminée
 stables ; catalogue avec le **mobile money en premier** (MTN, Moov, Orange, Wave, Celtiis), carte,
 espèces, crédit ; conversion automatique des anciennes données locales (stores en version 3).
 
-**À faire** : encaissement en ligne via FedaPay / KKiaPay (conception dans `API_CONTRACT.md`,
-décisions P1 à P5 à trancher) ; conversion des catégories de produit et de dépense, encore en
-libellés français.
+✅ **Paiement de l'abonnement via FedaPay / KKiaPay livré (front + mock)** : écran « Payer mon
+abonnement » (forfait, durée, mobile money d'abord puis carte), suivi jusqu'à confirmation,
+annulation, refus et expiration gérés, facture et échéance mises à jour. Périmètre limité à
+l'abonnement de la plateforme ; les ventes en boutique restent manuelles.
+
+**À faire** : le backend réel (appel aux deux agrégateurs, webhooks signés — voir `API_CONTRACT.md`) ;
+décisions P1, P3, P5 ; widget d'agrégateur, renouvellement automatique, blocage à l'expiration ;
+conversion des catégories de produit et de dépense, encore en libellés français.

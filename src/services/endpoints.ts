@@ -29,6 +29,10 @@ export const ENDPOINTS = {
   device: (orgId: string, deviceId: string) => `${org(orgId)}/devices/${enc(deviceId)}`,
   memberPin: (orgId: string, userId: string) => `${org(orgId)}/members/${enc(userId)}/pin`,
   pinVerify: '/auth/pin/verify',
+  billingPlans: (orgId: string) => `${org(orgId)}/billing/plans`,
+  billingPayments: (orgId: string) => `${org(orgId)}/billing/payments`,
+  billingPayment: (orgId: string, id: string) => `${org(orgId)}/billing/payments/${enc(id)}`,
+  billingPaymentCancel: (orgId: string, id: string) => `${org(orgId)}/billing/payments/${enc(id)}/cancel`,
   members: (orgId: string) => `${org(orgId)}/members`,
   member: (orgId: string, userId: string) => `${org(orgId)}/members/${enc(userId)}`,
 

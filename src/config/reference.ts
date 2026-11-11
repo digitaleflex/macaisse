@@ -146,6 +146,14 @@ export const TENDER_METHODS: readonly TenderMethodOption[] = PAYMENT_METHODS.fil
   (option): option is TenderMethodOption => option.method !== 'credit'
 );
 
+/**
+ * Moyens payables en ligne via un agrégateur (abonnement de la plateforme) : ceux
+ * qui ont au moins un agrégateur. Même ordre que le catalogue : mobile money d'abord.
+ */
+export const ONLINE_PAYMENT_METHODS: readonly TenderMethodOption[] = TENDER_METHODS.filter(
+  (option) => option.providers.length > 0
+);
+
 const LEGACY_PAYMENT_METHOD: Readonly<Record<string, PaymentMethod>> = {
   Espèces: 'cash',
   'Mobile Money (Wave)': 'wave',

@@ -97,6 +97,9 @@ const STARTER_PLAN = {
   features: ['500 ventes / mois', 'Jusqu’à 2 membres', 'Reçus numériques', 'Export CSV'],
 };
 
+/** Forfaits proposés à l'abonnement (démonstration). */
+export const MOCK_PLANS = [STARTER_PLAN, PRO_PLAN];
+
 export const MOCK_ORGANIZATIONS: Record<string, MockOrganization> = {
   'org-etoile': {
     business: {

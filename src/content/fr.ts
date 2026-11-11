@@ -696,7 +696,7 @@ export const fr = {
 
   subscription: {
     title: 'Mon abonnement',
-    demoNotice: 'Démonstration : la facturation n’est pas activée. Aucune transaction réelle n’est effectuée.',
+    demoNotice: 'Démonstration : les paiements sont simulés. Aucune transaction réelle n’est effectuée.',
     activePlan: 'Plan actif',
     autoRenew: 'Renouvellement auto',
     perMonth: '/ mois',
@@ -711,6 +711,61 @@ export const fr = {
     invoice: (id: string) => `Facture ${id}`,
     invoiceMeta: (date: string, method: string, amount: string) => `${date} · ${method} · ${amount}`,
     download: 'Télécharger',
+  },
+
+  billing: {
+    action: 'Payer mon abonnement',
+    title: 'Payer mon abonnement',
+    demoNotice:
+      'Démonstration : aucun argent n’est réellement débité. Un numéro finissant par 0000 simule un refus de l’opérateur.',
+    planLabel: 'Forfait',
+    cycleLabel: 'Durée',
+    amountDue: 'Montant à payer',
+    methodLabel: 'Moyen de paiement',
+    mobileMoney: 'Mobile Money',
+    otherMethods: 'Carte bancaire',
+    secureNote:
+      'Paiement sécurisé par FedaPay ou KKiaPay selon le moyen choisi. Vos données de paiement ne passent jamais par Ma Caisse.',
+    phoneLabel: 'Numéro Mobile Money',
+    phoneHint: 'Format international, ex. +229 97 00 00 00. Ce numéro reçoit la demande de validation.',
+    phonePlaceholder: '+229 97 00 00 00',
+    plansLoading: 'Chargement des forfaits…',
+    plansError: 'Impossible de charger les forfaits.',
+    pay: (amount: string) => `Payer ${amount}`,
+    starting: 'Démarrage…',
+    provider: { fedapay: 'FedaPay', kkiapay: 'KKiaPay' },
+    processing: {
+      title: 'Paiement en cours',
+      push: (phone: string) =>
+        `Validez le paiement sur votre téléphone (${phone}). Votre opérateur vous envoie une demande de confirmation.`,
+      redirect: 'Terminez le paiement sur la page sécurisée de votre banque, puis revenez ici.',
+      openPage: 'Ouvrir la page de paiement',
+      waiting: 'En attente de confirmation…',
+      via: (provider: string) => `via ${provider}`,
+      cancel: 'Annuler le paiement',
+      networkIssue: 'Connexion instable : le suivi du paiement reprend dès que possible.',
+    },
+    success: {
+      title: 'Paiement reçu',
+      text: (date: string) => `Votre abonnement est actif jusqu’au ${date}.`,
+      toast: 'Paiement reçu — abonnement mis à jour.',
+      close: 'Terminer',
+    },
+    failure: {
+      title: 'Paiement non abouti',
+      failed: 'Le paiement a été refusé. Aucun montant n’a été prélevé.',
+      expired: 'Le délai de confirmation est dépassé. Aucun montant n’a été prélevé.',
+      cancelled: 'Paiement annulé.',
+      retry: 'Réessayer',
+    },
+    errors: {
+      planUnknown: 'Forfait inconnu.',
+      method_unsupported: 'Ce moyen de paiement ne peut pas être payé en ligne.',
+      phone_required: 'Le numéro Mobile Money est obligatoire.',
+      phone_invalid: 'Saisissez le numéro au format international (ex. +229 97 00 00 00).',
+      declined: 'Paiement refusé par l’opérateur (démonstration).',
+      notCancellable: 'Ce paiement n’est plus annulable.',
+    },
   },
 
   notifications: {
