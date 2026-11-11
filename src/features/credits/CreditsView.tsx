@@ -6,6 +6,7 @@ import { formatFCFA } from '@/domain/money';
 import { useCreditsStore, type CreditInput } from '@/store/useCreditsStore';
 import { usePermission } from '@/store/useSessionStore';
 import { useUiStore } from '@/store/useUiStore';
+import { useToday } from '@/lib/useToday';
 import { Button, EmptyState, Icon, PageHeader, ProgressBar, SectionTitle } from '@/ui';
 import { CreditDetailCard } from './CreditDetailCard';
 import { CreditFilters, type CreditFilterKey } from './CreditFilters';
@@ -38,7 +39,7 @@ export function CreditsView() {
   const [formOpen, setFormOpen] = useState(false);
   const [formInstance, setFormInstance] = useState(0);
 
-  const now = useMemo(() => new Date(), []);
+  const now = useToday();
   const summary = useMemo(() => creditSummary(credits, now), [credits, now]);
 
   // Créances actives, enrichies et triées par urgence (retards d'abord).

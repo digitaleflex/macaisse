@@ -1,4 +1,3 @@
-import { useMemo } from 'react';
 import type { Product } from '@/types';
 import { t } from '@/content';
 import { overdueCredits } from '@/domain/credits';
@@ -7,6 +6,7 @@ import { formatFCFA } from '@/domain/money';
 import { selectLowStockProducts, selectOutOfStockProducts, useProductsStore } from '@/store/useProductsStore';
 import { useCreditsStore } from '@/store/useCreditsStore';
 import { useUiStore } from '@/store/useUiStore';
+import { useToday } from '@/lib/useToday';
 import { Badge, Card, EmptyState, Icon } from '@/ui';
 
 function describeProduct(product: Product): string {
@@ -20,7 +20,7 @@ export function StockAlerts() {
   const products = useProductsStore((state) => state.products);
   const credits = useCreditsStore((state) => state.credits);
   const setTab = useUiStore((state) => state.setTab);
-  const now = useMemo(() => new Date(), []);
+  const now = useToday();
 
   const outOfStock = selectOutOfStockProducts(products);
   const lowStock = selectLowStockProducts(products);

@@ -153,9 +153,17 @@
   line-height: 1;
   vertical-align: middle;
   user-select: none;
+  /* Si la police manque, le nom de l'icône ne doit ni déborder ni chevaucher le texte voisin. */
+  overflow: hidden;
+  white-space: nowrap;
 }
 .material-symbols-outlined.is-filled {
-  font-variation-settings: 'FILL' 1, 'wght' 500, 'GRAD' 0, 'opsz' 24;
+  /* Une seule graisse est chargée (400) : demander 500 serait ignoré. */
+  font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+/* Tant que la police d'icônes n'est pas là (ou si elle échoue), on masque le texte de repli. */
+html:not(.icons-ready) .material-symbols-outlined {
+  color: transparent;
 }
 
 @media (prefers-reduced-motion: reduce) {

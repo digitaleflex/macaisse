@@ -123,10 +123,53 @@ export function expenseBreakdown(expenses: Expense[], from?: Date, to?: Date): B
     .sort((a, b) => b.amount - a.amount);
 }
 
-/** Répartition des encaissements par moyen de paiement, triée décroissante. */
-export function channelSplit(sales: SaleTransaction[]): BreakdownSlice[] {
+/** Ventes non annulées dont le jour est compris entre `from` et `to` (inclus ; une borne absente n'en est pas une). */
+function salesInRange(sales: SaleTransaction[], from?: Date, to?: Date): SaleTransaction[] {
+  const fromKey = from ? toIsoDate(from) : undefined;
+  const toKey = to ? toIsoDate(to) : undefined;
+  return activeSales(sales).filter((sale) => {
+    if (fromKey === undefined && toKey === undefined) return true;
+    const date = parseDate(sale.date);
+    if (!date) return false;
+    const key = toIsoDate(date);
+    return (fromKey === undefined || key >= fromKey) && (toKey === undefined || key <= toKey);
+  });
+}
+
+/** Chiffre d'affaires (ventes non annulées) entre deux jours, bornes incluses. */
+export function revenueBetween(sales: SaleTransaction[], from: Date, to: Date): number {
+  return salesInRange(sales, from, to).reduce((sum, sale) => sum + sale.amount, 0);
+}
+
+export interface MonthComparison {
+  /** Du 1er du mois à aujourd'hui. */
+  current: number;
+  /** Les **mêmes jours écoulés** du mois précédent (31 mars → 28 février). */
+  previous: number;
+}
+
+/**
+ * Compare le mois en cours à la même durée du mois précédent. Comparer un mois
+ * entamé à un mois complet donnerait presque toujours une baisse trompeuse.
+ */
+export function monthToDateComparison(sales: SaleTransaction[], now: Date): MonthComparison {
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const previousStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const previousLength = new Date(now.getFullYear(), now.getMonth(), 0).getDate();
+  const previousEnd = new Date(previousStart.getFullYear(), previousStart.getMonth(), Math.min(now.getDate(), previousLength));
+  return {
+    current: revenueBetween(sales, monthStart, now),
+    previous: revenueBetween(sales, previousStart, previousEnd),
+  };
+}
+
+/**
+ * Répartition des encaissements par moyen de paiement, triée décroissante.
+ * `from` et `to` bornent la période (inclus) ; sans bornes, tout l'historique.
+ */
+export function channelSplit(sales: SaleTransaction[], from?: Date, to?: Date): BreakdownSlice[] {
   const totals = new Map<PaymentMethod, number>();
-  for (const sale of activeSales(sales)) {
+  for (const sale of salesInRange(sales, from, to)) {
     totals.set(sale.paymentMethod, (totals.get(sale.paymentMethod) ?? 0) + sale.amount);
   }
   return [...totals.entries()]
