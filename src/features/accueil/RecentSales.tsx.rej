@@ -1,0 +1,31 @@
+--- src_features_accueil_RecentSales.tsx.pretty	2026-11-11 17:33:05.962317129 +0000
++++ src_features_accueil_RecentSales.tsx.mine	2026-11-11 17:33:05.985925012 +0000
+@@ -68,7 +71,12 @@
+                     </span>
+                   </span>
+                   <span className="text-right shrink-0">
+-                    <span className="block font-num font-bold text-sm text-ink-900">
++                    <span
++                      className={
++                        'block font-num font-bold text-sm ' +
++                        (cancelled ? 'text-slate-400 line-through' : 'text-ink-900')
++                      }
++                    >
+                       {formatFCFA(sale.amount)}
+                     </span>
+                     <span
+@@ -78,9 +86,11 @@
+                           : 'text-[11px] text-muted'
+                       }
+                     >
+-                      {partial
+-                        ? t.dashboard.recent.remaining(formatFCFA(sale.remainingAmount ?? 0))
+-                        : t.dashboard.recent.receiptIssued}
++                      {cancelled
++                        ? t.dashboard.recent.cancelled
++                        : partial
++                          ? t.dashboard.recent.remaining(formatFCFA(sale.remainingAmount ?? 0))
++                          : t.dashboard.recent.receiptIssued}
+                     </span>
+                   </span>
+                 </button>

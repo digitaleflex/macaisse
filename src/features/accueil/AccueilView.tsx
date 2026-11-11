@@ -5,6 +5,7 @@ import { addDays, isSameDay, parseDate, toIsoDate } from '@/domain/dates';
 import { activeCredits } from '@/domain/credits';
 import { computeKpis, dailyRevenueSeries } from '@/domain/finances';
 import { formatFCFA } from '@/domain/money';
+import { activeSales } from '@/domain/sales';
 import { marginRatePercent, retailValue } from '@/domain/stock';
 import { expensesInRange, useExpensesStore } from '@/store/useExpensesStore';
 import { useCreditsStore } from '@/store/useCreditsStore';
@@ -97,7 +98,7 @@ export function AccueilView() {
   const debtors = useMemo(() => activeCredits(credits, now).length, [credits, now]);
   const todaySales = useMemo(
     () =>
-      sales.filter((sale) => {
+      activeSales(sales).filter((sale) => {
         const date = parseDate(sale.date);
         return date !== null && isSameDay(date, now);
       }),

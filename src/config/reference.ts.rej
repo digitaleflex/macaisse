@@ -1,0 +1,51 @@
+--- src_config_reference.ts.pretty	2026-11-11 17:33:01.602316870 +0000
++++ src_config_reference.ts.mine	2026-11-11 17:33:01.633393185 +0000
+@@ -24,11 +24,7 @@
+   'Hygiène',
+ ] as const satisfies readonly Category[];
+ 
+-export const SALE_STATUSES = [
+-  'Validé',
+-  'Partiel',
+-  'En attente',
+-] as const satisfies readonly SaleStatus[];
++export const SALE_STATUSES = ['Validé', 'Partiel', 'En attente', 'Annulée'] as const satisfies readonly SaleStatus[];
+ 
+ export const CREDIT_STATUSES = [
+   'En retard',
+@@ -52,13 +48,7 @@
+   Hygiène: { icon: 'soap', tone: 'bg-violet-100 text-violet-700' },
+ };
+ 
+-export const EXPENSE_CATEGORIES = [
+-  'Achat Stock',
+-  'Transport',
+-  'Factures',
+-  'Salaires',
+-  'Divers',
+-] as const;
++export const EXPENSE_CATEGORIES = ['Achat Stock', 'Transport', 'Factures', 'Salaires', 'Divers'] as const;
+ export type ExpenseCategory = (typeof EXPENSE_CATEGORIES)[number];
+ 
+ export const EXPENSE_CATEGORY_ICON: Record<string, string> = {
+@@ -86,7 +76,7 @@
+ 
+ /** Valeurs de `PaymentMethod` (dérivées, jamais dupliquées). */
+ export const PAYMENT_METHOD_VALUES: readonly PaymentMethod[] = PAYMENT_METHODS.map(
+-  (option) => option.method,
++  (option) => option.method
+ );
+ 
+ export function paymentShortLabel(method: string): string {
+@@ -99,10 +89,7 @@
+   rupture: 'danger',
+ };
+ 
+-export const CREDIT_STATUS_TONE: Record<
+-  CreditStatus,
+-  'success' | 'warning' | 'danger' | 'neutral'
+-> = {
++export const CREDIT_STATUS_TONE: Record<CreditStatus, 'success' | 'warning' | 'danger' | 'neutral'> = {
+   Réglé: 'success',
+   Partiel: 'warning',
+   'En retard': 'danger',

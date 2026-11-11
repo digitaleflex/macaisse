@@ -13,6 +13,13 @@ describe('permissions', () => {
     expect(can('manager', 'finance.view')).toBe(true);
   });
 
+  it('réserve l’annulation de vente au gérant et au propriétaire, tout jour au propriétaire', () => {
+    expect(can('cashier', 'sales.cancel')).toBe(false);
+    expect(can('manager', 'sales.cancel')).toBe(true);
+    expect(can('manager', 'sales.cancelAnyDay')).toBe(false);
+    expect(can('owner', 'sales.cancelAnyDay')).toBe(true);
+  });
+
   it('limite le caissier à l’encaissement', () => {
     expect(can('cashier', 'sales.create')).toBe(true);
     expect(can('cashier', 'credits.collect')).toBe(true);

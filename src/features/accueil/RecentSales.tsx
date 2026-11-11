@@ -37,6 +37,7 @@ export function RecentSales({ sales, todayCount, onSelect, onViewAll }: RecentSa
         <ul className="divide-y divide-line">
           {sales.map((sale) => {
             const partial = sale.status === 'Partiel';
+            const cancelled = sale.status === 'Annulée';
             return (
               <li key={sale.id}>
                 <button
@@ -52,18 +53,22 @@ export function RecentSales({ sales, todayCount, onSelect, onViewAll }: RecentSa
                       <span className="text-sm font-semibold text-ink-900 truncate">
                         {sale.clientName ?? t.dashboard.recent.sale(sale.saleNumber)}
                       </span>
-                      <Badge tone={partial ? 'warning' : 'success'}>{sale.status}</Badge>
+                      <Badge tone={cancelled ? 'danger' : partial ? 'warning' : 'success'}>
+                        {sale.status}
+                      </Badge>
                     </span>
                     <span className="block text-xs text-slate-500 mt-0.5 truncate">
                       {sale.saleNumber} · {paymentShortLabel(sale.paymentMethod)} · <span className="font-num">{sale.time}</span>
                     </span>
                   </span>
                   <span className="text-right shrink-0">
-                    <span className="block font-num font-bold text-sm text-ink-900">{formatFCFA(sale.amount)}</span>
+                    <span className={cancelled ? 'block font-num font-bold text-sm text-slate-400 line-through' : 'block font-num font-bold text-sm text-ink-900'}>{formatFCFA(sale.amount)}</span>
                     <span className={partial ? 'text-[11px] font-semibold text-amber-600' : 'text-[11px] text-muted'}>
-                      {partial
-                        ? t.dashboard.recent.remaining(formatFCFA(sale.remainingAmount ?? 0))
-                        : t.dashboard.recent.receiptIssued}
+                      {cancelled
+                        ? t.dashboard.recent.cancelled
+                        : partial
+                          ? t.dashboard.recent.remaining(formatFCFA(sale.remainingAmount ?? 0))
+                          : t.dashboard.recent.receiptIssued}
                     </span>
                   </span>
                 </button>

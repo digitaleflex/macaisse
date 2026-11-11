@@ -93,6 +93,8 @@ export function createHttpApi(http: HttpClient): Api {
     sales: {
       list: () => http.get<SaleTransaction[]>(ENDPOINTS.sales(org())),
       create: (payload) => http.post<SaleTransaction>(ENDPOINTS.sales(org()), payload),
+      cancel: (id, reason) =>
+        http.post<SaleTransaction>(ENDPOINTS.saleCancel(org(), id), { reason }),
     },
     expenses: {
       list: () => http.get<Expense[]>(ENDPOINTS.expenses(org())),

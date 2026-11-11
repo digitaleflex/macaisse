@@ -3,18 +3,25 @@
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { PaymentMethod, SaleTransaction } from '@/types';
+import type { CartLine, PaymentMethod, SaleTransaction } from '@/types';
 import { nextSaleNumber } from '@/domain/ids';
 import { creditFromSale } from '@/domain/credits';
-import { completeSale as buildSale } from '@/domain/sales';
+import {
+  assessCancellation,
+  cancelSale as buildCancellation,
+  completeSale as buildSale,
+  type CancelDenial,
+} from '@/domain/sales';
+import { personDisplayName } from '@/domain/users';
 import { t } from '@/content';
 import { formatFCFA } from '@/domain/money';
 import { SEED_SALES } from '@/mocks';
-import { syncRemote } from '@/services';
+import { api, syncRemote } from '@/services';
 import { useCartStore } from './useCartStore';
 import { useCreditsStore } from './useCreditsStore';
 import { useNotificationsStore } from './useNotificationsStore';
 import { useProductsStore } from './useProductsStore';
+import { useSessionStore } from './useSessionStore';
 import {
   coerceId,
   coerceNumber,
@@ -44,7 +51,21 @@ export interface SalesState {
    * Refuse (exception française) un panier vide ou un stock insuffisant.
    */
   completeSale: (input: CompleteSaleActionInput) => SaleTransaction;
+  /**
+   * Annule une vente (EF-15) : motif obligatoire, auteur et date tracés, stock
+   * remis, crédit lié supprimé. La vente reste dans l'historique. En mode `http`
+   * le serveur arbitre d'abord ; en cas de refus, rien n'est modifié localement.
+   * Rejette (exception française) un refus de règle ou une erreur serveur.
+   */
+  cancelSale: (saleId: string, reason: string) => Promise<SaleTransaction>;
 }
+
+const CANCEL_DENIAL_MESSAGES: Record<CancelDenial, string> = {
+  'already-cancelled': t.sales.cancel.errors.alreadyCancelled,
+  role: t.sales.cancel.errors.role,
+  window: t.sales.cancel.errors.window,
+  'credit-repaid': t.sales.cancel.errors.creditRepaid,
+};
 
 export const useSalesStore = create<SalesState>()(
   persist(
@@ -71,7 +92,8 @@ export const useSalesStore = create<SalesState>()(
 
         // Règlement partiel : la créance naît de la vente, dans le même mouvement.
         // Elle est transmise au serveur avec la vente (transaction unique) d'où
-        // l'insertion locale sans synchronisation propre.
+        // l'insertion locale sans synchronisation propre. Elle garde l'id de la
+        // vente pour pouvoir être traitée si la vente est annulée (EF-16).
         const credit =
           sale.remainingAmount !== undefined && sale.remainingAmount > 0
             ? useCreditsStore.getState().addCredit(
@@ -80,6 +102,7 @@ export const useSalesStore = create<SalesState>()(
                   amount: sale.remainingAmount,
                   date: now,
                   place: t.credits.form.defaultPlace,
+                  saleId: sale.id,
                 }),
                 { remote: false }
               )
@@ -112,13 +135,71 @@ export const useSalesStore = create<SalesState>()(
             });
           }
         }
-        set((state) => ({ sales: [sale, ...state.sales], sequence }));
+        const stored: SaleTransaction = credit ? { ...sale, creditId: credit.id } : sale;
+        set((state) => ({ sales: [stored, ...state.sales], sequence }));
+        // Le détail des lignes part dans `lines` ; la copie locale n'est pas dupliquée.
+        const wireSale: SaleTransaction = { ...stored };
+        delete wireSale.lines;
         syncRemote(
-          (api) => api.sales.create(credit ? { sale, lines, credit } : { sale, lines }),
+          (client) => client.sales.create(credit ? { sale: wireSale, lines, credit } : { sale: wireSale, lines }),
           'Vente non synchronisée.'
         );
 
-        return sale;
+        return stored;
+      },
+
+      cancelSale: async (saleId, reason) => {
+        const sale = get().sales.find((item) => item.id === saleId);
+        if (!sale) throw new Error(t.sales.cancel.errors.notFound);
+
+        const session = useSessionStore.getState().session;
+        if (!session) throw new Error(t.sales.cancel.errors.role);
+        const credits = useCreditsStore.getState().credits;
+        const credit =
+          credits.find((item) => item.id === sale.creditId) ?? credits.find((item) => item.saleId === sale.id);
+
+        // 1. Règles métier (droits, jour, crédit remboursé) : refus avant tout effet.
+        const assessment = assessCancellation({ sale, credit, role: session.role });
+        if (!assessment.allowed && assessment.denial) {
+          throw new Error(CANCEL_DENIAL_MESSAGES[assessment.denial]);
+        }
+
+        // 2. Calcul local complet (valide aussi le motif) AVANT toute mutation.
+        const by = personDisplayName(session.user.firstName, session.user.lastName);
+        const result = buildCancellation({
+          sale,
+          products: useProductsStore.getState().products,
+          reason,
+          by,
+        });
+
+        // 3. Mode http : le serveur arbitre d'abord (aucune annulation optimiste,
+        //    la vente est une écriture sensible). Un refus remonte à l'écran.
+        if (api.mode === 'http') {
+          await api.sales.cancel(saleId, result.sale.cancelReason ?? reason);
+        }
+
+        // 4. Application locale : stock, crédit lié, vente.
+        useProductsStore.getState().setProducts(result.products);
+        if (api.mode === 'http' && !result.stockRestored) {
+          // Détail des lignes inconnu côté client : le serveur a remis le stock, on le relit.
+          useProductsStore.getState().setProducts(await api.products.list());
+        }
+        if (credit) {
+          useCreditsStore.setState((state) => ({
+            credits: state.credits.filter((item) => item.id !== credit.id),
+          }));
+        }
+        set((state) => ({
+          sales: state.sales.map((item) => (item.id === saleId ? result.sale : item)),
+        }));
+        useNotificationsStore.getState().push({
+          title: t.notifications.feed.saleCancelled(sale.saleNumber),
+          description: t.notifications.feed.saleCancelledText(by),
+          type: 'info',
+          relatedTab: 'ventes',
+        });
+        return result.sale;
       },
     }),
     persistOptions<SalesState, { sales: SaleTransaction[]; sequence: number }>(
@@ -162,5 +243,35 @@ function toSale(value: unknown): SaleTransaction | null {
   const remainingAmount = coerceNumber(value.remainingAmount, Number.NaN);
   if (Number.isFinite(remainingAmount)) sale.remainingAmount = remainingAmount;
 
+  const creditId = coerceString(value.creditId);
+  if (creditId.length > 0) sale.creditId = creditId;
+
+  const lines = toCartLines(value.lines);
+  if (lines) sale.lines = lines;
+
+  if (sale.status === 'Annulée') {
+    sale.cancelledAt = coerceString(value.cancelledAt);
+    sale.cancelledBy = coerceString(value.cancelledBy);
+    sale.cancelReason = coerceString(value.cancelReason);
+  }
+
   return sale;
+}
+
+function toCartLines(value: unknown): CartLine[] | null {
+  if (!Array.isArray(value)) return null;
+  const lines: CartLine[] = [];
+  for (const entry of value) {
+    if (!isRecord(entry)) return null;
+    const productId = coerceId(entry.productId);
+    if (!productId) return null;
+    lines.push({
+      productId,
+      name: coerceString(entry.name),
+      price: coerceNumber(entry.price),
+      quantity: coerceNumber(entry.quantity),
+      unit: coerceString(entry.unit),
+    });
+  }
+  return lines;
 }

@@ -36,6 +36,7 @@ export const ENDPOINTS = {
   product: (orgId: string, id: string) => `${org(orgId)}/products/${enc(id)}`,
   productRestock: (orgId: string, id: string) => `${org(orgId)}/products/${enc(id)}/restock`,
   sales: (orgId: string) => `${org(orgId)}/sales`,
+  saleCancel: (orgId: string, id: string) => `${org(orgId)}/sales/${enc(id)}/cancel`,
   expenses: (orgId: string) => `${org(orgId)}/expenses`,
   expense: (orgId: string, id: string) => `${org(orgId)}/expenses/${enc(id)}`,
   credits: (orgId: string) => `${org(orgId)}/credits`,

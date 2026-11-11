@@ -134,6 +134,11 @@ export interface CreateSalePayload {
 export interface SalesRepository {
   list(): Promise<SaleTransaction[]>;
   create(payload: CreateSalePayload): Promise<SaleTransaction>;
+  /**
+   * Annule une vente (jamais de suppression, RG-04) : motif obligatoire (RG-09),
+   * stock remis, crédit lié supprimé. Renvoie la vente au statut « Annulée ».
+   */
+  cancel(id: string, reason: string): Promise<SaleTransaction>;
 }
 
 export interface ExpensesRepository {

@@ -27,6 +27,8 @@ VITE_API_TIMEOUT_MS=15000
 | Permission | owner | manager | cashier |
 |---|:-:|:-:|:-:|
 | Encaisser une vente, encaisser un règlement de crédit | ✓ | ✓ | ✓ |
+| Annuler une vente (le jour même) | ✓ | ✓ | |
+| Annuler une vente d'un autre jour | ✓ | | |
 | Créer / modifier / supprimer des articles, réapprovisionner, voir les prix d'achat | ✓ | ✓ | |
 | Créer un crédit, gérer les dépenses, voir le bilan, exporter | ✓ | ✓ | |
 | Gérer l'équipe, l'abonnement | ✓ | | |
@@ -255,6 +257,7 @@ structurantes pour le backend :
 | POST | `/products/:id/restock` | `{ quantity }` | `Product` | manager |
 | GET | `/sales` | — | `SaleTransaction[]` | cashier |
 | POST | `/sales` | `{ sale, lines: CartLine[], credit?: ClientCredit }` | `SaleTransaction` (le serveur décrémente le stock et crée la créance) · `422 CONTACT_PHONE_REQUIRED` si le commerce n'a aucun téléphone (RG-A03) | cashier |
+| POST | `/sales/:id/cancel` | `{ reason }` | `SaleTransaction` au statut `Annulée` — voir [Annulation d'une vente](#annulation-dune-vente) | manager (le jour même), owner (tout jour) |
 | GET | `/expenses` | — | `Expense[]` | manager |
 | POST | `/expenses` | `Expense` | `Expense` | manager |
 | DELETE | `/expenses/:id` | — | `204` | manager |
@@ -268,6 +271,39 @@ structurantes pour le backend :
 
 > Pour un caissier, le serveur peut omettre `costPrice` des produits renvoyés ;
 > le client ne l'affiche pas.
+
+## Annulation d'une vente
+
+Une vente **ne se supprime ni ne se modifie jamais** (RG-04, EF-14) : il n'existe aucune
+route `PATCH` ou `DELETE` sur `/sales`. Seule l'annulation est possible
+(`POST /orgs/:orgId/sales/:id/cancel`, corps `{ "reason": "…" }`).
+
+Le serveur DOIT, dans **une seule transaction** :
+
+1. refuser un `reason` vide ou de moins de 3 caractères une fois les espaces retirés → `422 VALIDATION_ERROR` (RG-09) ;
+2. refuser une vente déjà annulée → `409 CONFLICT` ;
+3. vérifier le rôle : `sales.cancel` (gérant, propriétaire), et pour une vente d'un autre jour (fuseau de la boutique) `sales.cancelAnyDay` (propriétaire) → sinon `403 INSUFFICIENT_ROLE` ;
+4. refuser si le crédit lié (`credit.saleId` = id de la vente) a reçu au moins un remboursement → `409 CONFLICT` (EF-16 : annulation bloquée) ;
+5. remettre en stock les quantités des lignes de la vente (trace de mouvement de type `return`, RG-05) ;
+6. supprimer (ou marquer annulé) le crédit lié, qui sort des « créances à recouvrer » ;
+7. passer la vente à `status: "Annulée"` avec `cancelledAt` (ISO 8601), `cancelledBy` (nom de l'auteur) et `cancelReason`, et supprimer `remainingAmount` / `creditId` ;
+8. écrire l'action dans le journal d'audit (EF-36) : qui, quand, pourquoi.
+
+La vente annulée **reste dans `GET /sales`**. Elle ne compte dans aucun total (chiffre
+d'affaires, canaux de paiement, export comptable) : le client les exclut déjà, le
+serveur doit faire de même dans ses rapports.
+
+```jsonc
+// POST /orgs/org-etoile/sales/sale-1/cancel   { "reason": "erreur de produit" }
+{ "id": "sale-1", "saleNumber": "V-20261111-0001", "status": "Annulée",
+  "date": "2026-11-11", "time": "17:32", "paymentMethod": "Espèces", "amount": 1900,
+  "itemsCount": 2,
+  "cancelledAt": "2026-11-11T17:32:10Z", "cancelledBy": "Mamadou Konaté",
+  "cancelReason": "erreur de produit" }
+```
+
+Lien vente ↔ crédit : `POST /sales` reçoit `credit.saleId` (id de la vente) et la vente porte
+`creditId`. Le détail `lines` est envoyé à côté de `sale`, pas dans `sale`.
 
 ## Sémantique des erreurs (normative)
 
@@ -285,7 +321,7 @@ l'interface ne peut pas réagir correctement (rejouer, annuler, déconnecter).
 | 403 | FORBIDDEN | repli generique : ne pas l'utiliser pour des cas couverts par les codes ci-dessus | toast + retour a la caisse, **pas** de deconnexion |
 | `403` | `INVITATION_PENDING` | appartenance non acceptée | écran d'acceptation d'invitation |
 | `404` | `NOT_FOUND` | ressource inexistante dans cette organisation | toast, rafraîchissement de la collection |
-| `409` | `INSUFFICIENT_STOCK`, `DUPLICATE`, `CONFLICT` | état serveur incompatible avec la mutation | toast + rechargement de la ressource |
+| `409` | `INSUFFICIENT_STOCK`, `DUPLICATE`, `CONFLICT` | état serveur incompatible avec la mutation (dont annulation d'une vente déjà annulée ou dont le crédit est remboursé) | toast + rechargement de la ressource |
 | `410` | `OTP_EXPIRED`, `EMAIL_CODE_EXPIRED` | code expiré (5 min téléphone / 10 min e-mail, RG-A07, RG-A27) | proposer un renvoi |
 | `422` | `VALIDATION_ERROR`, `OWNER_LOCKED`, `CREDIT_OVERPAYMENT`, `DEVICE_LIMIT`, `WEAK_PIN` | règle métier violée, requête bien formée | toast, aucune reprise automatique |
 | `423` | `PIN_LOCKED` | 5 échecs PIN, verrouillage 15 min (RG-A16) | message + déblocage par le propriétaire |

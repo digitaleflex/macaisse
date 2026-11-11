@@ -2,6 +2,7 @@ import type {
   AuthEvent,
   AuthEventMethod,
   AuthResult,
+  CartLine,
   ClientCredit,
   Device,
   EmailChallenge,
@@ -15,6 +16,7 @@ import type {
 } from '@/types';
 import { t } from '@/content';
 import { applyPayment } from '@/domain/credits';
+import { cancelSale, normalizeCancelReason, repaidAmountOf } from '@/domain/sales';
 import { createId } from '@/domain/ids';
 import { toIsoDate } from '@/domain/dates';
 import { normalizePhone } from '@/domain/phone';
@@ -56,6 +58,8 @@ interface AuthDb {
 interface OrgDb {
   products: Product[];
   sales: SaleTransaction[];
+  /** Détail des articles de chaque vente (le serveur garde les lignes de son côté). */
+  saleLines: Record<string, CartLine[]>;
   expenses: Expense[];
   credits: ClientCredit[];
   notifications: NotificationItem[];
@@ -345,7 +349,7 @@ export function createMockApi({ latencyMs = 0, persist = false }: MockApiOptions
     requireMembership(orgId);
     let data = orgData.get(orgId);
     if (!data) {
-      data = orgSeed(orgId);
+      data = { ...orgSeed(orgId), saleLines: {} };
       orgData.set(orgId, data);
     }
     return data;
@@ -937,10 +941,44 @@ export function createMockApi({ latencyMs = 0, persist = false }: MockApiOptions
             );
           }
           data.sales = [sale, ...data.sales];
+          data.saleLines[sale.id] = lines.map((line) => ({ ...line }));
           // Transaction unique : la créance d'un règlement partiel est écrite
           // avec la vente, sinon elle n'existerait que dans le navigateur.
           if (credit) data.credits = [credit, ...data.credits];
           return sale;
+        }),
+      cancel: (id, reason) =>
+        respond(() => {
+          const data = db();
+          const sale =
+            data.sales.find((item) => item.id === id) ??
+            fail(t.auth.errors.notFound, 404, 'NOT_FOUND');
+          if (sale.status === 'Annulée') {
+            fail(t.sales.cancel.errors.alreadyCancelled, 409, 'CONFLICT');
+          }
+          if (normalizeCancelReason(reason) === null) {
+            fail(t.sales.cancel.errors.reasonRequired, 422, 'VALIDATION_ERROR');
+          }
+          const credit = data.credits.find(
+            (item) => item.id === sale.creditId || item.saleId === sale.id,
+          );
+          if (repaidAmountOf(credit) > 0) {
+            fail(t.sales.cancel.errors.creditRepaid, 409, 'CONFLICT');
+          }
+          const account = currentAccount();
+          // Remise en stock d'après les lignes détenues par le « serveur ».
+          const result = cancelSale({
+            sale: { ...sale, lines: data.saleLines[id] ?? [] },
+            products: data.products,
+            reason,
+            by: `${account.firstName} ${account.lastName}`.trim(),
+          });
+          data.products = result.products;
+          if (credit) data.credits = data.credits.filter((item) => item.id !== credit.id);
+          const cancelled: SaleTransaction = { ...result.sale };
+          delete cancelled.lines;
+          data.sales = data.sales.map((item) => (item.id === id ? cancelled : item));
+          return cancelled;
         }),
     },
     expenses: {

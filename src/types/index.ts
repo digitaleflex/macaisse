@@ -14,7 +14,7 @@ export type PaymentMethod =
   | 'Carte Bancaire'
   | 'Crédit Partiel';
 
-export type SaleStatus = 'Validé' | 'Partiel' | 'En attente';
+export type SaleStatus = 'Validé' | 'Partiel' | 'En attente' | 'Annulée';
 
 export type Category = 'Frais' | 'Épicerie' | 'Boissons' | 'Hygiène';
 
@@ -52,6 +52,18 @@ export interface SaleTransaction {
   clientName?: string;
   remainingAmount?: number;
   itemsCount: number;
+  /**
+   * Détail des articles vendus (client uniquement : le serveur détient les siens).
+   * Permet de remettre le stock à jour à l'annulation ; absent pour les ventes
+   * chargées depuis le serveur ou antérieures à cette fonction.
+   */
+  lines?: CartLine[];
+  /** Crédit né de cette vente (règlement partiel), s'il existe. */
+  creditId?: string;
+  /** Renseignés uniquement quand `status === 'Annulée'` (EF-15, RG-09). */
+  cancelledAt?: string; // ISO 8601
+  cancelledBy?: string; // nom de l'auteur
+  cancelReason?: string;
 }
 
 export interface Expense {
@@ -77,6 +89,8 @@ export interface ClientCredit {
   dueDate: string;
   daysLate?: number;
   status: CreditStatus;
+  /** Vente d'origine quand le crédit naît d'un règlement partiel. */
+  saleId?: string;
 }
 
 export interface NotificationItem {

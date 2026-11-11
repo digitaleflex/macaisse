@@ -1,6 +1,7 @@
 import type { Expense, SaleTransaction } from '@/types';
 import { t } from '@/content';
 import { toIsoDate } from '@/domain/dates';
+import { activeSales } from '@/domain/sales';
 
 /** Périmètre de données exportable (journal complet, ventes seules ou dépenses seules). */
 export type ExportFilterType = 'all' | 'sales' | 'expenses';
@@ -48,7 +49,8 @@ export function buildAccountingRows(
   const toKey = range.to ? toIsoDate(range.to) : null;
 
   if (filterType === 'all' || filterType === 'sales') {
-    sales.forEach((s) => {
+    // Une vente annulée n'est ni une recette ni une écriture comptable.
+    activeSales(sales).forEach((s) => {
       if (!inRange(s.date, fromKey, toKey)) return;
       entries.push({
         date: s.date,

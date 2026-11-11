@@ -182,3 +182,23 @@ describe('channelSplit', () => {
     expect(channelSplit([])).toEqual([]);
   });
 });
+
+describe('ventes annulées', () => {
+  const NOW = new Date('2024-10-18T12:00:00');
+  const sales = [
+    makeSale({ id: 'a', amount: 1000 }),
+    makeSale({ id: 'b', amount: 4000, paymentMethod: 'Orange Money', status: 'Annulée' }),
+  ];
+
+  it('ne comptent ni dans le CA du jour ni dans celui du mois', () => {
+    const kpis = computeKpis({ sales, expenses: [], credits: [], products: [] }, NOW);
+    expect(kpis.dailyRevenue).toBe(1000);
+    expect(kpis.monthlyRevenue).toBe(1000);
+  });
+
+  it('ne comptent ni dans les séries, ni dans le flux, ni dans les canaux', () => {
+    expect(dailyRevenueSeries(sales, 1, NOW)).toEqual([{ date: '2024-10-18', value: 1000 }]);
+    expect(cashFlowSeries(sales, [], 1, NOW)).toEqual([{ date: '2024-10-18', value: 1000 }]);
+    expect(channelSplit(sales)).toEqual([{ key: 'Espèces', label: 'Espèces', amount: 1000 }]);
+  });
+});

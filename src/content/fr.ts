@@ -196,6 +196,7 @@ export const fr = {
       emptyTitle: 'Aucune vente récente',
       emptyText: 'Les ventes encaissées apparaîtront ici.',
       receiptIssued: 'Reçu émis',
+      cancelled: 'Hors totaux',
       remaining: (amount: string) => `Reste ${amount}`,
       sale: (number: string) => `Vente ${number}`,
     },
@@ -275,6 +276,44 @@ export const fr = {
       confirm: 'Valider la vente',
       success: (number: string) => `Vente ${number} validée — reçu généré.`,
       failure: 'Erreur lors de la validation de la vente.',
+    },
+  },
+
+  sales: {
+    status: { cancelled: 'Annulée' },
+    cancel: {
+      action: 'Annuler la vente',
+      title: 'Annuler la vente',
+      subtitle: (number: string) => `Ticket ${number}`,
+      reasonLabel: 'Motif de l’annulation',
+      reasonHint: 'Obligatoire. Il est conservé avec votre nom, la date et l’heure.',
+      reasonPlaceholder: 'Ex. : erreur de produit',
+      reasonError: 'Indiquez un motif (3 caractères minimum).',
+      effectsTitle: 'Ce qui va se passer',
+      effectStock: 'Les articles de la vente retournent en stock.',
+      effectStockUnknown:
+        'Le détail des articles de cette vente n’est pas disponible ici : vérifiez le stock et ajustez-le si besoin.',
+      effectCredit: (amount: string) => `Le crédit de ${amount} lié à cette vente est supprimé.`,
+      effectKept:
+        'La vente reste dans l’historique, marquée « Annulée ». Elle ne compte plus dans les totaux.',
+      confirm: 'Confirmer l’annulation',
+      back: 'Retour',
+      working: 'Annulation…',
+      done: (number: string) => `Vente ${number} annulée.`,
+      banner: {
+        title: 'Vente annulée',
+        detail: (when: string, by: string) => `Le ${when} par ${by}`,
+        reason: (reason: string) => `Motif : ${reason}`,
+      },
+      errors: {
+        notFound: 'Vente introuvable.',
+        alreadyCancelled: 'Cette vente est déjà annulée.',
+        role: 'Votre rôle ne permet pas d’annuler une vente.',
+        window: 'Seul le propriétaire peut annuler une vente d’un autre jour.',
+        creditRepaid:
+          'Le crédit lié à cette vente a déjà reçu un remboursement : l’annulation est bloquée.',
+        reasonRequired: 'Le motif d’annulation est obligatoire (3 caractères minimum).',
+      },
     },
   },
 
@@ -646,6 +685,8 @@ export const fr = {
       creditSettledText: 'La créance est intégralement réglée.',
       creditOverdue: (name: string) => `Échéance dépassée : ${name}`,
       creditOverdueText: 'La créance est en retard — à recouvrer.',
+      saleCancelled: (number: string) => `Vente annulée : ${number}`,
+      saleCancelledText: (by: string) => `Annulée par ${by} ; stock remis à jour.`,
     },
     title: 'Notifications',
     markAll: 'Tout marquer comme lu',

@@ -33,7 +33,7 @@ Légende : **P0** bloquant · **P1** fiabilité/exploitation · **P2** dette · 
 |---|---|---|---|---|
 | [#15](https://github.com/digitaleflex/macaisse/issues/15) | Impression réelle du ticket | R | M/L | cible thermique |
 | [#16](https://github.com/digitaleflex/macaisse/issues/16) | Scan de code-barres réel | R | M | champ produit |
-| [#18](https://github.com/digitaleflex/macaisse/issues/18) | Annulation / remboursement d'une vente | R | M/L | contrat API |
+| [#18](https://github.com/digitaleflex/macaisse/issues/18) | Annulation / remboursement d'une vente — ✅ **annulation livrée (front + mock)** ; reste côté serveur : transaction, journal d'audit (EF-36) ; le remboursement monétaire n'est pas traité | R | M/L | backend |
 
 **Fini quand** une vente se scanne, s'encaisse, s'imprime et peut être annulée
 avec réintégration du stock et trace d'audit.

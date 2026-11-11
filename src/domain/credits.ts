@@ -27,6 +27,8 @@ export interface CreditFromSaleInput {
   date: Date;
   /** Commerce ou repère saisi par le caissier (« Client comptoir » par défaut). */
   place: string;
+  /** Vente d'origine : permet de traiter le crédit lié à l'annulation de la vente. */
+  saleId?: string;
 }
 
 /**
@@ -38,6 +40,7 @@ export function creditFromSale({
   amount,
   date,
   place,
+  saleId,
 }: CreditFromSaleInput): Omit<ClientCredit, 'id' | 'status' | 'daysLate'> {
   const name = clientName.trim();
   const total = Math.max(0, Math.round(amount));
@@ -49,6 +52,7 @@ export function creditFromSale({
     remainingAmount: total,
     totalInitial: total,
     dueDate: toIsoDate(addDays(date, DEFAULT_CREDIT_TERM_DAYS)),
+    ...(saleId ? { saleId } : {}),
   };
 }
 

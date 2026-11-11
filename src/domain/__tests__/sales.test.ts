@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import type { CartLine, Product, SaleTransaction } from '../../types';
 import {
+  activeSales,
   addToCart,
+  assessCancellation,
+  cancelSale,
   cartTotals,
   completeSale,
   dailyRevenue,
@@ -262,5 +265,148 @@ describe('completeSale — règlement partiel', () => {
     });
     expect(sale.remainingAmount).toBeUndefined();
     expect(sale.status).toBe('Validé');
+  });
+});
+
+describe('annulation de vente (EF-14 à EF-17, RG-09)', () => {
+  const NOW = new Date('2026-03-10T15:00:00');
+  const lines: CartLine[] = [
+    { productId: 'p1', name: 'Lait', price: 1000, quantity: 3, unit: 'brique' },
+  ];
+
+  function soldSale(overrides: Partial<SaleTransaction> = {}): SaleTransaction {
+    return makeSale({ id: 'sale-1', date: '2026-03-10', amount: 3000, lines, ...overrides });
+  }
+
+  it('conserve les lignes vendues pour pouvoir remettre le stock', () => {
+    const { sale } = completeSale({
+      lines,
+      products: [makeProduct({ id: 'p1', stock: 10 })],
+      paymentMethod: 'Espèces',
+    });
+    expect(sale.lines).toEqual(lines);
+  });
+
+  it('remet le stock, trace motif, auteur et date, et garde la vente', () => {
+    const { sale, products, stockRestored } = cancelSale({
+      sale: soldSale(),
+      products: [makeProduct({ id: 'p1', stock: 2 })],
+      reason: '  erreur de produit  ',
+      by: 'Awa Fall',
+      date: NOW,
+    });
+
+    expect(products[0]?.stock).toBe(5);
+    expect(stockRestored).toBe(true);
+    expect(sale).toMatchObject({
+      id: 'sale-1',
+      status: 'Annulée',
+      cancelReason: 'erreur de produit',
+      cancelledBy: 'Awa Fall',
+      cancelledAt: NOW.toISOString(),
+      amount: 3000,
+    });
+  });
+
+  it('refuse un motif absent ou trop court', () => {
+    const base = { sale: soldSale(), products: [makeProduct({ id: 'p1' })], by: 'Awa' };
+    expect(() => cancelSale({ ...base, reason: '' })).toThrow(/motif/i);
+    expect(() => cancelSale({ ...base, reason: '  a ' })).toThrow(/motif/i);
+  });
+
+  it('refuse d’annuler deux fois la même vente', () => {
+    const once = cancelSale({
+      sale: soldSale(),
+      products: [makeProduct({ id: 'p1' })],
+      reason: 'doublon',
+      by: 'Awa',
+    });
+    expect(() =>
+      cancelSale({ sale: once.sale, products: once.products, reason: 'doublon', by: 'Awa' }),
+    ).toThrow(/déjà annulée/);
+  });
+
+  it('signale que le stock n’est pas remis quand le détail des lignes est inconnu', () => {
+    const result = cancelSale({
+      sale: soldSale({ lines: undefined }),
+      products: [makeProduct({ id: 'p1', stock: 2 })],
+      reason: 'erreur',
+      by: 'Awa',
+    });
+    expect(result.stockRestored).toBe(false);
+    expect(result.products[0]?.stock).toBe(2);
+  });
+
+  it('efface le reste dû d’une vente annulée (le crédit lié disparaît)', () => {
+    const { sale } = cancelSale({
+      sale: soldSale({ status: 'Partiel', remainingAmount: 2000, creditId: 'credit-1' }),
+      products: [makeProduct({ id: 'p1' })],
+      reason: 'erreur',
+      by: 'Awa',
+    });
+    expect(sale.remainingAmount).toBeUndefined();
+    expect(sale.creditId).toBeUndefined();
+  });
+
+  it('exclut les ventes annulées des ventes comptabilisables', () => {
+    const cancelled = soldSale({ id: 'x', status: 'Annulée' });
+    expect(activeSales([soldSale(), cancelled]).map((sale) => sale.id)).toEqual(['sale-1']);
+    expect(dailyRevenue([soldSale(), cancelled], 1, NOW)).toEqual([
+      { date: '2026-03-10', value: 3000 },
+    ]);
+  });
+
+  describe('assessCancellation', () => {
+    const credit = (repaid: number) => ({
+      id: 'credit-1',
+      clientName: 'M. Ba',
+      initials: 'MB',
+      shopOrLocation: '',
+      phone: '',
+      totalInitial: 2000,
+      remainingAmount: 2000 - repaid,
+      dueDate: '2026-04-09',
+      status: 'En attente' as const,
+    });
+
+    it('autorise le gérant le jour même', () => {
+      expect(assessCancellation({ sale: soldSale(), role: 'manager', now: NOW })).toMatchObject({
+        allowed: true,
+      });
+    });
+
+    it('refuse le caissier', () => {
+      expect(assessCancellation({ sale: soldSale(), role: 'cashier', now: NOW })).toMatchObject({
+        allowed: false,
+        denial: 'role',
+      });
+    });
+
+    it('réserve au propriétaire une vente d’un autre jour', () => {
+      const old = soldSale({ date: '2026-03-09' });
+      expect(assessCancellation({ sale: old, role: 'manager', now: NOW }).denial).toBe('window');
+      expect(assessCancellation({ sale: old, role: 'owner', now: NOW }).allowed).toBe(true);
+    });
+
+    it('bloque l’annulation quand le crédit lié a reçu un remboursement', () => {
+      const result = assessCancellation({
+        sale: soldSale(),
+        credit: credit(500),
+        role: 'owner',
+        now: NOW,
+      });
+      expect(result).toMatchObject({ allowed: false, denial: 'credit-repaid', repaidAmount: 500 });
+      expect(
+        assessCancellation({ sale: soldSale(), credit: credit(0), role: 'owner', now: NOW })
+          .allowed,
+      ).toBe(true);
+    });
+
+    it('refuse une vente déjà annulée', () => {
+      expect(
+        assessCancellation({ sale: soldSale({ status: 'Annulée' }), role: 'owner', now: NOW })
+          .denial,
+      ).toBe('already-cancelled');
+    });
   });
 });

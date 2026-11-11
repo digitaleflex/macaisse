@@ -120,6 +120,16 @@ describe('contrat http — contexte et payload', () => {
     expect(captured[0]?.body).toEqual({ sale: SALE, lines, credit: CREDIT });
   });
 
+  it('annule une vente par POST /sales/:id/cancel avec le seul motif', async () => {
+    const { api, captured } = httpApiWith({ status: 200, body: { ...SALE, status: 'Annulée' } });
+
+    await api.sales.cancel('sale-1', 'erreur de produit');
+
+    expect(captured[0]?.method).toBe('POST');
+    expect(captured[0]?.url).toBe(`${BASE_URL}${ENDPOINTS.saleCancel(ORG, 'sale-1')}`);
+    expect(captured[0]?.body).toEqual({ reason: 'erreur de produit' });
+  });
+
   it('remonte le statut et le message du serveur sans les réécrire', async () => {
     const { api } = httpApiWith({
       status: 409,
@@ -199,6 +209,79 @@ describe('contrat mock — même sémantique que le serveur', () => {
 
     const credits = await api.credits.list();
     expect(credits.map((credit) => credit.id)).toContain('credit-pos-1');
+  });
+
+  describe('annulation de vente', () => {
+    async function sell(quantity: number, credit?: ClientCredit) {
+      const item = product();
+      const sale: SaleTransaction = {
+        ...SALE,
+        id: `sale-cancel-${quantity}-${credit ? 'c' : 'n'}`,
+        amount: item.price * quantity,
+        status: credit ? 'Partiel' : 'Validé',
+        remainingAmount: credit?.remainingAmount,
+        creditId: credit?.id,
+      };
+      await api.sales.create({ sale, lines: [line(quantity)], ...(credit ? { credit } : {}) });
+      return sale;
+    }
+
+    async function stockOf(): Promise<number> {
+      return (await api.products.list()).find((p) => p.id === product().id)?.stock ?? -1;
+    }
+
+    it('remet le stock, garde la vente et trace motif, auteur et date', async () => {
+      const before = await stockOf();
+      const sale = await sell(2);
+      expect(await stockOf()).toBe(before - 2);
+
+      const cancelled = await api.sales.cancel(sale.id, 'erreur de produit');
+
+      expect(await stockOf()).toBe(before);
+      expect(cancelled).toMatchObject({ status: 'Annulée', cancelReason: 'erreur de produit' });
+      expect(cancelled.cancelledBy).toBeTruthy();
+      expect(cancelled.cancelledAt).toBeTruthy();
+      // La vente n'est jamais supprimée (RG-04).
+      expect((await api.sales.list()).find((s) => s.id === sale.id)?.status).toBe('Annulée');
+    });
+
+    it('refuse un motif absent avec un 422', async () => {
+      const sale = await sell(1);
+      await expect(api.sales.cancel(sale.id, '  ')).rejects.toMatchObject({
+        status: 422,
+        code: 'VALIDATION_ERROR',
+      });
+    });
+
+    it('refuse une seconde annulation avec un 409', async () => {
+      const sale = await sell(1);
+      await api.sales.cancel(sale.id, 'doublon');
+      await expect(api.sales.cancel(sale.id, 'doublon')).rejects.toMatchObject({ status: 409 });
+    });
+
+    it('supprime le crédit lié quand rien n’a été remboursé', async () => {
+      const credit: ClientCredit = { ...CREDIT, id: 'credit-cancel-1', saleId: 'sale-cancel-1-c' };
+      const sale = await sell(1, credit);
+
+      await api.sales.cancel(sale.id, 'erreur');
+
+      expect((await api.credits.list()).map((c) => c.id)).not.toContain('credit-cancel-1');
+    });
+
+    it('bloque l’annulation quand le crédit lié a reçu un remboursement', async () => {
+      const credit: ClientCredit = { ...CREDIT, id: 'credit-cancel-2', saleId: 'sale-cancel-1-c' };
+      const sale = await sell(1, credit);
+      await api.credits.pay(credit.id, 500);
+
+      await expect(api.sales.cancel(sale.id, 'erreur')).rejects.toMatchObject({ status: 409 });
+      expect((await api.sales.list()).find((s) => s.id === sale.id)?.status).not.toBe('Annulée');
+    });
+
+    it('répond 404 pour une vente inconnue', async () => {
+      await expect(api.sales.cancel('sale-inconnue', 'erreur')).rejects.toMatchObject({
+        status: 404,
+      });
+    });
   });
 
   it('refuse toute route métier sans appartenance à l’organisation', async () => {

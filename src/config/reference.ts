@@ -24,7 +24,7 @@ export const PRODUCT_CATEGORIES = [
   'Hygiène',
 ] as const satisfies readonly Category[];
 
-export const SALE_STATUSES = ['Validé', 'Partiel', 'En attente'] as const satisfies readonly SaleStatus[];
+export const SALE_STATUSES = ['Validé', 'Partiel', 'En attente', 'Annulée'] as const satisfies readonly SaleStatus[];
 
 export const CREDIT_STATUSES = [
   'En retard',

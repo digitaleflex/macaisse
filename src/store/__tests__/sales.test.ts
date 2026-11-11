@@ -1,11 +1,12 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import type { CartLine, Product } from '@/types';
+import type { CartLine, Product, Role, Session } from '@/types';
 import { useCartStore } from '../useCartStore';
 import { t } from '@/content';
 import { useCreditsStore } from '../useCreditsStore';
 import { useNotificationsStore } from '../useNotificationsStore';
 import { useProductsStore } from '../useProductsStore';
 import { useSalesStore } from '../useSalesStore';
+import { useSessionStore } from '../useSessionStore';
 
 function makeProduct(overrides: Partial<Product> = {}): Product {
   return {
@@ -185,5 +186,104 @@ describe('completeSale — notifications métier', () => {
     });
     const titles = useNotificationsStore.getState().notifications.map((n) => n.title);
     expect(titles.filter((title) => title === t.notifications.feed.stockOut('Lait demi-écrémé'))).toHaveLength(1);
+  });
+});
+
+describe('useSalesStore.cancelSale', () => {
+  function signIn(role: Role) {
+    useSessionStore.setState({
+      session: { role, user: { firstName: 'Awa', lastName: 'Fall' } } as unknown as Session,
+      status: 'ready',
+    });
+  }
+
+  function sell(creditAmount = 0) {
+    useCartStore.setState({ lines: [line({ quantity: 3 })] });
+    return useSalesStore
+      .getState()
+      .completeSale(
+        creditAmount > 0
+          ? { paymentMethod: 'Crédit Partiel', clientName: 'M. Ba', creditAmount }
+          : { paymentMethod: 'Espèces' },
+      );
+  }
+
+  const stock = () => useProductsStore.getState().products.find((p) => p.id === 'p1')?.stock;
+
+  beforeEach(() => {
+    useCreditsStore.setState({ credits: [] });
+    useNotificationsStore.setState({ notifications: [] });
+    signIn('manager');
+  });
+
+  it('annule : stock remis, vente conservée avec motif, auteur et date', async () => {
+    const sale = sell();
+    expect(stock()).toBe(7);
+
+    const cancelled = await useSalesStore.getState().cancelSale(sale.id, 'erreur de produit');
+
+    expect(stock()).toBe(10);
+    expect(cancelled).toMatchObject({
+      status: 'Annulée',
+      cancelReason: 'erreur de produit',
+      cancelledBy: 'Awa Fall',
+    });
+    const stored = useSalesStore.getState().sales.find((s) => s.id === sale.id);
+    expect(stored?.status).toBe('Annulée');
+    expect(stored?.cancelledAt).toBeTruthy();
+    expect(useNotificationsStore.getState().notifications[0]?.title).toContain(sale.saleNumber);
+  });
+
+  it('lie le crédit à la vente puis le supprime à l’annulation', async () => {
+    const sale = sell(1000);
+    const credit = useCreditsStore.getState().credits[0];
+    expect(credit?.saleId).toBe(sale.id);
+    expect(sale.creditId).toBe(credit?.id);
+
+    await useSalesStore.getState().cancelSale(sale.id, 'erreur');
+
+    expect(useCreditsStore.getState().credits).toHaveLength(0);
+  });
+
+  it('refuse sans motif et ne modifie rien', async () => {
+    const sale = sell();
+    await expect(useSalesStore.getState().cancelSale(sale.id, ' ')).rejects.toThrow(/motif/i);
+    expect(stock()).toBe(7);
+    expect(useSalesStore.getState().sales[0]?.status).toBe('Validé');
+  });
+
+  it('refuse le caissier même en appelant le store directement', async () => {
+    const sale = sell();
+    signIn('cashier');
+    await expect(useSalesStore.getState().cancelSale(sale.id, 'erreur')).rejects.toThrow(/rôle/);
+    expect(stock()).toBe(7);
+  });
+
+  it('bloque l’annulation quand le crédit a reçu un remboursement', async () => {
+    const sale = sell(1000);
+    const credit = useCreditsStore.getState().credits[0];
+    useCreditsStore.getState().payCredit(credit?.id ?? '', 200);
+
+    await expect(useSalesStore.getState().cancelSale(sale.id, 'erreur')).rejects.toThrow(
+      /remboursement/,
+    );
+    expect(stock()).toBe(7);
+    expect(useCreditsStore.getState().credits).toHaveLength(1);
+  });
+
+  it('refuse une seconde annulation', async () => {
+    const sale = sell();
+    await useSalesStore.getState().cancelSale(sale.id, 'doublon');
+    await expect(useSalesStore.getState().cancelSale(sale.id, 'doublon')).rejects.toThrow(
+      /déjà annulée/,
+    );
+    expect(stock()).toBe(10);
+  });
+
+  it('exclut la vente annulée de l’export comptable', async () => {
+    const { buildAccountingRows } = await import('@/lib/export/accounting');
+    const sale = sell();
+    await useSalesStore.getState().cancelSale(sale.id, 'erreur');
+    expect(buildAccountingRows(useSalesStore.getState().sales, [], 'sales')).toHaveLength(0);
   });
 });
