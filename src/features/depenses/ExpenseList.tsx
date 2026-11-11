@@ -1,6 +1,6 @@
 import type { Expense } from '@/types';
 import { t } from '@/content';
-import { EXPENSE_CATEGORY_ICON } from '@/config/reference';
+import { EXPENSE_CATEGORY_ICON, paymentLabel } from '@/config/reference';
 import { parseDate } from '@/domain/dates';
 import { formatFCFA } from '@/domain/money';
 import { Badge, EmptyState, Icon, IconButton } from '@/ui';
@@ -30,7 +30,7 @@ export function ExpenseList({ expenses, onDelete }: ExpenseListProps) {
           <div className="flex-1 min-w-0">
             <div className="text-sm font-semibold text-ink-900 truncate">{expense.title}</div>
             <div className="text-xs text-slate-500 truncate">
-              {expense.category} · {expense.paymentMethod} · {formatDay(expense.date)}
+              {expense.category} · {paymentLabel(expense.paymentMethod)} · {formatDay(expense.date)}
             </div>
           </div>
           <div className="text-right shrink-0">

@@ -353,13 +353,27 @@ model AuditLog {
 
 À retirer : `editSale`, `deleteSale`, `deleteRepayment` (un remboursement enregistré ne se supprime pas, il se corrige par une écriture inverse tracée — à confirmer).
 
-# Annexe C — Correspondance des moyens de paiement
+# Annexe C — Correspondance des moyens de paiement et statuts (décidée, implémentée dans le front)
 
-| Front (libellé actuel) | Valeur d'API proposée | Schéma actuel |
+Le front utilise désormais des **identifiants d'API stables** ; les libellés français restent
+côté client. Détail et sources : `docs/API_CONTRACT.md`, section « Identifiants stables ».
+
+| Ancien libellé du front | Identifiant d'API | Schéma backend actuel (`SalePaymentMethod`) |
 |---|---|---|
-| Espèces | `cash` | `cash` |
-| Mobile Money (Wave) | `wave` | `mobile_money` |
-| Orange Money | `orange_money` | `mobile_money` |
-| Carte Bancaire | `card` | *(absent côté vente)* |
-| Crédit Partiel | *(n'est pas un moyen : reste dû → `Credit`)* | `credit` |
-| — | `mtn_money`, `moov_money` | *(présents côté abonnement uniquement)* |
+| Espèces | `cash` | `cash` ✅ |
+| Mobile Money (Wave) | `wave` | `mobile_money` ➜ à scinder |
+| Orange Money | `orange_money` | `mobile_money` ➜ à scinder |
+| *(nouveau)* MTN Mobile Money | `mtn_money` | présent côté abonnement seulement (`PaymentMethod.mtn_money`) |
+| *(nouveau)* Moov Money | `moov_money` | présent côté abonnement seulement |
+| *(nouveau)* Celtiis Cash | `celtiis_cash` | absent |
+| Carte Bancaire | `card` | absent côté vente |
+| Crédit Partiel | `credit` (choix « à crédit », pas un instrument) | `credit` ✅ |
+| — | `other` | `other` ✅ |
+
+Le backend doit unifier ses deux énumérations (`SalePaymentMethod` et `PaymentMethod`) en une seule.
+
+| Statut | Identifiants |
+|---|---|
+| Vente | `completed`, `partial`, `pending`, `cancelled` |
+| Crédit | `pending`, `partial`, `overdue`, `settled` |
+| Facture d'abonnement | `paid`, `pending` |

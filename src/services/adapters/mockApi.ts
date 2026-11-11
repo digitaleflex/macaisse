@@ -953,7 +953,7 @@ export function createMockApi({ latencyMs = 0, persist = false }: MockApiOptions
           const sale =
             data.sales.find((item) => item.id === id) ??
             fail(t.auth.errors.notFound, 404, 'NOT_FOUND');
-          if (sale.status === 'Annulée') {
+          if (sale.status === 'cancelled') {
             fail(t.sales.cancel.errors.alreadyCancelled, 409, 'CONFLICT');
           }
           if (normalizeCancelReason(reason) === null) {

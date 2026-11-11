@@ -3,7 +3,7 @@
 // il lit `t.<section>.<clé>`. Les textes paramétrés sont des fonctions pures.
 // Pour une nouvelle langue : dupliquer ce fichier en respectant le type `Content`.
 
-import type { CreditStatus, StockStatus, TabType } from '@/types';
+import type { CreditStatus, SaleStatus, StockStatus, TabType } from '@/types';
 import type { ValidationCode } from '@/domain/validation';
 
 /** « 1 article » / « 3 articles ». */
@@ -45,11 +45,20 @@ const stockStatus: Record<StockStatus, string> = {
 };
 
 const creditStatus: Record<CreditStatus, string> = {
-  'En retard': 'En retard',
-  Partiel: 'Partiel',
-  'En attente': 'En attente',
-  Réglé: 'Réglé',
+  overdue: 'En retard',
+  partial: 'Partiel',
+  pending: 'En attente',
+  settled: 'Réglé',
 };
+
+const saleStatus: Record<SaleStatus, string> = {
+  completed: 'Validé',
+  partial: 'Partiel',
+  pending: 'En attente',
+  cancelled: 'Annulée',
+};
+
+const invoiceStatus = { paid: 'Payée', pending: 'En attente' } as const;
 
 export const fr = {
   errors: {
@@ -263,6 +272,8 @@ export const fr = {
       title: 'Encaissement',
       amountDue: 'Montant à encaisser',
       method: 'Mode de règlement',
+      mobileMoney: 'Mobile Money',
+      otherMethods: 'Autres moyens',
       client: 'Client',
       clientPlaceholder: 'Nom ou téléphone (reçu SMS / WhatsApp)',
       received: 'Montant reçu',
@@ -280,7 +291,6 @@ export const fr = {
   },
 
   sales: {
-    status: { cancelled: 'Annulée' },
     views: { label: 'Affichage de la caisse', pos: 'Encaisser', history: 'Historique' },
     history: {
       title: 'Historique des ventes',
@@ -532,7 +542,6 @@ export const fr = {
       amount: 'Montant perçu',
       newBalance: 'Nouveau solde',
       channel: 'Canal de réception',
-      channels: { especes: 'Espèces', wave: 'Wave', orange_money: 'Orange Money' },
       receipt: 'Reçu instantané WhatsApp',
       receiptHint: 'Envoi automatique non disponible — aucune preuve n’est transmise',
       submit: 'Valider l’encaissement',
@@ -609,7 +618,6 @@ export const fr = {
       category: 'Catégorie',
       receipt: 'Justificatif joint',
       submit: 'Enregistrer',
-      defaultMethod: 'Espèces',
     },
     receiptOk: 'Reçu joint',
     remove: (title: string) => `Supprimer la dépense ${title}`,
@@ -694,6 +702,7 @@ export const fr = {
     perMonth: '/ mois',
     perYear: '/ an',
     nextBilling: (date: string, method: string) => `Prochaine échéance le ${date} via ${method}`,
+    nextBillingTrial: (date: string) => `Essai gratuit — premier paiement le ${date}`,
     monthly: 'Mensuel',
     yearly: 'Annuel',
     yearlyDiscount: '2 mois offerts',
@@ -1064,6 +1073,8 @@ export const fr = {
   labels: {
     stockStatus,
     creditStatus,
+    saleStatus,
+    invoiceStatus,
   },
 
   /** Messages de refus des formulaires (codes renvoyés par `domain/validation`). */

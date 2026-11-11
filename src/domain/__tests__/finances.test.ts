@@ -30,9 +30,9 @@ function makeSale(overrides: Partial<SaleTransaction>): SaleTransaction {
     saleNumber: 'V-20241018-0001',
     time: '09:00',
     date: '2024-10-18',
-    paymentMethod: 'Espèces',
+    paymentMethod: 'cash',
     amount: 1000,
-    status: 'Validé',
+    status: 'completed',
     itemsCount: 1,
     ...overrides,
   };
@@ -45,7 +45,7 @@ function makeExpense(overrides: Partial<Expense>): Expense {
     date: '2024-10-18',
     amount: 100,
     category: 'Divers',
-    paymentMethod: 'Espèces',
+    paymentMethod: 'cash',
     ...overrides,
   };
 }
@@ -60,7 +60,7 @@ function makeCredit(overrides: Partial<ClientCredit>): ClientCredit {
     remainingAmount: 45000,
     totalInitial: 60000,
     dueDate: '2999-01-01',
-    status: 'Partiel',
+    status: 'partial',
     ...overrides,
   };
 }
@@ -168,13 +168,13 @@ describe('expenseBreakdown', () => {
 describe('channelSplit', () => {
   it('répartit les encaissements par moyen de paiement, trié décroissant', () => {
     const sales = [
-      makeSale({ paymentMethod: 'Espèces', amount: 1000 }),
-      makeSale({ paymentMethod: 'Mobile Money (Wave)', amount: 500 }),
-      makeSale({ paymentMethod: 'Espèces', amount: 2000 }),
+      makeSale({ paymentMethod: 'cash', amount: 1000 }),
+      makeSale({ paymentMethod: 'wave', amount: 500 }),
+      makeSale({ paymentMethod: 'cash', amount: 2000 }),
     ];
     expect(channelSplit(sales)).toEqual([
-      { key: 'Espèces', label: 'Espèces', amount: 3000 },
-      { key: 'Mobile Money (Wave)', label: 'Mobile Money (Wave)', amount: 500 },
+      { key: 'cash', label: 'cash', amount: 3000 },
+      { key: 'wave', label: 'wave', amount: 500 },
     ]);
   });
 
@@ -187,7 +187,7 @@ describe('ventes annulées', () => {
   const NOW = new Date('2024-10-18T12:00:00');
   const sales = [
     makeSale({ id: 'a', amount: 1000 }),
-    makeSale({ id: 'b', amount: 4000, paymentMethod: 'Orange Money', status: 'Annulée' }),
+    makeSale({ id: 'b', amount: 4000, paymentMethod: 'orange_money', status: 'cancelled' }),
   ];
 
   it('ne comptent ni dans le CA du jour ni dans celui du mois', () => {
@@ -199,6 +199,6 @@ describe('ventes annulées', () => {
   it('ne comptent ni dans les séries, ni dans le flux, ni dans les canaux', () => {
     expect(dailyRevenueSeries(sales, 1, NOW)).toEqual([{ date: '2024-10-18', value: 1000 }]);
     expect(cashFlowSeries(sales, [], 1, NOW)).toEqual([{ date: '2024-10-18', value: 1000 }]);
-    expect(channelSplit(sales)).toEqual([{ key: 'Espèces', label: 'Espèces', amount: 1000 }]);
+    expect(channelSplit(sales)).toEqual([{ key: 'cash', label: 'cash', amount: 1000 }]);
   });
 });

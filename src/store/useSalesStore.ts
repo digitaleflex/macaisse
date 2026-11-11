@@ -13,6 +13,7 @@ import {
   type CancelDenial,
 } from '@/domain/sales';
 import { personDisplayName } from '@/domain/users';
+import { normalizePaymentMethod, normalizeSaleStatus } from '@/config/reference';
 import { t } from '@/content';
 import { formatFCFA } from '@/domain/money';
 import { SEED_SALES } from '@/mocks';
@@ -26,9 +27,7 @@ import {
   coerceId,
   coerceNumber,
   coerceString,
-  isPaymentMethod,
   isRecord,
-  isSaleStatus,
   migrateList,
   PERSIST_NAMES,
   persistOptions,
@@ -226,16 +225,17 @@ export const useSalesStore = create<SalesState>()(
 function toSale(value: unknown): SaleTransaction | null {
   if (!isRecord(value)) return null;
   const id = coerceId(value.id);
-  if (!id || !isPaymentMethod(value.paymentMethod)) return null;
+  const paymentMethod = normalizePaymentMethod(value.paymentMethod);
+  if (!id || paymentMethod === null) return null;
 
   const sale: SaleTransaction = {
     id,
     saleNumber: coerceString(value.saleNumber),
     time: coerceString(value.time),
     date: coerceString(value.date),
-    paymentMethod: value.paymentMethod,
+    paymentMethod,
     amount: coerceNumber(value.amount),
-    status: isSaleStatus(value.status) ? value.status : 'Validé',
+    status: normalizeSaleStatus(value.status) ?? 'completed',
     itemsCount: coerceNumber(value.itemsCount),
   };
 
@@ -256,7 +256,7 @@ function toSale(value: unknown): SaleTransaction | null {
   const lines = toCartLines(value.lines);
   if (lines) sale.lines = lines;
 
-  if (sale.status === 'Annulée') {
+  if (sale.status === 'cancelled') {
     sale.cancelledAt = coerceString(value.cancelledAt);
     sale.cancelledBy = coerceString(value.cancelledBy);
     sale.cancelReason = coerceString(value.cancelReason);

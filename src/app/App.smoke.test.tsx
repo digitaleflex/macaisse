@@ -19,9 +19,9 @@ const SALE: SaleTransaction = {
   saleNumber: '#V-999',
   time: '10:00',
   date: '2026-10-18',
-  paymentMethod: 'Espèces',
+  paymentMethod: 'cash',
   amount: 2500,
-  status: 'Validé',
+  status: 'completed',
   itemsCount: 2,
 };
 

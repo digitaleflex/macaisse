@@ -32,9 +32,11 @@ import type {
 /**
  * Version courante du schéma persisté.
  * La v1 (données historiques) portait des identifiants numériques ; la v2 utilise
- * des `string` conformément au domaine (`domain/ids.ts`).
+ * des `string` conformément au domaine (`domain/ids.ts`) ; la v3 remplace les
+ * libellés français des moyens de paiement et des statuts par des identifiants
+ * stables (`normalizePaymentMethod`, `normalizeSaleStatus`, `normalizeCreditStatus`).
  */
-export const STORE_VERSION = 2;
+export const STORE_VERSION = 3;
 
 /** Clés localStorage — une par store, jamais dupliquées. */
 export const PERSIST_NAMES = {

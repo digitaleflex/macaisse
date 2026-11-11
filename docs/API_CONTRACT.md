@@ -81,6 +81,102 @@ VITE_API_TIMEOUT_MS=15000
 **Changement d'espace** : étapes 3–4 avec un autre `orgId` ; les données locales
 restent cloisonnées par organisation (`localStorage['ma-caisse/<orgId>/…']`).
 
+## Identifiants stables (valeurs d'énumération)
+
+Toute valeur d'énumération échangée avec l'API est un **identifiant stable** (anglais,
+`snake_case`) : il ne change jamais, même si un libellé est retraduit. Le client affiche les
+libellés français (`src/config/reference.ts`, `src/content/fr.ts`) ; **le serveur ne reçoit ni
+n'envoie jamais un libellé** (`"Espèces"`, `"Partiel"`…). Une valeur inconnue est refusée en
+`422 VALIDATION_ERROR`.
+
+### Moyens de paiement (`paymentMethod`)
+
+Le mobile money est prioritaire : il est listé et proposé en premier à la caisse.
+
+| Identifiant | Libellé affiché | Famille | Encaissable via agrégateur |
+|---|---|---|---|
+| `mtn_money` | MTN Mobile Money | mobile money | FedaPay, KKiaPay |
+| `moov_money` | Moov Money | mobile money | FedaPay, KKiaPay |
+| `orange_money` | Orange Money | mobile money | FedaPay |
+| `wave` | Wave | mobile money | FedaPay |
+| `celtiis_cash` | Celtiis Cash | mobile money | FedaPay, KKiaPay |
+| `card` | Carte bancaire | carte | FedaPay, KKiaPay |
+| `cash` | Espèces | espèces | — |
+| `credit` | À crédit | crédit | — |
+| `other` | Autre moyen | autre | — |
+
+- `credit` n'est **pas** un instrument de paiement : c'est le choix « à crédit » de la caisse
+  (reste dû lié à un client). Il est valide sur une vente, **jamais** sur une dépense, un
+  règlement de crédit ou un abonnement : ces champs n'acceptent que les huit autres valeurs
+  (`TenderMethod`).
+- Ajouter un opérateur (Mixx by Yas, Free Money, Coris Money…) = ajouter une valeur à cette
+  énumération ; aucune autre valeur ne change.
+- La colonne « agrégateur » reprend la couverture publiée : FedaPay —
+  [Payment methods](https://docs.fedapay.com/payments/payment-methods) (par pays : Bénin MTN,
+  Moov, Celtiis ; Côte d'Ivoire MTN, Moov, Wave, Orange ; Sénégal Wave, Orange ; cartes
+  Visa/Mastercard) ; KKiaPay — [Méthodes de paiement](https://docs.kkiapay.me/v1/paiements/methodes-de-paiement)
+  (MTN, Moov, cartes ; Celtiis Cash d'après les CGU ; Orange et Wave non confirmés). **Elle varie
+  selon le pays : à revérifier avant la mise en production.**
+
+### Statuts
+
+| Objet | Identifiants | Libellés |
+|---|---|---|
+| Vente (`status`) | `completed`, `partial`, `pending`, `cancelled` | Validé, Partiel, En attente, Annulée |
+| Crédit (`status`) | `pending`, `partial`, `overdue`, `settled` | En attente, Partiel, En retard, Réglé |
+| Facture d'abonnement (`status`) | `paid`, `pending` | Payée, En attente |
+
+`Subscription.paymentMethod` vaut `null` pendant l'essai gratuit.
+
+> Le statut de crédit `overdue` est **calculé** (échéance dépassée et reste dû > 0) ; le serveur
+> le renvoie à jour à chaque lecture. Autres champs encore en libellés français, à convertir
+> ensuite : `Product.category` (`Épicerie`, `Boissons`, `Frais`, `Hygiène`) et `Expense.category`.
+
+## Encaissement via un agrégateur de paiement (FedaPay, KKiaPay)
+
+> **Statut : conception, non implémenté dans le client.** Le client sait aujourd'hui enregistrer
+> le moyen choisi (mobile money, carte…) mais pas collecter l'argent en ligne : il n'y a ni
+> transaction, ni statut « en attente de paiement ». Cette section fixe ce que le backend devra
+> porter pour qu'on puisse l'ajouter sans changer les identifiants ci-dessus.
+
+Deux notions distinctes :
+
+- **moyen** (`paymentMethod`) : ce que le client utilise (`mtn_money`, `card`…) ;
+- **canal** (`provider`) : `manual` (l'argent arrive directement chez le commerçant : espèces,
+  transfert sur son numéro) ou `fedapay` / `kkiapay` (collecte en ligne avec transaction).
+
+Règles :
+
+1. **Secrets côté serveur uniquement.** Seule la clé *publique* peut être exposée au client ; la clé
+   secrète/privée et le secret de webhook ne quittent jamais le backend.
+2. **Le client n'est jamais cru sur parole.** Un retour de widget ou de redirection n'est qu'un signal :
+   le serveur confirme la transaction auprès de l'agrégateur (appel d'API) et/ou par webhook dont il
+   **vérifie la signature**, puis seulement marque le paiement réussi.
+3. **Idempotence** : une intention de paiement est créée avec un identifiant généré par le client ;
+   la rejouer renvoie la même intention, jamais un second débit.
+4. **Montants en FCFA entiers** ; la devise est XOF.
+5. Statuts d'une intention : `pending`, `succeeded`, `failed`, `expired`, `cancelled`. Un paiement
+   `pending` n'est pas une vente encaissée : il ne compte dans aucun total.
+
+Routes proposées (toutes sous `/orgs/:orgId`) :
+
+| Méthode | Route | Corps | Réponse |
+|---|---|---|---|
+| POST | `/payments/intents` | `{ id, purpose: "sale" \| "credit_repayment" \| "subscription", amount, paymentMethod, provider, customerPhone?, saleId?, creditId? }` | `201 { id, provider, status: "pending", providerTransactionId, expiresAt, checkout }` — `checkout` = ce dont le client a besoin pour ouvrir le widget ou la page de l'agrégateur (clé publique, montant, référence) |
+| GET | `/payments/intents/:id` | — | `{ id, status, paymentMethod, provider, amount, failureReason? }` — interrogeable en boucle courte tant que `pending` |
+| POST | `/payments/intents/:id/cancel` | — | `200` intention annulée si encore `pending` ; `409 CONFLICT` sinon |
+| POST | `/webhooks/fedapay`, `/webhooks/kkiapay` | corps de l'agrégateur | `200` ; **non authentifié par cookie**, authentifié par signature |
+
+Décisions à prendre avant de coder (non tranchées) :
+
+| # | Question | Impact |
+|---|---|---|
+| P1 | Par quel agrégateur commencer, ou les deux dès la V1 ? FedaPay couvre plus d'opérateurs (Wave, Orange) ; KKiaPay est limité à MTN, Moov, Celtiis et cartes. | Périmètre, pays couverts |
+| P2 | Le stock baisse-t-il à la validation de la vente (comme aujourd'hui) ou à la confirmation du paiement ? | Règle RG-05, vente `pending` |
+| P3 | Qui supporte les frais de l'agrégateur (la FAQ FedaPay mentionne 1,8 % sur le mobile money au Bénin, à vérifier) : le commerçant ou le client ? | Montant affiché et reversé |
+| P4 | Que veut-on payer en ligne : l'encaissement en boutique, le remboursement d'un crédit, l'abonnement, ou les trois ? | Nombre de parcours |
+| P5 | Délai d'expiration d'une intention, et conduite si le client paie après expiration. | Remboursement, rapprochement |
+
 ## Routes — authentification
 
 ### Identité (OTP téléphone — D2)
@@ -163,7 +259,7 @@ n'introduisent aucune règle nouvelle.
   "enrolledAt": "2026-10-25", "lastSeenAt": "2026-10-25T17:40:00Z", "revokedAt": null }
 
 // AuthEvent (10 dernières exposées au titulaire, RG-A20)
-{ "at": "2026-10-25T17:40:00Z", "method": "otp_whatsapp", "result": "success",
+{ "at": "2026-10-25T17:40:00Z", "method": "otp_phone", "result": "success",
   "ip": "196.20.0.0", "userAgent": "…", "deviceId": null }
 ```
 
@@ -275,7 +371,7 @@ structurantes pour le backend :
 ## Historique des ventes
 
 L'écran « Caisse → Historique » (EF-13) filtre par **période** (aujourd'hui, 7 j, 30 j, tout,
-dates libres), **vendeur** et **statut** (`Validé`, `Partiel`, `En attente`, `Annulée`), avec une
+dates libres), **vendeur** et **statut** (`completed`, `partial`, `pending`, `cancelled`), avec une
 recherche par numéro de ticket ou nom du client. Il trie de la plus récente à la plus ancienne.
 
 - Chaque vente porte **`sellerId`** et **`sellerName`** : le serveur les renseigne **depuis la
@@ -303,7 +399,7 @@ Le serveur DOIT, dans **une seule transaction** :
 4. refuser si le crédit lié (`credit.saleId` = id de la vente) a reçu au moins un remboursement → `409 CONFLICT` (EF-16 : annulation bloquée) ;
 5. remettre en stock les quantités des lignes de la vente (trace de mouvement de type `return`, RG-05) ;
 6. supprimer (ou marquer annulé) le crédit lié, qui sort des « créances à recouvrer » ;
-7. passer la vente à `status: "Annulée"` avec `cancelledAt` (ISO 8601), `cancelledBy` (nom de l'auteur) et `cancelReason`, et supprimer `remainingAmount` / `creditId` ;
+7. passer la vente à `status: "cancelled"` avec `cancelledAt` (ISO 8601), `cancelledBy` (nom de l'auteur) et `cancelReason`, et supprimer `remainingAmount` / `creditId` ;
 8. écrire l'action dans le journal d'audit (EF-36) : qui, quand, pourquoi.
 
 La vente annulée **reste dans `GET /sales`**. Elle ne compte dans aucun total (chiffre
@@ -312,8 +408,8 @@ serveur doit faire de même dans ses rapports.
 
 ```jsonc
 // POST /orgs/org-etoile/sales/sale-1/cancel   { "reason": "erreur de produit" }
-{ "id": "sale-1", "saleNumber": "V-20261111-0001", "status": "Annulée",
-  "date": "2026-11-11", "time": "17:32", "paymentMethod": "Espèces", "amount": 1900,
+{ "id": "sale-1", "saleNumber": "V-20261111-0001", "status": "cancelled",
+  "date": "2026-11-11", "time": "17:32", "paymentMethod": "cash", "amount": 1900,
   "itemsCount": 2,
   "cancelledAt": "2026-11-11T17:32:10Z", "cancelledBy": "Mamadou Konaté",
   "cancelReason": "erreur de produit" }

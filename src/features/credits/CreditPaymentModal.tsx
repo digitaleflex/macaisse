@@ -1,12 +1,12 @@
 ﻿import { useState } from 'react';
-import type { ClientCredit } from '@/types';
+import type { ClientCredit, TenderMethod } from '@/types';
 import { t } from '@/content';
-import { QUICK_CREDIT_PAYMENTS } from '@/config/reference';
+import { QUICK_CREDIT_PAYMENTS, TENDER_METHODS } from '@/config/reference';
 import { formatFCFA } from '@/domain/money';
 import { Button, Icon, Input, Modal, Switch, cn } from '@/ui';
 
 /** Encaissement d'un règlement de crédit (appel au store fait par le parent). */
-export type PaymentChannel = 'especes' | 'wave' | 'orange_money';
+export type PaymentChannel = TenderMethod;
 
 export interface CreditPaymentModalProps {
   credit: ClientCredit | null;
@@ -16,17 +16,14 @@ export interface CreditPaymentModalProps {
 }
 
 const DEFAULT_PAY_AMOUNT = 20000;
-const CHANNELS: { id: PaymentChannel; icon: string }[] = [
-  { id: 'especes', icon: 'payments' },
-  { id: 'wave', icon: 'waves' },
-  { id: 'orange_money', icon: 'phone_iphone' },
-];
+/** Moyens de réception d'un règlement : mobile money d'abord, comme à la caisse. */
+const CHANNELS = TENDER_METHODS.filter((option) => option.method !== 'other');
 
 export function CreditPaymentModal({ credit, open, onClose, onSubmit }: CreditPaymentModalProps) {
   const [amount, setAmount] = useState<number>(() =>
     credit ? Math.min(DEFAULT_PAY_AMOUNT, credit.remainingAmount) : DEFAULT_PAY_AMOUNT
   );
-  const [channel, setChannel] = useState<PaymentChannel>('especes');
+  const [channel, setChannel] = useState<PaymentChannel>('cash');
   const [sendReceipt, setSendReceipt] = useState(false);
 
   if (!credit) return null;
@@ -86,22 +83,22 @@ export function CreditPaymentModal({ credit, open, onClose, onSubmit }: CreditPa
 
       <div>
         <div className="text-[13px] font-medium text-slate-700 mb-2">{t.credits.payment.channel}</div>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
           {CHANNELS.map((entry) => {
-            const active = channel === entry.id;
+            const active = channel === entry.method;
             return (
               <button
-                key={entry.id}
+                key={entry.method}
                 type="button"
                 aria-pressed={active}
-                onClick={() => setChannel(entry.id)}
+                onClick={() => setChannel(entry.method)}
                 className={cn(
                   'h-16 rounded-2xl border flex flex-col items-center justify-center gap-1 transition-all cursor-pointer',
                   active ? 'bg-ink-900 border-ink-900 text-white' : 'bg-white border-line text-slate-700 hover:border-line-strong'
                 )}
               >
                 <Icon name={entry.icon} size={20} className={active ? 'text-zest-400' : 'text-slate-500'} />
-                <span className="text-xs font-semibold">{t.credits.payment.channels[entry.id]}</span>
+                <span className="text-xs font-semibold">{entry.short}</span>
               </button>
             );
           })}

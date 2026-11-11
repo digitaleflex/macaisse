@@ -22,7 +22,7 @@ function makeCredit(overrides: Partial<ClientCredit>): ClientCredit {
     remainingAmount: 40000,
     totalInitial: 100000,
     dueDate: '2999-01-01',
-    status: 'Partiel',
+    status: 'partial',
     ...overrides,
   };
 }
@@ -46,21 +46,21 @@ describe('computeCreditStatus', () => {
   const now = new Date(2024, 9, 18);
 
   it('est « Réglé » quand le reste dû est nul', () => {
-    expect(computeCreditStatus(0, 60000, '2999-01-01', now)).toBe('Réglé');
-    expect(computeCreditStatus(-1, 60000, '2000-01-01', now)).toBe('Réglé');
+    expect(computeCreditStatus(0, 60000, '2999-01-01', now)).toBe('settled');
+    expect(computeCreditStatus(-1, 60000, '2000-01-01', now)).toBe('settled');
   });
 
   it('est « En retard » quand l’échéance est dépassée', () => {
-    expect(computeCreditStatus(45000, 60000, '2024-10-13', now)).toBe('En retard');
-    expect(computeCreditStatus(40000, 40000, '2024-10-16', now)).toBe('En retard');
+    expect(computeCreditStatus(45000, 60000, '2024-10-13', now)).toBe('overdue');
+    expect(computeCreditStatus(40000, 40000, '2024-10-16', now)).toBe('overdue');
   });
 
   it('est « Partiel » quand un acompte a été versé sans retard', () => {
-    expect(computeCreditStatus(40000, 100000, '2999-01-01', now)).toBe('Partiel');
+    expect(computeCreditStatus(40000, 100000, '2999-01-01', now)).toBe('partial');
   });
 
   it('est « En attente » quand rien n’a été versé et sans retard', () => {
-    expect(computeCreditStatus(120000, 120000, '2999-01-01', now)).toBe('En attente');
+    expect(computeCreditStatus(120000, 120000, '2999-01-01', now)).toBe('pending');
   });
 });
 
@@ -79,13 +79,13 @@ describe('applyPayment', () => {
   it('solde le crédit sur un paiement exact', () => {
     const updated = applyPayment(makeCredit({ remainingAmount: 40000 }), 40000);
     expect(updated.remainingAmount).toBe(0);
-    expect(updated.status).toBe('Réglé');
+    expect(updated.status).toBe('settled');
   });
 
   it('applique un paiement partiel et recalcule le statut', () => {
     const updated = applyPayment(makeCredit({ remainingAmount: 40000 }), 10000);
     expect(updated.remainingAmount).toBe(30000);
-    expect(updated.status).toBe('Partiel');
+    expect(updated.status).toBe('partial');
   });
 
   it('conserve le statut « En retard » tant que le reste dû demeure', () => {
@@ -94,7 +94,7 @@ describe('applyPayment', () => {
       5000
     );
     expect(updated.remainingAmount).toBe(40000);
-    expect(updated.status).toBe('En retard');
+    expect(updated.status).toBe('overdue');
     expect(updated.daysLate).toBeGreaterThan(0);
   });
 

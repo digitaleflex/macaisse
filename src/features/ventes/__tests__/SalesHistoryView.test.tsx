@@ -14,9 +14,9 @@ function sale(overrides: Partial<SaleTransaction>): SaleTransaction {
     saleNumber: 'V-0',
     time: '10:00',
     date: TODAY,
-    paymentMethod: 'Espèces',
+    paymentMethod: 'cash',
     amount: 1000,
-    status: 'Validé',
+    status: 'completed',
     itemsCount: 1,
     ...overrides,
   };
@@ -38,7 +38,7 @@ describe('SalesHistoryView', () => {
     seed([
       sale({ id: 'a', saleNumber: 'V-1', amount: 1000, time: '09:00', sellerName: 'Awa Fall' }),
       sale({ id: 'b', saleNumber: 'V-2', amount: 2500, time: '10:00' }),
-      sale({ id: 'c', saleNumber: 'V-3', amount: 9000, time: '11:00', status: 'Annulée', cancelledBy: 'Awa Fall', cancelReason: 'doublon' }),
+      sale({ id: 'c', saleNumber: 'V-3', amount: 9000, time: '11:00', status: 'cancelled', cancelledBy: 'Awa Fall', cancelReason: 'doublon' }),
     ]);
     render(<SalesHistoryView />);
 
@@ -66,11 +66,11 @@ describe('SalesHistoryView', () => {
   it('filtre par statut', () => {
     seed([
       sale({ id: 'a', saleNumber: 'V-1' }),
-      sale({ id: 'b', saleNumber: 'V-2', status: 'Annulée' }),
+      sale({ id: 'b', saleNumber: 'V-2', status: 'cancelled' }),
     ]);
     render(<SalesHistoryView />);
 
-    fireEvent.change(screen.getByLabelText('Statut'), { target: { value: 'Annulée' } });
+    fireEvent.change(screen.getByLabelText('Statut'), { target: { value: 'cancelled' } });
 
     expect(rows().map((row) => row.getAttribute('aria-label'))).toEqual(['Ouvrir le ticket V-2']);
   });

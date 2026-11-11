@@ -23,9 +23,9 @@ const SALE: SaleTransaction = {
   saleNumber: 'V-20260101-0001',
   time: '09:15',
   date: '2026-01-01',
-  paymentMethod: 'Crédit Partiel',
+  paymentMethod: 'credit',
   amount: 3000,
-  status: 'Partiel',
+  status: 'partial',
   clientName: 'M. Ba Ousmane',
   remainingAmount: 2000,
   itemsCount: 3,
@@ -40,7 +40,7 @@ const CREDIT: ClientCredit = {
   remainingAmount: 2000,
   totalInitial: 2000,
   dueDate: '2026-01-31',
-  status: 'En attente',
+  status: 'pending',
 };
 
 interface Captured {
@@ -121,7 +121,7 @@ describe('contrat http — contexte et payload', () => {
   });
 
   it('annule une vente par POST /sales/:id/cancel avec le seul motif', async () => {
-    const { api, captured } = httpApiWith({ status: 200, body: { ...SALE, status: 'Annulée' } });
+    const { api, captured } = httpApiWith({ status: 200, body: { ...SALE, status: 'cancelled' } });
 
     await api.sales.cancel('sale-1', 'erreur de produit');
 
@@ -194,7 +194,7 @@ describe('contrat mock — même sémantique que le serveur', () => {
     const item = product();
     await expect(
       api.sales.create({
-        sale: { ...SALE, amount: item.price, remainingAmount: undefined, status: 'Validé' },
+        sale: { ...SALE, amount: item.price, remainingAmount: undefined, status: 'completed' },
         lines: [line(item.stock + 1)],
       })
     ).rejects.toMatchObject({ name: 'ApiError', status: 409 });
@@ -202,7 +202,7 @@ describe('contrat mock — même sémantique que le serveur', () => {
 
   it('écrit la créance en même temps que la vente', async () => {
     await api.sales.create({
-      sale: { ...SALE, amount: product().price, remainingAmount: undefined, status: 'Validé' },
+      sale: { ...SALE, amount: product().price, remainingAmount: undefined, status: 'completed' },
       lines: [line(1)],
       credit: { ...CREDIT, id: 'credit-pos-1' },
     });
@@ -218,7 +218,7 @@ describe('contrat mock — même sémantique que le serveur', () => {
         ...SALE,
         id: `sale-cancel-${quantity}-${credit ? 'c' : 'n'}`,
         amount: item.price * quantity,
-        status: credit ? 'Partiel' : 'Validé',
+        status: credit ? 'partial' : 'completed',
         remainingAmount: credit?.remainingAmount,
         creditId: credit?.id,
       };
@@ -238,11 +238,11 @@ describe('contrat mock — même sémantique que le serveur', () => {
       const cancelled = await api.sales.cancel(sale.id, 'erreur de produit');
 
       expect(await stockOf()).toBe(before);
-      expect(cancelled).toMatchObject({ status: 'Annulée', cancelReason: 'erreur de produit' });
+      expect(cancelled).toMatchObject({ status: 'cancelled', cancelReason: 'erreur de produit' });
       expect(cancelled.cancelledBy).toBeTruthy();
       expect(cancelled.cancelledAt).toBeTruthy();
       // La vente n'est jamais supprimée (RG-04).
-      expect((await api.sales.list()).find((s) => s.id === sale.id)?.status).toBe('Annulée');
+      expect((await api.sales.list()).find((s) => s.id === sale.id)?.status).toBe('cancelled');
     });
 
     it('refuse un motif absent avec un 422', async () => {
@@ -274,7 +274,7 @@ describe('contrat mock — même sémantique que le serveur', () => {
       await api.credits.pay(credit.id, 500);
 
       await expect(api.sales.cancel(sale.id, 'erreur')).rejects.toMatchObject({ status: 409 });
-      expect((await api.sales.list()).find((s) => s.id === sale.id)?.status).not.toBe('Annulée');
+      expect((await api.sales.list()).find((s) => s.id === sale.id)?.status).not.toBe('cancelled');
     });
 
     it('répond 404 pour une vente inconnue', async () => {

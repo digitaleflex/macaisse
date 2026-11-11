@@ -202,3 +202,15 @@ n'est livré, et que la déconnexion ne laisse pas de panier derrière elle.
 
 **Règle de gestion** : on ferme un jalon avant d'en ouvrir deux nouveaux ; une
 issue fermée sans test (ou sans mise à jour de `docs/`) n'est pas « terminée ».
+
+---
+
+## Hors jalon — Identifiants d'API stables et moyens de paiement
+
+✅ **Livré (front)** : moyens de paiement et statuts de vente / crédit / facture en identifiants
+stables ; catalogue avec le **mobile money en premier** (MTN, Moov, Orange, Wave, Celtiis), carte,
+espèces, crédit ; conversion automatique des anciennes données locales (stores en version 3).
+
+**À faire** : encaissement en ligne via FedaPay / KKiaPay (conception dans `API_CONTRACT.md`,
+décisions P1 à P5 à trancher) ; conversion des catégories de produit et de dépense, encore en
+libellés français.

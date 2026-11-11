@@ -9,7 +9,7 @@ function makeExpense(overrides: Partial<Expense> = {}): Expense {
     date: '2024-10-18',
     amount: 35000,
     category: 'Factures',
-    paymentMethod: 'Espèces',
+    paymentMethod: 'cash',
     ...overrides,
   };
 }
@@ -25,7 +25,7 @@ describe('useExpensesStore', () => {
       date: '2024-10-18',
       amount: 180000,
       category: 'Stock',
-      paymentMethod: 'Wave',
+      paymentMethod: 'wave',
     });
 
     const [expense] = useExpensesStore.getState().expenses;

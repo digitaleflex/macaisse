@@ -18,9 +18,9 @@ import { CreditPaymentModal } from './CreditPaymentModal';
  */
 
 const FILTER_STATUS: Record<Exclude<CreditFilterKey, 'all'>, CreditStatus> = {
-  retard: 'En retard',
-  partiel: 'Partiel',
-  attente: 'En attente',
+  retard: 'overdue',
+  partiel: 'partial',
+  attente: 'pending',
 };
 
 
@@ -43,13 +43,13 @@ export function CreditsView() {
 
   // Créances actives, enrichies et triées par urgence (retards d'abord).
   const activeRows = useMemo(
-    () => creditRows(credits, now).filter((row) => row.status !== 'Réglé'),
+    () => creditRows(credits, now).filter((row) => row.status !== 'settled'),
     [credits, now]
   );
 
   const counts = useMemo(() => {
     const count = (status: CreditStatus) => activeRows.filter((row) => row.status === status).length;
-    return { overdue: count('En retard'), partial: count('Partiel'), pending: count('En attente') };
+    return { overdue: count('overdue'), partial: count('partial'), pending: count('pending') };
   }, [activeRows]);
 
   const term = search.trim().toLowerCase();

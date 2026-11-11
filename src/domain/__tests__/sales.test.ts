@@ -41,9 +41,9 @@ function makeSale(overrides: Partial<SaleTransaction>): SaleTransaction {
     saleNumber: 'V-20241018-0001',
     time: '09:00',
     date: '2024-10-18',
-    paymentMethod: 'Espèces',
+    paymentMethod: 'cash',
     amount: 1000,
-    status: 'Validé',
+    status: 'completed',
     itemsCount: 1,
     ...overrides,
   };
@@ -122,14 +122,14 @@ describe('completeSale', () => {
     const result = completeSale({
       lines,
       products: [lait, riz],
-      paymentMethod: 'Espèces',
+      paymentMethod: 'cash',
       date: new Date(2024, 9, 18, 9, 5),
       saleNumber: 'V-20241018-0007',
     });
 
     expect(result.sale.amount).toBe(6500);
     expect(result.sale.itemsCount).toBe(3);
-    expect(result.sale.status).toBe('Validé');
+    expect(result.sale.status).toBe('completed');
     expect(result.sale.saleNumber).toBe('V-20241018-0007');
     expect(result.sale.date).toBe('2024-10-18');
     expect(result.sale.time).toBe('09:05');
@@ -146,7 +146,7 @@ describe('completeSale', () => {
     const result = completeSale({
       lines: [{ productId: 'p2', name: 'Riz', price: 4500, quantity: 2, unit: 'sac' }],
       products: [riz],
-      paymentMethod: 'Espèces',
+      paymentMethod: 'cash',
     });
     expect(result.products.find((p) => p.id === 'p2')?.status).toBe('rupture');
   });
@@ -156,7 +156,7 @@ describe('completeSale', () => {
       completeSale({
         lines: [{ productId: 'p2', name: 'Riz', price: 4500, quantity: 3, unit: 'sac' }],
         products: [lait, riz],
-        paymentMethod: 'Espèces',
+        paymentMethod: 'cash',
       })
     ).toThrowError(/Stock insuffisant/);
   });
@@ -166,14 +166,14 @@ describe('completeSale', () => {
       completeSale({
         lines: [{ productId: 'inconnu', name: 'X', price: 100, quantity: 1, unit: 'u' }],
         products: [lait],
-        paymentMethod: 'Espèces',
+        paymentMethod: 'cash',
       })
     ).toThrowError(/introuvable/);
   });
 
   it('refuse un panier vide', () => {
     expect(() =>
-      completeSale({ lines: [], products: [lait], paymentMethod: 'Espèces' })
+      completeSale({ lines: [], products: [lait], paymentMethod: 'cash' })
     ).toThrowError(/sans article/);
   });
 
@@ -181,12 +181,12 @@ describe('completeSale', () => {
     const result = completeSale({
       lines,
       products: [lait, riz],
-      paymentMethod: 'Crédit Partiel',
+      paymentMethod: 'credit',
       creditAmount: 5000,
       clientName: '  Mme Diallo  ',
     });
 
-    expect(result.sale.status).toBe('Partiel');
+    expect(result.sale.status).toBe('partial');
     expect(result.sale.remainingAmount).toBe(5000);
     expect(result.sale.amount).toBe(6500);
     expect(result.sale.clientName).toBe('Mme Diallo');
@@ -196,7 +196,7 @@ describe('completeSale', () => {
     const result = completeSale({
       lines: [lines[0]],
       products: [lait],
-      paymentMethod: 'Espèces',
+      paymentMethod: 'cash',
       date: new Date(2024, 0, 15),
     });
     expect(result.sale.saleNumber).toMatch(/^V-20240115-\d{4}$/);
@@ -226,21 +226,21 @@ describe('completeSale — règlement partiel', () => {
     const { sale } = completeSale({
       lines: lignes,
       products: [lait],
-      paymentMethod: 'Crédit Partiel',
+      paymentMethod: 'credit',
       clientName: 'M. Ba Ousmane',
       creditAmount: 999999,
       date: new Date(2024, 0, 15),
     });
     expect(sale.amount).toBe(3000);
     expect(sale.remainingAmount).toBe(3000);
-    expect(sale.status).toBe('Partiel');
+    expect(sale.status).toBe('partial');
   });
 
   it('arrondit le crédit au franc CFA entier', () => {
     const { sale } = completeSale({
       lines: lignes,
       products: [lait],
-      paymentMethod: 'Crédit Partiel',
+      paymentMethod: 'credit',
       clientName: 'Awa',
       creditAmount: 1499.6,
       date: new Date(2024, 0, 15),
@@ -253,7 +253,7 @@ describe('completeSale — règlement partiel', () => {
       completeSale({
         lines: lignes,
         products: [lait],
-        paymentMethod: 'Crédit Partiel',
+        paymentMethod: 'credit',
         creditAmount: 1000,
         date: new Date(2024, 0, 15),
       })
@@ -264,13 +264,13 @@ describe('completeSale — règlement partiel', () => {
     const { sale } = completeSale({
       lines: lignes,
       products: [lait],
-      paymentMethod: 'Espèces',
+      paymentMethod: 'cash',
       clientName: 'Awa',
       creditAmount: -500,
       date: new Date(2024, 0, 15),
     });
     expect(sale.remainingAmount).toBeUndefined();
-    expect(sale.status).toBe('Validé');
+    expect(sale.status).toBe('completed');
   });
 });
 
@@ -288,7 +288,7 @@ describe('annulation de vente (EF-14 à EF-17, RG-09)', () => {
     const { sale } = completeSale({
       lines,
       products: [makeProduct({ id: 'p1', stock: 10 })],
-      paymentMethod: 'Espèces',
+      paymentMethod: 'cash',
     });
     expect(sale.lines).toEqual(lines);
   });
@@ -306,7 +306,7 @@ describe('annulation de vente (EF-14 à EF-17, RG-09)', () => {
     expect(stockRestored).toBe(true);
     expect(sale).toMatchObject({
       id: 'sale-1',
-      status: 'Annulée',
+      status: 'cancelled',
       cancelReason: 'erreur de produit',
       cancelledBy: 'Awa Fall',
       cancelledAt: NOW.toISOString(),
@@ -345,7 +345,7 @@ describe('annulation de vente (EF-14 à EF-17, RG-09)', () => {
 
   it('efface le reste dû d’une vente annulée (le crédit lié disparaît)', () => {
     const { sale } = cancelSale({
-      sale: soldSale({ status: 'Partiel', remainingAmount: 2000, creditId: 'credit-1' }),
+      sale: soldSale({ status: 'partial', remainingAmount: 2000, creditId: 'credit-1' }),
       products: [makeProduct({ id: 'p1' })],
       reason: 'erreur',
       by: 'Awa',
@@ -355,7 +355,7 @@ describe('annulation de vente (EF-14 à EF-17, RG-09)', () => {
   });
 
   it('exclut les ventes annulées des ventes comptabilisables', () => {
-    const cancelled = soldSale({ id: 'x', status: 'Annulée' });
+    const cancelled = soldSale({ id: 'x', status: 'cancelled' });
     expect(activeSales([soldSale(), cancelled]).map((sale) => sale.id)).toEqual(['sale-1']);
     expect(dailyRevenue([soldSale(), cancelled], 1, NOW)).toEqual([
       { date: '2026-03-10', value: 3000 },
@@ -372,7 +372,7 @@ describe('annulation de vente (EF-14 à EF-17, RG-09)', () => {
       totalInitial: 2000,
       remainingAmount: 2000 - repaid,
       dueDate: '2026-04-09',
-      status: 'En attente' as const,
+      status: 'pending' as const,
     });
 
     it('autorise le gérant le jour même', () => {
@@ -410,7 +410,7 @@ describe('annulation de vente (EF-14 à EF-17, RG-09)', () => {
 
     it('refuse une vente déjà annulée', () => {
       expect(
-        assessCancellation({ sale: soldSale({ status: 'Annulée' }), role: 'owner', now: NOW })
+        assessCancellation({ sale: soldSale({ status: 'cancelled' }), role: 'owner', now: NOW })
           .denial,
       ).toBe('already-cancelled');
     });
@@ -423,8 +423,8 @@ describe('historique des ventes (EF-13)', () => {
   const history: SaleTransaction[] = [
     makeSale({ id: 'a', saleNumber: 'V-1', date: '2026-03-10', time: '09:00', amount: 1000, sellerId: 'u1', sellerName: 'Awa Fall' }),
     makeSale({ id: 'b', saleNumber: 'V-2', date: '2026-03-10', time: '14:30', amount: 2000, sellerId: 'u2', sellerName: 'Ibou Diop', clientName: 'M. Ba' }),
-    makeSale({ id: 'c', saleNumber: 'V-3', date: '2026-03-08', time: '11:00', amount: 3000, status: 'Partiel', sellerId: 'u1', sellerName: 'Awa Fall' }),
-    makeSale({ id: 'd', saleNumber: 'V-4', date: '2026-02-01', time: '10:00', amount: 4000, status: 'Annulée' }),
+    makeSale({ id: 'c', saleNumber: 'V-3', date: '2026-03-08', time: '11:00', amount: 3000, status: 'partial', sellerId: 'u1', sellerName: 'Awa Fall' }),
+    makeSale({ id: 'd', saleNumber: 'V-4', date: '2026-02-01', time: '10:00', amount: 4000, status: 'cancelled' }),
   ];
   const ids = (list: SaleTransaction[]) => list.map((sale) => sale.id);
 
@@ -453,8 +453,8 @@ describe('historique des ventes (EF-13)', () => {
   });
 
   it('filtre par statut', () => {
-    expect(ids(filterSales(history, { ...DEFAULT_SALES_FILTERS, status: 'Annulée' }, NOW))).toEqual(['d']);
-    expect(ids(filterSales(history, { ...DEFAULT_SALES_FILTERS, status: 'Partiel' }, NOW))).toEqual(['c']);
+    expect(ids(filterSales(history, { ...DEFAULT_SALES_FILTERS, status: 'cancelled' }, NOW))).toEqual(['d']);
+    expect(ids(filterSales(history, { ...DEFAULT_SALES_FILTERS, status: 'partial' }, NOW))).toEqual(['c']);
   });
 
   it('recherche par numéro de ticket ou client, sans tenir compte de la casse', () => {
@@ -463,7 +463,7 @@ describe('historique des ventes (EF-13)', () => {
   });
 
   it('combine les filtres', () => {
-    const filters = { ...DEFAULT_SALES_FILTERS, period: '7d' as const, seller: 'u1', status: 'Partiel' as const };
+    const filters = { ...DEFAULT_SALES_FILTERS, period: '7d' as const, seller: 'u1', status: 'partial' as const };
     expect(ids(filterSales(history, filters, NOW))).toEqual(['c']);
   });
 
@@ -482,7 +482,7 @@ describe('historique des ventes (EF-13)', () => {
     const { sale } = completeSale({
       lines: [{ productId: 'p1', name: 'Lait', price: 1000, quantity: 1, unit: 'brique' }],
       products: [makeProduct({ id: 'p1', stock: 5 })],
-      paymentMethod: 'Espèces',
+      paymentMethod: 'cash',
       seller: { id: 'u1', name: 'Awa Fall' },
     });
     expect(sale).toMatchObject({ sellerId: 'u1', sellerName: 'Awa Fall' });

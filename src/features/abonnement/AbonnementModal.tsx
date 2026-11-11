@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { BillingCycle } from '@/types';
 import { t } from '@/content';
+import { paymentLabel } from '@/config/reference';
 import { parseDate } from '@/domain/dates';
 import { formatFCFA } from '@/domain/money';
 import { useCurrentSession, usePermission } from '@/store/useSessionStore';
@@ -60,10 +61,10 @@ export function AbonnementModal() {
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-semibold text-ink-900">{t.subscription.invoice(invoice.id)}</div>
                 <div className="text-xs text-slate-500">
-                  {t.subscription.invoiceMeta(formatDate(invoice.date), invoice.paymentMethod, formatFCFA(invoice.amount))}
+                  {t.subscription.invoiceMeta(formatDate(invoice.date), paymentLabel(invoice.paymentMethod), formatFCFA(invoice.amount))}
                 </div>
               </div>
-              <Badge tone={invoice.status === 'Payée' ? 'success' : 'warning'}>{invoice.status}</Badge>
+              <Badge tone={invoice.status === 'paid' ? 'success' : 'warning'}>{t.labels.invoiceStatus[invoice.status]}</Badge>
               <Button variant="ghost" size="sm" icon="download" onClick={() => showToast(t.common.unavailable, 'info')}>
                 <span className="hidden sm:inline">{t.subscription.download}</span>
               </Button>

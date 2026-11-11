@@ -154,9 +154,9 @@ export const SEED_SALES: SaleTransaction[] = [
     saleNumber: '#1042',
     time: '09:15',
     date: TODAY,
-    paymentMethod: 'Espèces',
+    paymentMethod: 'cash',
     amount: 12500,
-    status: 'Validé',
+    status: 'completed',
     itemsCount: 3,
   },
   {
@@ -164,9 +164,9 @@ export const SEED_SALES: SaleTransaction[] = [
     saleNumber: '#1041',
     time: '08:52',
     date: TODAY,
-    paymentMethod: 'Mobile Money (Wave)',
+    paymentMethod: 'wave',
     amount: 4000,
-    status: 'Validé',
+    status: 'completed',
     itemsCount: 1,
   },
   {
@@ -174,9 +174,9 @@ export const SEED_SALES: SaleTransaction[] = [
     saleNumber: '#1040',
     time: '08:30',
     date: TODAY,
-    paymentMethod: 'Crédit Partiel',
+    paymentMethod: 'credit',
     amount: 26000,
-    status: 'Partiel',
+    status: 'partial',
     clientName: 'Mme Diallo',
     remainingAmount: 16000,
     itemsCount: 4,
@@ -186,9 +186,9 @@ export const SEED_SALES: SaleTransaction[] = [
     saleNumber: '#1039',
     time: '19:40',
     date: YESTERDAY,
-    paymentMethod: 'Espèces',
+    paymentMethod: 'cash',
     amount: 8500,
-    status: 'Validé',
+    status: 'completed',
     itemsCount: 2,
   },
 ];
@@ -211,11 +211,11 @@ const HISTORY_AMOUNTS = [
   [21500, 16900, 13400],
 ];
 const HISTORY_METHODS: SaleTransaction['paymentMethod'][] = [
-  'Espèces',
-  'Mobile Money (Wave)',
-  'Orange Money',
-  'Espèces',
-  'Carte Bancaire',
+  'cash',
+  'wave',
+  'orange_money',
+  'cash',
+  'card',
 ];
 
 const HISTORY_SALES: SaleTransaction[] = HISTORY_AMOUNTS.flatMap((amounts, dayIndex) =>
@@ -228,7 +228,7 @@ const HISTORY_SALES: SaleTransaction[] = HISTORY_AMOUNTS.flatMap((amounts, dayIn
       date: toIsoDate(addDays(NOW, -(dayIndex + 2))),
       paymentMethod: HISTORY_METHODS[(dayIndex + saleIndex) % HISTORY_METHODS.length],
       amount,
-      status: 'Validé' as const,
+      status: 'completed' as const,
       itemsCount: 1 + ((dayIndex + saleIndex) % 5),
     };
   })
@@ -243,7 +243,7 @@ export const SEED_EXPENSES: Expense[] = [
     date: TODAY,
     amount: 180000,
     category: 'Stock',
-    paymentMethod: 'Wave',
+    paymentMethod: 'wave',
     status: 'Justifié',
   },
   {
@@ -252,7 +252,7 @@ export const SEED_EXPENSES: Expense[] = [
     date: YESTERDAY,
     amount: 35000,
     category: 'Factures',
-    paymentMethod: 'Espèces',
+    paymentMethod: 'cash',
     status: 'Validé',
   },
   {
@@ -261,7 +261,7 @@ export const SEED_EXPENSES: Expense[] = [
     date: EXPENSE_18_DAYS_AGO,
     amount: 8500,
     category: 'Transport',
-    paymentMethod: 'Orange Money',
+    paymentMethod: 'orange_money',
     status: 'Validé',
   },
   {
@@ -270,7 +270,7 @@ export const SEED_EXPENSES: Expense[] = [
     date: EXPENSE_20_DAYS_AGO,
     amount: 15000,
     category: 'Divers',
-    paymentMethod: 'Espèces',
+    paymentMethod: 'cash',
     status: 'Ticket OK',
   },
   {
@@ -279,7 +279,7 @@ export const SEED_EXPENSES: Expense[] = [
     date: EXPENSE_22_DAYS_AGO,
     amount: 220000,
     category: 'Stock',
-    paymentMethod: 'Chèque',
+    paymentMethod: 'other',
     status: 'Facturé',
   },
 ];
@@ -295,7 +295,7 @@ export const SEED_CREDITS: ClientCredit[] = [
     totalInitial: 60000,
     dueDate: CREDIT_DUE_5_DAYS_AGO,
     daysLate: 5,
-    status: 'En retard',
+    status: 'overdue',
   },
   {
     id: 'c2',
@@ -306,7 +306,7 @@ export const SEED_CREDITS: ClientCredit[] = [
     remainingAmount: 40000,
     totalInitial: 100000,
     dueDate: CREDIT_DUE_IN_10_DAYS,
-    status: 'Partiel',
+    status: 'partial',
   },
   {
     id: 'c3',
@@ -317,7 +317,7 @@ export const SEED_CREDITS: ClientCredit[] = [
     remainingAmount: 120000,
     totalInitial: 120000,
     dueDate: CREDIT_DUE_IN_12_DAYS,
-    status: 'En attente',
+    status: 'pending',
   },
   {
     id: 'c4',
@@ -329,7 +329,7 @@ export const SEED_CREDITS: ClientCredit[] = [
     totalInitial: 40000,
     dueDate: CREDIT_DUE_2_DAYS_AGO,
     daysLate: 2,
-    status: 'En retard',
+    status: 'overdue',
   },
 ];
 

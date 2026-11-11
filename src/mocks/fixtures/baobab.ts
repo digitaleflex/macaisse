@@ -31,7 +31,7 @@ const AMOUNTS = [
   [15800, 12300],
   [9900, 13100, 6400],
 ];
-const METHODS: SaleTransaction['paymentMethod'][] = ['Espèces', 'Orange Money', 'Espèces', 'Mobile Money (Wave)'];
+const METHODS: SaleTransaction['paymentMethod'][] = ['cash', 'orange_money', 'cash', 'wave'];
 
 export const BAOBAB_SALES: SaleTransaction[] = AMOUNTS.flatMap((amounts, dayIndex) =>
   amounts.map((amount, saleIndex) => ({
@@ -41,20 +41,20 @@ export const BAOBAB_SALES: SaleTransaction[] = AMOUNTS.flatMap((amounts, dayInde
     date: day(-dayIndex),
     paymentMethod: METHODS[(dayIndex + saleIndex) % METHODS.length],
     amount,
-    status: 'Validé' as const,
+    status: 'completed' as const,
     itemsCount: 1 + ((dayIndex * 2 + saleIndex) % 6),
   }))
 );
 
 export const BAOBAB_EXPENSES: Expense[] = [
-  { id: 'bb-e1', title: 'Réassort grossiste Adjamé', date: day(-2), amount: 96000, category: 'Stock', paymentMethod: 'Orange Money', status: 'Justifié' },
-  { id: 'bb-e2', title: 'Facture CIE électricité', date: day(-6), amount: 28500, category: 'Factures', paymentMethod: 'Espèces', status: 'Validé' },
-  { id: 'bb-e3', title: 'Livraison tricycle', date: day(-9), amount: 6000, category: 'Transport', paymentMethod: 'Espèces', status: 'Validé' },
+  { id: 'bb-e1', title: 'Réassort grossiste Adjamé', date: day(-2), amount: 96000, category: 'Stock', paymentMethod: 'orange_money', status: 'Justifié' },
+  { id: 'bb-e2', title: 'Facture CIE électricité', date: day(-6), amount: 28500, category: 'Factures', paymentMethod: 'cash', status: 'Validé' },
+  { id: 'bb-e3', title: 'Livraison tricycle', date: day(-9), amount: 6000, category: 'Transport', paymentMethod: 'cash', status: 'Validé' },
 ];
 
 export const BAOBAB_CREDITS: ClientCredit[] = [
-  { id: 'bb-c1', clientName: 'Maquis Chez Tantie', initials: 'CT', shopOrLocation: 'Rue des Jardins', phone: '+225 07 11 22 33 44', remainingAmount: 38000, totalInitial: 50000, dueDate: day(-3), daysLate: 3, status: 'En retard' },
-  { id: 'bb-c2', clientName: 'M. Yao Kouadio', initials: 'YK', shopOrLocation: 'Client régulier', phone: '+225 05 66 77 88 99', remainingAmount: 15000, totalInitial: 15000, dueDate: day(8), status: 'En attente' },
+  { id: 'bb-c1', clientName: 'Maquis Chez Tantie', initials: 'CT', shopOrLocation: 'Rue des Jardins', phone: '+225 07 11 22 33 44', remainingAmount: 38000, totalInitial: 50000, dueDate: day(-3), daysLate: 3, status: 'overdue' },
+  { id: 'bb-c2', clientName: 'M. Yao Kouadio', initials: 'YK', shopOrLocation: 'Client régulier', phone: '+225 05 66 77 88 99', remainingAmount: 15000, totalInitial: 15000, dueDate: day(8), status: 'pending' },
 ];
 
 export const BAOBAB_NOTIFICATIONS: NotificationItem[] = [

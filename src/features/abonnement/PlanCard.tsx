@@ -1,5 +1,6 @@
 ﻿import type { BillingCycle, Subscription } from '@/types';
 import { t } from '@/content';
+import { paymentLabel } from '@/config/reference';
 import { parseDate } from '@/domain/dates';
 import { formatFCFA } from '@/domain/money';
 import { Badge, Icon } from '@/ui';
@@ -34,7 +35,9 @@ export function PlanCard({ subscription, cycle }: PlanCardProps) {
           <span className="font-num font-extrabold text-3xl text-zest-400">{formatFCFA(price)}</span>
           <span className="text-sm text-slate-500">{cycle === 'monthly' ? t.subscription.perMonth : t.subscription.perYear}</span>
         </div>
-        <p className="text-xs text-slate-500 mt-1">{t.subscription.nextBilling(renewalLabel, subscription.paymentMethod)}</p>
+        <p className="text-xs text-slate-500 mt-1">{subscription.paymentMethod === null
+            ? t.subscription.nextBillingTrial(renewalLabel)
+            : t.subscription.nextBilling(renewalLabel, paymentLabel(subscription.paymentMethod))}</p>
       </div>
       <ul className="relative mt-4 pt-4 border-t border-white/10 grid sm:grid-cols-2 gap-2 text-sm text-slate-300">
         {plan.features.map((feature) => (

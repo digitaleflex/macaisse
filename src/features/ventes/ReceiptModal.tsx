@@ -3,6 +3,7 @@ import { t } from '@/content';
 import { formatFCFA } from '@/domain/money';
 import { formatTime, parseDate } from '@/domain/dates';
 import { can } from '@/domain/permissions';
+import { paymentLabel } from '@/config/reference';
 import { assessCancellation, type CancelDenial } from '@/domain/sales';
 import { personDisplayName } from '@/domain/users';
 import { useCreditsStore } from '@/store/useCreditsStore';
@@ -52,7 +53,7 @@ export function ReceiptModal() {
   // La vente du store prime sur l'instantané : elle reflète une annulation récente.
   const sale = storedSale ?? receipt.sale;
   const items = receipt.items.length > 0 ? receipt.items : (sale.lines ?? []);
-  const cancelled = sale.status === 'Annulée';
+  const cancelled = sale.status === 'cancelled';
   const credit =
     credits.find((item) => item.id === sale.creditId) ??
     credits.find((item) => item.saleId === sale.id);
@@ -104,7 +105,7 @@ export function ReceiptModal() {
           <div className="flex items-center gap-2 font-semibold">
             <Icon name="cancel" size={18} />
             <span>{t.sales.cancel.banner.title}</span>
-            <Badge tone="danger">{t.sales.status.cancelled}</Badge>
+            <Badge tone="danger">{t.labels.saleStatus.cancelled}</Badge>
           </div>
           {sale.cancelledAt && (
             <div className="mt-1">
@@ -172,7 +173,7 @@ export function ReceiptModal() {
             <span className="font-display font-bold text-ink-900 uppercase">{t.receipt.netTotal}</span>
             <span className="font-num font-extrabold text-xl text-ink-900">{formatFCFA(sale.amount)}</span>
           </div>
-          <Row label={t.receipt.payment} value={sale.paymentMethod} />
+          <Row label={t.receipt.payment} value={paymentLabel(sale.paymentMethod)} />
           {sale.remainingAmount !== undefined && (
             <Row label={t.receipt.remaining} value={formatFCFA(sale.remainingAmount)} strong />
           )}

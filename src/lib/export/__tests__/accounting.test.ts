@@ -15,9 +15,9 @@ function sale(overrides: Partial<SaleTransaction> = {}): SaleTransaction {
     saleNumber: 'V-20260110-0001',
     time: '09:00',
     date: '2026-01-10',
-    paymentMethod: 'Espèces',
+    paymentMethod: 'cash',
     amount: 5000,
-    status: 'Validé',
+    status: 'completed',
     itemsCount: 2,
     ...overrides,
   };
@@ -30,7 +30,7 @@ function expense(overrides: Partial<Expense> = {}): Expense {
     date: '2026-01-12',
     amount: 1500,
     category: 'Transport',
-    paymentMethod: 'Espèces',
+    paymentMethod: 'cash',
     ...overrides,
   };
 }

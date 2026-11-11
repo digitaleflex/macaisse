@@ -1,6 +1,6 @@
 import type { SaleTransaction } from '@/types';
 import { t } from '@/content';
-import { paymentShortLabel, PAYMENT_METHODS } from '@/config/reference';
+import { paymentShortLabel, PAYMENT_METHODS, SALE_STATUS_TONE } from '@/config/reference';
 import { formatFCFA } from '@/domain/money';
 import { Badge, Button, Card, EmptyState, Icon } from '@/ui';
 
@@ -36,8 +36,8 @@ export function RecentSales({ sales, todayCount, onSelect, onViewAll }: RecentSa
       ) : (
         <ul className="divide-y divide-line">
           {sales.map((sale) => {
-            const partial = sale.status === 'Partiel';
-            const cancelled = sale.status === 'Annulée';
+            const partial = sale.status === 'partial';
+            const cancelled = sale.status === 'cancelled';
             return (
               <li key={sale.id}>
                 <button
@@ -53,9 +53,7 @@ export function RecentSales({ sales, todayCount, onSelect, onViewAll }: RecentSa
                       <span className="text-sm font-semibold text-ink-900 truncate">
                         {sale.clientName ?? t.dashboard.recent.sale(sale.saleNumber)}
                       </span>
-                      <Badge tone={cancelled ? 'danger' : partial ? 'warning' : 'success'}>
-                        {sale.status}
-                      </Badge>
+                      <Badge tone={SALE_STATUS_TONE[sale.status]}>{t.labels.saleStatus[sale.status]}</Badge>
                     </span>
                     <span className="block text-xs text-slate-500 mt-0.5 truncate">
                       {sale.saleNumber} · {paymentShortLabel(sale.paymentMethod)} · <span className="font-num">{sale.time}</span>

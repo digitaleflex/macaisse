@@ -5,16 +5,45 @@ export type TabType = 'accueil' | 'ventes' | 'stock' | 'credits' | 'bilan';
 
 export type StockStatus = 'disponible' | 'faible' | 'rupture';
 
-export type CreditStatus = 'En retard' | 'Partiel' | 'En attente' | 'Réglé';
+/**
+ * Statut d'un crédit. Identifiants d'API stables (anglais, snake_case) ; les
+ * libellés français vivent dans `@/content` (`t.status.credit`).
+ */
+export type CreditStatus = 'overdue' | 'partial' | 'pending' | 'settled';
 
+/**
+ * Moyen de paiement. Identifiants d'API stables : ils ne changent jamais, même
+ * si un libellé est retraduit ou reformulé (libellés : `config/reference.ts`).
+ *
+ * `credit` n'est pas un instrument de paiement mais le choix « à crédit » de la
+ * caisse (reste dû lié à un client) ; voir `TenderMethod` pour l'argent reçu.
+ */
 export type PaymentMethod =
-  | 'Espèces'
-  | 'Mobile Money (Wave)'
-  | 'Orange Money'
-  | 'Carte Bancaire'
-  | 'Crédit Partiel';
+  | 'cash'
+  | 'mtn_money'
+  | 'moov_money'
+  | 'orange_money'
+  | 'wave'
+  | 'celtiis_cash'
+  | 'card'
+  | 'credit'
+  | 'other';
 
-export type SaleStatus = 'Validé' | 'Partiel' | 'En attente' | 'Annulée';
+/** Moyen par lequel de l'argent a réellement été reçu ou versé (tout sauf `credit`). */
+export type TenderMethod = Exclude<PaymentMethod, 'credit'>;
+
+/** Famille d'un moyen de paiement. */
+export type PaymentKind = 'cash' | 'mobile_money' | 'card' | 'credit' | 'other';
+
+/**
+ * Canal d'encaissement : `manual` = l'argent est reçu directement par le
+ * commerçant (espèces, transfert sur son numéro) ; `fedapay` / `kkiapay` =
+ * collecte en ligne via un agrégateur, avec transaction et statut.
+ */
+export type PaymentProvider = 'manual' | 'fedapay' | 'kkiapay';
+
+/** Statut d'une vente. Identifiants d'API stables (libellés : `t.status.sale`). */
+export type SaleStatus = 'completed' | 'partial' | 'pending' | 'cancelled';
 
 export type Category = 'Frais' | 'Épicerie' | 'Boissons' | 'Hygiène';
 
@@ -76,7 +105,7 @@ export interface Expense {
   time?: string;
   amount: number;
   category: string;
-  paymentMethod: string;
+  paymentMethod: TenderMethod;
   status?: string;
   hasReceipt?: boolean;
 }
@@ -284,15 +313,17 @@ export interface Invoice {
   id: string;
   date: string;
   amount: number;
-  paymentMethod: string;
-  status: 'Payée' | 'En attente';
+  paymentMethod: TenderMethod;
+  /** `paid` = payée, `pending` = en attente (libellés : `t.status.invoice`). */
+  status: 'paid' | 'pending';
 }
 
 export interface Subscription {
   plan: SubscriptionPlan;
   cycle: BillingCycle;
   renewalDate: string;
-  paymentMethod: string;
+  /** Moyen enregistré pour le renouvellement ; `null` pendant l'essai gratuit. */
+  paymentMethod: TenderMethod | null;
   autoRenew: boolean;
   invoices: Invoice[];
 }

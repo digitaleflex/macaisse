@@ -74,10 +74,10 @@ export function computeCreditStatus(
   dueDate: string,
   now: Date = new Date()
 ): CreditStatus {
-  if (remainingAmount <= 0) return 'Réglé';
-  if (daysLate(dueDate, now) > 0) return 'En retard';
-  if (remainingAmount < totalInitial) return 'Partiel';
-  return 'En attente';
+  if (remainingAmount <= 0) return 'settled';
+  if (daysLate(dueDate, now) > 0) return 'overdue';
+  if (remainingAmount < totalInitial) return 'partial';
+  return 'pending';
 }
 
 function clamp(value: number, min: number, max: number): number {
@@ -159,7 +159,7 @@ export function creditSummary(credits: ClientCredit[], now: Date = new Date()): 
       acc.total += credit.totalInitial;
       acc.outstanding += credit.remainingAmount;
       acc.settled += credit.totalInitial - credit.remainingAmount;
-      if (status === 'En retard') acc.overdue += credit.remainingAmount;
+      if (status === 'overdue') acc.overdue += credit.remainingAmount;
       acc.count += 1;
       return acc;
     },
@@ -189,7 +189,7 @@ export function creditRows(credits: ClientCredit[], now: Date = new Date()): Cre
 export function activeCredits(credits: ClientCredit[], now: Date = new Date()): ClientCredit[] {
   return credits.filter(
     (credit) =>
-      computeCreditStatus(credit.remainingAmount, credit.totalInitial, credit.dueDate, now) !== 'Réglé'
+      computeCreditStatus(credit.remainingAmount, credit.totalInitial, credit.dueDate, now) !== 'settled'
   );
 }
 
@@ -197,6 +197,6 @@ export function activeCredits(credits: ClientCredit[], now: Date = new Date()): 
 export function overdueCredits(credits: ClientCredit[], now: Date = new Date()): ClientCredit[] {
   return credits.filter(
     (credit) =>
-      computeCreditStatus(credit.remainingAmount, credit.totalInitial, credit.dueDate, now) === 'En retard'
+      computeCreditStatus(credit.remainingAmount, credit.totalInitial, credit.dueDate, now) === 'overdue'
   );
 }

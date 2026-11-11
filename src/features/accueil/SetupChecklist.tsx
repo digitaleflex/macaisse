@@ -18,7 +18,7 @@ export function SetupChecklist() {
   const openModal = useUiStore((state) => state.openModal);
 
   const hasProduct = products.length > 0;
-  const hasSale = sales.some((sale) => sale.status !== 'Annulée');
+  const hasSale = sales.some((sale) => sale.status !== 'cancelled');
   if (hasProduct && hasSale) return null;
 
   const items = [

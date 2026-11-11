@@ -146,7 +146,7 @@ export function completeSale(input: CompleteSaleInput): CompleteSaleResult {
   if (normalizedCredit > 0 && !trimmedClient) {
     throw new Error('Une vente à crédit nécessite le nom du client.');
   }
-  const status: SaleStatus = normalizedCredit > 0 ? 'Partiel' : 'Validé';
+  const status: SaleStatus = normalizedCredit > 0 ? 'partial' : 'completed';
 
   const sale: SaleTransaction = {
     id: createId('sale'),
@@ -176,7 +176,7 @@ export const MIN_CANCEL_REASON_LENGTH = 3;
 
 /** Une vente annulée reste dans l'historique mais ne compte dans aucun total. */
 export function isActiveSale(sale: SaleTransaction): boolean {
-  return sale.status !== 'Annulée';
+  return sale.status !== 'cancelled';
 }
 
 /** Ventes comptabilisables (revenus, canaux, export). */
@@ -289,7 +289,7 @@ export function cancelSale(input: CancelSaleInput): CancelSaleResult {
 
   const cancelled: SaleTransaction = {
     ...sale,
-    status: 'Annulée',
+    status: 'cancelled',
     cancelledAt: date.toISOString(),
     cancelledBy: by,
     cancelReason: reason,

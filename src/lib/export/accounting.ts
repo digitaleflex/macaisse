@@ -1,5 +1,6 @@
 import type { Expense, SaleTransaction } from '@/types';
 import { t } from '@/content';
+import { paymentLabel } from '@/config/reference';
 import { toIsoDate } from '@/domain/dates';
 import { activeSales } from '@/domain/sales';
 
@@ -59,10 +60,10 @@ export function buildAccountingRows(
         ref: s.saleNumber,
         description: t.documents.saleDescription(s.itemsCount),
         categoryOrClient: s.clientName ? t.documents.saleClient(s.clientName) : t.documents.counter,
-        paymentMethod: s.paymentMethod,
+        paymentMethod: paymentLabel(s.paymentMethod),
         creditAmount: s.amount,
         debitAmount: 0,
-        status: s.status,
+        status: t.labels.saleStatus[s.status],
       });
     });
   }
@@ -77,7 +78,7 @@ export function buildAccountingRows(
         ref: `#DEP-${e.id.toString().padStart(4, '0')}`,
         description: e.title,
         categoryOrClient: e.category,
-        paymentMethod: e.paymentMethod,
+        paymentMethod: paymentLabel(e.paymentMethod),
         creditAmount: 0,
         debitAmount: e.amount,
         status: e.status || t.documents.defaultStatus,

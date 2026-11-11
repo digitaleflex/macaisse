@@ -6,6 +6,7 @@ import { persist } from 'zustand/middleware';
 import type { Expense } from '@/types';
 import { createId } from '@/domain/ids';
 import { parseDate, toIsoDate } from '@/domain/dates';
+import { normalizeTenderMethod } from '@/config/reference';
 import { SEED_EXPENSES } from '@/mocks';
 import { syncRemote } from '@/services';
 import {
@@ -88,7 +89,7 @@ function toExpense(value: unknown): Expense | null {
     date: coerceString(value.date),
     amount: coerceNumber(value.amount),
     category: coerceString(value.category, 'Divers'),
-    paymentMethod: coerceString(value.paymentMethod),
+    paymentMethod: normalizeTenderMethod(value.paymentMethod) ?? 'cash',
   };
 
   const time = coerceString(value.time).trim();

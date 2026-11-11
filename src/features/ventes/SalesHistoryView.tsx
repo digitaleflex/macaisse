@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import type { SaleStatus, SaleTransaction } from '@/types';
 import { t } from '@/content';
-import { PAYMENT_METHODS, SALE_STATUSES, paymentShortLabel } from '@/config/reference';
+import { PAYMENT_METHODS, SALE_STATUSES, SALE_STATUS_TONE, paymentShortLabel } from '@/config/reference';
 import { parseDate, toIsoDate } from '@/domain/dates';
 import { formatFCFA } from '@/domain/money';
 import {
@@ -28,13 +28,6 @@ const PERIOD_OPTIONS = (['today', '7d', '30d', 'all', 'custom'] as const).map((v
 
 function methodIcon(method: string): string {
   return PAYMENT_METHODS.find((option) => option.method === method)?.icon ?? 'payments';
-}
-
-function statusTone(status: SaleStatus): 'success' | 'warning' | 'danger' | 'neutral' {
-  if (status === 'Annulée') return 'danger';
-  if (status === 'Partiel') return 'warning';
-  if (status === 'En attente') return 'neutral';
-  return 'success';
 }
 
 /** Jour normalisé « YYYY-MM-DD » d'une vente (clé de regroupement). */
@@ -100,7 +93,7 @@ export function SalesHistoryView() {
   ];
   const statusChoices = [
     { value: 'all', label: t.sales.history.allStatuses },
-    ...SALE_STATUSES.map((status) => ({ value: status, label: status })),
+    ...SALE_STATUSES.map((status) => ({ value: status, label: t.labels.saleStatus[status] })),
   ];
 
   const filtersActive =
@@ -254,8 +247,8 @@ interface SaleRowProps {
 }
 
 function SaleRow({ sale, dayHeader, onOpen }: SaleRowProps) {
-  const cancelled = sale.status === 'Annulée';
-  const partial = sale.status === 'Partiel';
+  const cancelled = sale.status === 'cancelled';
+  const partial = sale.status === 'partial';
   const details = [
     sale.saleNumber,
     paymentShortLabel(sale.paymentMethod),
@@ -286,7 +279,7 @@ function SaleRow({ sale, dayHeader, onOpen }: SaleRowProps) {
               <span className="text-sm font-semibold text-ink-900 truncate">
                 {sale.clientName ?? t.dashboard.recent.sale(sale.saleNumber)}
               </span>
-              <Badge tone={statusTone(sale.status)}>{sale.status}</Badge>
+              <Badge tone={SALE_STATUS_TONE[sale.status]}>{t.labels.saleStatus[sale.status]}</Badge>
             </span>
             <span className="block text-xs text-slate-500 mt-0.5 truncate">{details.join(' · ')}</span>
             {cancelled && sale.cancelledBy && (
