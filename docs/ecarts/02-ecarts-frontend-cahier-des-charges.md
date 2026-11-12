@@ -55,7 +55,7 @@ exigences non encore traitées ; les lignes passées à ✅ portent la mention �
 | Réf. | Exigence | État | Constat |
 |---|---|---|---|
 | EF-04 | Ajouter des membres | ✅ | Invitation avec rôle, acceptation explicite, statut « invité ». |
-| EF-05 | Créer / modifier / supprimer des rôles avec leurs permissions | ❌ | Seulement 3 rôles fixes (`owner`, `manager`, `cashier`) et 11 permissions codées en dur (`src/domain/permissions.ts`). Aucun écran de gestion des rôles. |
+| EF-05 | Créer / modifier / supprimer des rôles avec leurs permissions | ❌ | Seulement 3 rôles fixes (`owner`, `manager`, `cashier`) et 14 permissions codées en dur (`src/domain/permissions.ts`). Aucun écran de gestion des rôles. |
 | EF-06 | Permissions contrôlées par rôle | ◐ | Masquage de l'interface correct ; l'application côté serveur dépend du backend. |
 
 ## 4.3 Catalogue
