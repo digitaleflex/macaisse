@@ -15,10 +15,21 @@ export interface CartPanelProps {
   onRemove: (productId: string) => void;
   onClear: () => void;
   onCheckout: () => void;
+  /** Identifiant du bouton d'encaissement : unique dans la page (panier du bureau et feuille mobile coexistent). */
+  checkoutId?: string;
   className?: string;
 }
 
-export function CartPanel({ lines, totals, onChangeQuantity, onRemove, onClear, onCheckout, className }: CartPanelProps) {
+export function CartPanel({
+  lines,
+  totals,
+  onChangeQuantity,
+  onRemove,
+  onClear,
+  onCheckout,
+  checkoutId = 'checkout-cta-btn',
+  className,
+}: CartPanelProps) {
   const decrement = (line: CartLine) => {
     if (line.quantity <= 1) onRemove(line.productId);
     else onChangeQuantity(line.productId, line.quantity - 1);
@@ -34,7 +45,7 @@ export function CartPanel({ lines, totals, onChangeQuantity, onRemove, onClear, 
           </span>
         </div>
         {lines.length > 0 && (
-          <Button variant="ghost" size="sm" icon="delete_sweep" onClick={onClear} className="text-slate-500 hover:text-rose-600">
+          <Button variant="ghost" size="sm" icon="delete_sweep" onClick={onClear} className="text-slate-500 hover:text-rose-700">
             {t.pos.cart.clear}
           </Button>
         )}
@@ -93,7 +104,7 @@ export function CartPanel({ lines, totals, onChangeQuantity, onRemove, onClear, 
           </div>
         </div>
         <Button
-          id="checkout-cta-btn"
+          id={checkoutId}
           variant="accent"
           size="xl"
           fullWidth
@@ -122,7 +133,7 @@ export function MobileCartBar({ totals, onOpen }: { totals: CartTotals; onOpen: 
       >
         <span className="relative size-11 rounded-xl bg-zest-400 text-ink-950 flex items-center justify-center">
           <Icon name="shopping_basket" size={22} />
-          <span className="absolute -top-1.5 -right-1.5 min-w-5 h-5 px-1 rounded-full bg-white text-ink-900 text-[11px] font-bold flex items-center justify-center font-num">
+          <span className="absolute -top-1.5 -right-1.5 min-w-5 h-5 px-1 rounded-full bg-white text-ink-900 text-xs font-bold flex items-center justify-center font-num">
             {totals.itemCount}
           </span>
         </span>

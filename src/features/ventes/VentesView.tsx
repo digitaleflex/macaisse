@@ -170,7 +170,7 @@ export function VentesView() {
             {t.pos.catalogTitle}
             <span className="ml-2 text-sm font-medium text-muted font-num">{t.pos.catalogCount(filteredProducts.length)}</span>
           </h2>
-          <div className="hidden sm:flex items-center gap-1.5 text-xs text-slate-500">
+          <div className="hidden sm:flex items-center gap-1.5 text-xs text-muted">
             <span>{t.pos.acceptedMethods}</span>
             {PAYMENT_METHODS.slice(0, 4).map((option) => (
               <span key={option.method} className="px-2 py-0.5 rounded-md bg-white border border-line font-semibold text-slate-600">
@@ -228,7 +228,7 @@ export function VentesView() {
       </div>
 
       {/* Panier — colonne fixe sur grand écran */}
-      <aside className="hidden lg:block">
+      <aside aria-label={t.pos.cart.panelLabel} className="hidden lg:block">
         <div className="sticky top-[88px] h-[calc(100dvh-112px)] bg-surface rounded-card border border-line shadow-card overflow-hidden flex">
           <CartPanel {...cartProps} className="flex-1" />
         </div>
@@ -237,7 +237,7 @@ export function VentesView() {
       {/* Panier — mobile */}
       <MobileCartBar totals={totals} onOpen={() => setCartSheetOpen(true)} />
       <Modal open={cartSheetOpen} onClose={() => setCartSheetOpen(false)} flush>
-        <CartPanel {...cartProps} className="flex-1" />
+        <CartPanel {...cartProps} checkoutId="checkout-cta-btn-mobile" className="flex-1" />
       </Modal>
 
       <PaymentPad

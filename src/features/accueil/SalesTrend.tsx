@@ -20,7 +20,7 @@ export function SalesTrend({ data }: SalesTrendProps) {
       description={t.dashboard.trend.subtitle(data.length)}
       action={
         <div className="text-right">
-          <div className="text-[11px] text-slate-500">{t.dashboard.trend.average}</div>
+          <div className="text-xs text-slate-500">{t.dashboard.trend.average}</div>
           <div className="font-num font-bold text-sm text-ink-900">{formatFCFA(average)}</div>
         </div>
       }
@@ -42,7 +42,7 @@ export function SalesTrend({ data }: SalesTrendProps) {
               dataKey="label"
               tickLine={false}
               axisLine={false}
-              fontSize={11}
+              fontSize={12}
               stroke={chartColors.axis}
               interval="preserveStartEnd"
               minTickGap={16}

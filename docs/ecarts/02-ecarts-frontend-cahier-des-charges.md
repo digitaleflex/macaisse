@@ -26,9 +26,9 @@ Il complète le document `01-ecarts-backend-schema` (écarts du schéma de donn�
 | 4.1 Comptes et boutiques | EF-01 à 03 | ✅ |
 | 4.2 Équipe, rôles, permissions | EF-04 ✅ — EF-05 ❌ — EF-06 ◐ | ◐ |
 | 4.3 Catalogue | EF-07 ◐ — EF-08 ❌ | ◐ |
-| 4.4 Ventes et paiements | EF-09 à 11 ✅ — EF-12 ◐ — EF-13 ❌ | ◐ |
-| 4.5 Annulation des ventes | EF-14 ◐ — EF-15 à 17 ❌ | ❌ |
-| 4.6 Stock | EF-18 ◐ — EF-19 ❌ — EF-20 ✅ | ◐ |
+| 4.4 Ventes et paiements | EF-09 à 11 ✅ — EF-12 ◐ — EF-13 ✅ | ◐ |
+| 4.5 Annulation des ventes | EF-14 à 17 ✅ | ✅ |
+| 4.6 Stock | EF-18 à 20 ✅ | ✅ |
 | 4.7 Crédits | EF-21 à 23, 25 ✅ — EF-24 ◐ | ◐ |
 | 4.8 Clients | EF-26, 27 ❌ — EF-28 ✅ | ◐ |
 | 4.9 Dépenses | EF-29, 30 ◐ | ◐ |
@@ -36,7 +36,9 @@ Il complète le document `01-ecarts-backend-schema` (écarts du schéma de donn�
 | 4.11 Journal d'audit | EF-36 | ❌ |
 | 4.12 Abonnements | EF-37 ◐ | ◐ |
 
-**11 exigences absentes, 13 partielles, 13 conformes** (sur 37).
+**6 exigences absentes, 11 partielles, 20 conformes** (sur 37) — *mis à jour après les lots L1 (annulation),
+L2 (historique) et L3 (journal de stock). Le détail ci-dessous décrit l'état d'origine pour les
+exigences non encore traitées ; les lignes passées à ✅ portent la mention « Livré ».*
 
 # 3. Détail par exigence
 
@@ -71,23 +73,23 @@ Il complète le document `01-ecarts-backend-schema` (écarts du schéma de donn�
 | EF-10 | Mode de paiement, total ou partiel | ✅ | 5 modes, montant reçu, monnaie, reste dû. |
 | EF-11 | Vente « à crédit » → crédit créé automatiquement | ✅ | Le crédit naît de la vente dans le même mouvement. |
 | EF-12 | Reçu ou facture imprimable | ◐ | Le reçu s'affiche, mais **« Imprimer » n'appelle pas `window.print()`** (toast simulé) ; aucune feuille de style d'impression. Le partage WhatsApp est aussi simulé. Critère d'acceptation §7 non satisfait. |
-| EF-13 | Historique filtrable (période, vendeur, statut) | ❌ | Aucun écran d'historique. L'accueil montre les 5 dernières ventes. |
+| EF-13 | Historique filtrable (période, vendeur, statut) | ✅ | **Livré (L2).** Onglet Caisse → Historique : période, vendeur, statut, recherche ticket ou client, regroupement par jour. Filtrage local ; le serveur devra filtrer et paginer. |
 
 ## 4.5 Annulation des ventes
 
 | Réf. | Exigence | État | Constat |
 |---|---|---|---|
-| EF-14 | Une vente ne peut être ni supprimée ni modifiée | ◐ | Le front n'offre aucun moyen de supprimer ou modifier une vente (bon). Mais sans annulation, une erreur de saisie est irréparable. |
-| EF-15 | Annulation avec motif, auteur, date et heure obligatoires | ❌ | Inexistant (backlog #18). |
-| EF-16 | Annulation : stock remis, crédit lié traité (annulé s'il n'a reçu aucun remboursement, sinon bloqué ou soumis au propriétaire) | ❌ | Inexistant. |
-| EF-17 | Corriger = annuler puis ressaisir | ❌ | Dépend d'EF-15. |
+| EF-14 | Une vente ne peut être ni supprimée ni modifiée | ✅ | Aucun écran ni route de modification ou de suppression ; seule l'annulation existe (L1). Le serveur doit refuser toute modification. |
+| EF-15 | Annulation avec motif, auteur, date et heure obligatoires | ✅ | **Livré (L1).** Motif de 3 caractères minimum, auteur, date et heure conservés sur la vente. |
+| EF-16 | Annulation : stock remis, crédit lié traité | ✅ | **Livré (L1).** Stock remis, crédit lié supprimé ; annulation **bloquée** si le crédit a déjà reçu un remboursement (variante « soumise au propriétaire » non faite). |
+| EF-17 | Corriger = annuler puis ressaisir | ✅ | Possible depuis L1. |
 
 ## 4.6 Stock
 
 | Réf. | Exigence | État | Constat |
 |---|---|---|---|
-| EF-18 | Le stock baisse à la vente et remonte à l'annulation | ◐ | Baisse à la vente ✅ (avec refus si insuffisant). Remontée impossible : pas d'annulation. |
-| EF-19 | Ajustement manuel avec **trace** | ❌ | Le réapprovisionnement modifie la quantité sans enregistrer de mouvement (qui, quand, combien, pourquoi). L'« inventaire tournant » n'est qu'un toast, sans historique. |
+| EF-18 | Le stock baisse à la vente et remonte à l'annulation | ✅ | Baisse à la vente avec refus si insuffisant ; retour en stock à l'annulation, tracé au journal. |
+| EF-19 | Ajustement manuel avec **trace** | ✅ | **Livré (L3).** Écart d'inventaire et casse avec motif obligatoire, inventaire réel (comptage, écarts valorisés, tout ou rien), historique par produit et journal complet. La fiche produit ne modifie plus le stock. Reste : transaction côté serveur. |
 | EF-20 | Alerte stock bas / rupture | ✅ | Seuil par produit, alertes sur l'accueil et notifications. |
 
 ## 4.7 Crédits
@@ -144,12 +146,12 @@ Il complète le document `01-ecarts-backend-schema` (écarts du schéma de donn�
 | RG-01 | Isolation stricte par boutique | ◐ | Stores cloisonnés par boutique côté client ; garantie réelle = serveur. |
 | RG-02 | Permissions par rôle | ◐ | Interface conforme ; garantie réelle = serveur. |
 | RG-03 | Montants en FCFA | ✅ | Entiers, positifs, refus à la saisie. |
-| RG-04 | Aucune vente supprimée ni modifiée | ◐ | Aucune route de suppression côté front ; annulation à créer. |
-| RG-05 | Stock modifié par vente, annulation ou ajustement tracé | ◐ | Ajustement non tracé ; la suppression d'un produit sort aussi le stock sans trace. |
+| RG-04 | Aucune vente supprimée ni modifiée | ✅ | Aucune route de suppression ni de modification côté front ; annulation avec motif (L1). |
+| RG-05 | Stock modifié par vente, annulation ou ajustement tracé | ✅ | **Livré (L3)** côté front : vente, annulation, réception, écart d'inventaire et casse créent chacun un mouvement ; le stock initial est une réception ; la fiche ne change plus le stock. Le serveur doit refuser un `PATCH` qui modifie `stock`. |
 | RG-06 | Reste = montant − remboursements | ✅ | Calculé par le domaine (`credits.ts`). Le serveur doit refuser un surpaiement (`CREDIT_OVERPAYMENT`). |
 | RG-07 | Produit ou client vendu : désactivé, pas supprimé | ❌ | Suppression réelle des produits et des crédits. |
 | RG-08 | Le propriétaire ne perd jamais ses droits | ✅ | Propriétaire non modifiable côté front ; à doubler côté serveur. |
-| RG-09 | Une annulation exige un motif | ❌ | Pas d'annulation. |
+| RG-09 | Une annulation exige un motif | ✅ | **Livré (L1).** |
 
 # 5. Critères d'acceptation (CDC §7)
 
@@ -186,9 +188,9 @@ lorsque l'API correspondante existe ; en attendant, le front est développé con
 
 | Lot | Contenu | Exigences | Dépend de |
 |---|---|---|---|
-| L1 | **Annulation de vente** : bouton, motif obligatoire, statut « annulée », retour de stock, traitement du crédit lié, vente conservée dans l'historique | EF-14 à 18, RG-09 | contrat d'API |
-| L2 | **Historique des ventes** filtrable (période, vendeur, statut) ; accès à l'annulation et au reçu | EF-13 | L1 |
-| L3 | **Mouvements de stock** : historique par produit, ajustement avec motif, vrai inventaire | EF-19, RG-05 | contrat d'API |
+| L1 ✅ | **Annulation de vente** : bouton, motif obligatoire, statut « annulée », retour de stock, traitement du crédit lié, vente conservée dans l'historique | EF-14 à 18, RG-09 | contrat d'API |
+| L2 ✅ | **Historique des ventes** filtrable (période, vendeur, statut) ; accès à l'annulation et au reçu | EF-13 | L1 |
+| L3 ✅ | **Mouvements de stock** : historique par produit, ajustement avec motif, vrai inventaire | EF-19, RG-05 | contrat d'API |
 | L4 | **Désactivation** des produits au lieu de la suppression ; produits désactivés masqués de la caisse mais visibles dans l'historique | EF-08, RG-07 | — |
 | L5 | **Fichier clients** : liste, création, recherche, réutilisation dans crédit et vente | EF-26 à 28 | schéma `Customer` |
 | L6 | **Dépenses** : date saisissable, catégorie facultative, catégories modifiables | EF-29, 30 | — |

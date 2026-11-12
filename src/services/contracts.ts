@@ -22,10 +22,14 @@ import type {
   ProfileInput,
   SaleTransaction,
   StepUpInput,
+  StockAdjustmentInput,
+  StockMovement,
+  StockMovementType,
   SubscriptionPaymentInput,
   SubscriptionPlan,
   InviteMemberInput,
   Invitation,
+  InventoryCount,
   LoginInput,
   Role,
   Session,
@@ -120,7 +124,8 @@ export interface ProductsRepository {
   create(product: Product): Promise<Product>;
   update(id: string, patch: Partial<Product>): Promise<Product>;
   remove(id: string): Promise<void>;
-  restock(id: string, quantity: number): Promise<Product>;
+  /** Réception de marchandise : crée un mouvement `purchase`. `reason` (fournisseur, bon de livraison) est facultatif. */
+  restock(id: string, quantity: number, reason?: string): Promise<Product>;
 }
 
 export interface CreateSalePayload {
@@ -132,6 +137,34 @@ export interface CreateSalePayload {
    * qu'un encaissement à crédit ne se transforme pas en créance fantôme.
    */
   credit?: ClientCredit;
+}
+
+export interface StockAdjustmentResult {
+  product: Product;
+  movement: StockMovement;
+}
+
+export interface StockMovementQuery {
+  productId?: string;
+  type?: StockMovementType;
+  /** Nombre maximal de mouvements renvoyés (les plus récents d'abord). */
+  limit?: number;
+}
+
+/**
+ * Journal de stock (EF-19, RG-05). Le stock ne change que par une vente, une annulation,
+ * une réception ou une des corrections ci-dessous ; `PATCH /products/:id` ne le modifie jamais.
+ */
+export interface StockRepository {
+  /** Mouvements, du plus récent au plus ancien. */
+  movements(query?: StockMovementQuery): Promise<StockMovement[]>;
+  /** Correction manuelle d'un produit (écart d'inventaire ou casse), motif obligatoire. */
+  adjust(productId: string, input: StockAdjustmentInput): Promise<StockAdjustmentResult>;
+  /**
+   * Inventaire : applique tous les écarts en une seule transaction (tout ou rien) et renvoie
+   * les mouvements créés. Les produits sans écart ne génèrent aucun mouvement.
+   */
+  inventory(input: { counts: InventoryCount[]; note?: string }): Promise<StockMovement[]>;
 }
 
 export interface SalesRepository {
@@ -189,6 +222,7 @@ export interface Api {
   team: TeamRepository;
   billing: BillingRepository;
   products: ProductsRepository;
+  stock: StockRepository;
   sales: SalesRepository;
   expenses: ExpensesRepository;
   credits: CreditsRepository;

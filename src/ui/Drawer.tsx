@@ -37,7 +37,7 @@ export function Drawer({ open, onClose, title, subtitle, actions, children }: Dr
           open ? 'visible translate-x-0' : 'invisible translate-x-full'
         )}
       >
-        <header className="px-5 py-4 border-b border-line flex items-center justify-between gap-3">
+        <div className="px-5 py-4 border-b border-line flex items-center justify-between gap-3">
           <div className="min-w-0">
             <h2 className="font-display font-bold text-base text-ink-900">{title}</h2>
             {subtitle && <p className="text-xs text-slate-500 mt-0.5">{subtitle}</p>}
@@ -53,8 +53,10 @@ export function Drawer({ open, onClose, title, subtitle, actions, children }: Dr
               <Icon name="close" size={20} />
             </button>
           </div>
-        </header>
-        <div className="flex-1 overflow-y-auto p-3">{children}</div>
+        </div>
+        <div tabIndex={0} className="flex-1 overflow-y-auto p-3 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ink-900/30">
+          {children}
+        </div>
       </div>
     </div>,
     document.body

@@ -142,7 +142,7 @@ export function ReceiptModal() {
         </div>
 
         <div className="py-3 border-b border-dashed border-line-strong space-y-2">
-          <div className="flex justify-between text-[11px] uppercase font-semibold tracking-wider text-muted">
+          <div className="flex justify-between text-xs uppercase font-semibold tracking-wider text-muted">
             <span>{t.receipt.item}</span>
             <span>{t.receipt.total}</span>
           </div>

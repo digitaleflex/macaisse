@@ -12,6 +12,7 @@ import {
   completeSale as buildSale,
   type CancelDenial,
 } from '@/domain/sales';
+import { movementsForLines } from '@/domain/stockMovements';
 import { personDisplayName } from '@/domain/users';
 import { normalizePaymentMethod, normalizeSaleStatus } from '@/config/reference';
 import { t } from '@/content';
@@ -21,8 +22,10 @@ import { api, syncRemote } from '@/services';
 import { useCartStore } from './useCartStore';
 import { useCreditsStore } from './useCreditsStore';
 import { useNotificationsStore } from './useNotificationsStore';
+import { currentActor } from './actor';
 import { useProductsStore } from './useProductsStore';
 import { useSessionStore } from './useSessionStore';
+import { useStockStore } from './useStockStore';
 import {
   coerceId,
   coerceNumber,
@@ -109,8 +112,16 @@ export const useSalesStore = create<SalesState>()(
               )
             : undefined;
 
-        // Écriture atomique du stock (un seul set).
+        // Écriture atomique du stock (un seul set), tracée dans le journal (RG-05).
         useProductsStore.getState().setProducts(updatedProducts);
+        useStockStore.getState().record(
+          movementsForLines('sale', products, lines, {
+            saleId: sale.id,
+            saleNumber: sale.saleNumber,
+            by: currentActor(),
+            date: now,
+          })
+        );
         useCartStore.getState().clear();
 
         // Événements métier : on ne notifie que les transitions (pas chaque vente).
@@ -181,6 +192,16 @@ export const useSalesStore = create<SalesState>()(
         }
 
         // 4. Application locale : stock, crédit lié, vente.
+        if (result.stockRestored) {
+          useStockStore.getState().record(
+            movementsForLines('return', useProductsStore.getState().products, sale.lines ?? [], {
+              saleId: sale.id,
+              saleNumber: sale.saleNumber,
+              reason: `Annulation : ${result.sale.cancelReason ?? ''}`.trim(),
+              by: currentActor(),
+            })
+          );
+        }
         useProductsStore.getState().setProducts(result.products);
         if (api.mode === 'http' && !result.stockRestored) {
           // Détail des lignes inconnu côté client : le serveur a remis le stock, on le relit.

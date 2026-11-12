@@ -20,6 +20,8 @@ export function VentesTab() {
 
   return (
     <div className="flex flex-col gap-4">
+      {/* Titre de page pour les lecteurs d'écran : la Caisse n'a pas d'en-tête visible. */}
+      <h1 className="sr-only">{t.nav.ventes.title}</h1>
       <SegmentedControl<SalesView>
         label={t.sales.views.label}
         size="sm"

@@ -297,7 +297,7 @@ export function ProfilModal() {
                   <Icon
                     name={event.result === 'success' ? 'check_circle' : 'error'}
                     size={16}
-                    className={event.result === 'success' ? 'text-brand-700' : 'text-rose-500'}
+                    className={event.result === 'success' ? 'text-brand-700' : 'text-rose-700'}
                   />
                   <span className="min-w-0 flex-1">
                     <span className="block text-ink-900 truncate">{t.connections.methods[event.method]}</span>
@@ -320,7 +320,7 @@ export function ProfilModal() {
       </Button>
 
       <section className="space-y-2">
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-rose-500 px-1">
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-rose-700 px-1">
           {t.accountDeletion.danger}
         </h3>
         <div className="rounded-2xl border border-rose-200 bg-rose-50/40 p-4 flex items-center gap-3">

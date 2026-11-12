@@ -20,12 +20,12 @@ export function FieldShell({ id, label, hint, error, required, className, childr
       {label !== undefined && (
         <label htmlFor={id} className="text-[13px] font-medium text-slate-700">
           {label}
-          {required && <span className="text-rose-500 ml-0.5" aria-label={t.common.required}>*</span>}
+          {required && <span className="text-rose-700 ml-0.5" aria-label={t.common.required}>*</span>}
         </label>
       )}
       {children}
       {error !== undefined ? (
-        <span className="text-xs text-rose-600">{error}</span>
+        <span className="text-xs text-rose-700">{error}</span>
       ) : (
         hint !== undefined && <span className="text-xs text-slate-500">{hint}</span>
       )}
@@ -88,6 +88,8 @@ export interface SelectOption {
 
 export interface SelectProps {
   label?: string;
+  /** Nom accessible quand le champ n'a pas de libellé visible (obligatoire dans ce cas). */
+  ariaLabel?: string;
   name?: string;
   id?: string;
   value: string;
@@ -98,7 +100,7 @@ export interface SelectProps {
   className?: string;
 }
 
-export function Select({ label, name, id, value, onChange, options, error, hint, className }: SelectProps) {
+export function Select({ label, ariaLabel, name, id, value, onChange, options, error, hint, className }: SelectProps) {
   const generated = useId();
   const selectId = id ?? name ?? generated;
   return (
@@ -109,6 +111,7 @@ export function Select({ label, name, id, value, onChange, options, error, hint,
           name={name}
           value={value}
           onChange={onChange}
+          aria-label={label === undefined ? ariaLabel : undefined}
           aria-invalid={error !== undefined}
           className={cn(
             CONTROL,

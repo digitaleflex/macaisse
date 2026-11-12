@@ -12,6 +12,7 @@ import type {
   PaymentIntent,
   Product,
   SaleTransaction,
+  StockMovement,
   TeamMember,
   UserProfile,
 } from '@/types';
@@ -30,6 +31,17 @@ import {
   toPaymentPhone,
   validatePaymentRequest,
 } from '@/domain/billing';
+import { can } from '@/domain/permissions';
+import {
+  StockAdjustmentError,
+  adjustProduct,
+  applyInventory,
+  createMovement,
+  filterMovements,
+  movementsForLines,
+  receiveStock,
+  type StockActor,
+} from '@/domain/stockMovements';
 import { createId } from '@/domain/ids';
 import { toIsoDate } from '@/domain/dates';
 import { normalizePhone } from '@/domain/phone';
@@ -74,6 +86,8 @@ interface OrgDb {
   sales: SaleTransaction[];
   /** Détail des articles de chaque vente (le serveur garde les lignes de son côté). */
   saleLines: Record<string, CartLine[]>;
+  /** Journal de stock (le serveur réel le persiste ; ici en mémoire). */
+  stockMovements: StockMovement[];
   expenses: Expense[];
   credits: ClientCredit[];
   notifications: NotificationItem[];
@@ -368,7 +382,7 @@ export function createMockApi({ latencyMs = 0, persist = false }: MockApiOptions
     requireMembership(orgId);
     let data = orgData.get(orgId);
     if (!data) {
-      data = { ...orgSeed(orgId), saleLines: {} };
+      data = { ...orgSeed(orgId), saleLines: {}, stockMovements: [] };
       orgData.set(orgId, data);
     }
     return data;
@@ -406,6 +420,25 @@ export function createMockApi({ latencyMs = 0, persist = false }: MockApiOptions
       ],
     };
     saveAuth();
+  };
+
+  const actorOf = (): StockActor => {
+    const account = currentAccount();
+    return { id: account.id, name: `${account.firstName} ${account.lastName}`.trim() };
+  };
+  /** Ajoute des mouvements au journal (les plus récents d'abord). */
+  const record = (data: OrgDb, movements: readonly StockMovement[]): void => {
+    data.stockMovements = [...[...movements].reverse(), ...data.stockMovements];
+  };
+  /** Corrections et inventaires : gérant et propriétaire seulement (`stock.adjust`). */
+  const requireStockAdjust = (): void => {
+    const membership = requireMembership(requireOrganization());
+    if (!can(membership.role, 'stock.adjust')) fail(t.errors.insufficientRole, 403, 'INSUFFICIENT_ROLE');
+  };
+  /** Une règle de stock violée est un refus 422, jamais une correction silencieuse. */
+  const refuseStock = (error: unknown): never => {
+    if (error instanceof StockAdjustmentError) fail(error.message, 422, 'VALIDATION_ERROR');
+    throw error;
   };
 
   const findProduct = (id: string) => db().products.find((p) => p.id === id) ?? fail(t.auth.errors.notFound, 404, 'NOT_FOUND');
@@ -1014,13 +1047,31 @@ export function createMockApi({ latencyMs = 0, persist = false }: MockApiOptions
       create: (product) =>
         respond(() => {
           const data = db();
+          const isNew = !data.products.some((p) => p.id === product.id);
           data.products = [product, ...data.products.filter((p) => p.id !== product.id)];
+          if (isNew && product.stock > 0) {
+            // Stock initial = une réception tracée (RG-05).
+            record(data, [
+              createMovement({
+                type: 'purchase',
+                product: { id: product.id, name: product.name, stock: 0 },
+                delta: product.stock,
+                reason: 'Stock initial',
+                by: actorOf(),
+              }),
+            ]);
+          }
           return product;
         }),
       update: (id, patch) =>
         respond(() => {
           const data = db();
-          const updated = { ...findProduct(id), ...patch, id };
+          const current = findProduct(id);
+          // RG-05 : une fiche ne modifie jamais le stock. Refus explicite, pas d'oubli silencieux.
+          if ('stock' in patch && (patch as { stock?: number }).stock !== current.stock) {
+            fail(t.stock.noDirectEdit, 422, 'VALIDATION_ERROR');
+          }
+          const updated = { ...current, ...patch, id };
           data.products = data.products.map((p) => (p.id === id ? updated : p));
           return updated;
         }),
@@ -1029,13 +1080,62 @@ export function createMockApi({ latencyMs = 0, persist = false }: MockApiOptions
           const data = db();
           data.products = data.products.filter((p) => p.id !== id);
         }),
-      restock: (id, quantity) =>
+      restock: (id, quantity, reason) =>
         respond(() => {
           const data = db();
           const product = findProduct(id);
-          const updated = { ...product, stock: product.stock + quantity };
-          data.products = data.products.map((p) => (p.id === id ? updated : p));
-          return updated;
+          let change;
+          try {
+            change = receiveStock(product, quantity, actorOf(), reason);
+          } catch (error) {
+            return fail(error instanceof Error ? error.message : t.errors.validation, 422, 'VALIDATION_ERROR');
+          }
+          data.products = data.products.map((p) => (p.id === id ? change.product : p));
+          record(data, [change.movement]);
+          return change.product;
+        }),
+    },
+    stock: {
+      movements: (query = {}) =>
+        respond(() => {
+          const data = db();
+          const list = filterMovements(data.stockMovements, { productId: query.productId, type: query.type });
+          return query.limit === undefined ? list : list.slice(0, Math.max(0, query.limit));
+        }),
+      adjust: (productId, input) =>
+        respond(() => {
+          const data = db();
+          requireStockAdjust();
+          const product = findProduct(productId);
+          try {
+            const change = adjustProduct(product, input, actorOf());
+            data.products = data.products.map((p) => (p.id === productId ? change.product : p));
+            record(data, [change.movement]);
+            return change;
+          } catch (error) {
+            return refuseStock(error);
+          }
+        }),
+      inventory: ({ counts, note }) =>
+        respond(() => {
+          const data = db();
+          requireStockAdjust();
+          const levels: Record<string, number> = {};
+          for (const count of counts) {
+            findProduct(count.productId); // un produit inconnu annule tout l'inventaire (404)
+            if (!Number.isInteger(count.counted) || count.counted < 0) {
+              fail(t.stock.inventory.errors.invalidCount, 422, 'VALIDATION_ERROR');
+            }
+            levels[count.productId] = count.counted;
+          }
+          const stamp = new Date();
+          const label = `Inventaire du ${stamp.toLocaleDateString('fr-FR')}`;
+          const reason = note && note.trim() !== '' ? `${label} — ${note.trim()}` : label;
+          // Tout ou rien : `applyInventory` calcule tout avant que l'état ne soit modifié.
+          const result = applyInventory(data.products, levels, reason, actorOf(), stamp);
+          data.products = result.products;
+          record(data, result.movements);
+          return result.movements;
         }),
     },
     sales: {
@@ -1057,6 +1157,14 @@ export function createMockApi({ latencyMs = 0, persist = false }: MockApiOptions
               );
             }
           }
+          record(
+            data,
+            movementsForLines('sale', data.products, lines, {
+              saleId: sale.id,
+              saleNumber: sale.saleNumber,
+              by: actorOf(),
+            })
+          );
           for (const line of lines) {
             data.products = data.products.map((p) =>
               p.id === line.productId ? { ...p, stock: p.stock - line.quantity } : p
@@ -1095,7 +1203,14 @@ export function createMockApi({ latencyMs = 0, persist = false }: MockApiOptions
             reason,
             by: `${account.firstName} ${account.lastName}`.trim(),
           });
+          const returnMovements = movementsForLines('return', data.products, data.saleLines[id] ?? [], {
+            saleId: sale.id,
+            saleNumber: sale.saleNumber,
+            reason: `Annulation : ${result.sale.cancelReason ?? ''}`.trim(),
+            by: actorOf(),
+          });
           data.products = result.products;
+          record(data, returnMovements);
           if (credit) data.credits = data.credits.filter((item) => item.id !== credit.id);
           const cancelled: SaleTransaction = { ...result.sale };
           delete cancelled.lines;

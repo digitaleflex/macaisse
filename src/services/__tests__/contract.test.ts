@@ -130,6 +130,39 @@ describe('contrat http — contexte et payload', () => {
     expect(captured[0]?.body).toEqual({ reason: 'erreur de produit' });
   });
 
+  it('journal de stock : routes, filtres et corps sur /stock et /products/:id/stock-adjustments', async () => {
+    const list = httpApiWith({ status: 200, body: [] });
+    await list.api.stock.movements({ productId: 'p 1', type: 'loss', limit: 20 });
+    expect(list.captured[0]?.method).toBe('GET');
+    expect(list.captured[0]?.url).toBe(
+      `${BASE_URL}${ENDPOINTS.stockMovements(ORG)}?productId=p+1&type=loss&limit=20`
+    );
+
+    const all = httpApiWith({ status: 200, body: [] });
+    await all.api.stock.movements();
+    expect(all.captured[0]?.url).toBe(`${BASE_URL}${ENDPOINTS.stockMovements(ORG)}`);
+
+    const adjust = httpApiWith({ status: 200, body: {} });
+    await adjust.api.stock.adjust('p1', { kind: 'loss', quantity: 2, reason: 'Casse' });
+    expect(adjust.captured[0]?.url).toBe(`${BASE_URL}${ENDPOINTS.productStockAdjustments(ORG, 'p1')}`);
+    expect(adjust.captured[0]?.body).toEqual({ kind: 'loss', quantity: 2, reason: 'Casse' });
+
+    const inventory = httpApiWith({ status: 200, body: [] });
+    await inventory.api.stock.inventory({ counts: [{ productId: 'p1', counted: 4 }], note: 'Fin de mois' });
+    expect(inventory.captured[0]?.url).toBe(`${BASE_URL}${ENDPOINTS.stockInventory(ORG)}`);
+    expect(inventory.captured[0]?.body).toEqual({ counts: [{ productId: 'p1', counted: 4 }], note: 'Fin de mois' });
+  });
+
+  it('réception : envoie le motif seulement s’il existe', async () => {
+    const withReason = httpApiWith({ status: 200, body: {} });
+    await withReason.api.products.restock('p1', 5, 'Livraison');
+    expect(withReason.captured[0]?.body).toEqual({ quantity: 5, reason: 'Livraison' });
+
+    const without = httpApiWith({ status: 200, body: {} });
+    await without.api.products.restock('p1', 5);
+    expect(without.captured[0]?.body).toEqual({ quantity: 5 });
+  });
+
   it('démarre, suit et annule un paiement d’abonnement sur les routes /billing', async () => {
     const intent = { id: 'pay-1', status: 'pending' };
     const input = { id: 'pay-1', planId: 'pro', cycle: 'monthly' as const, paymentMethod: 'mtn_money' as const, phone: '+22997000001' };
@@ -307,6 +340,160 @@ describe('contrat mock — même sémantique que le serveur', () => {
       await expect(api.sales.cancel('sale-inconnue', 'erreur')).rejects.toMatchObject({
         status: 404,
       });
+    });
+  });
+
+  describe('journal de stock (EF-19, RG-05)', () => {
+    const first = () => SEED_PRODUCTS[0] as Product;
+    const stockNow = async () => (await api.products.list()).find((p) => p.id === first().id)?.stock ?? -1;
+    const loginAs = async (email: string) => {
+      await api.auth.logout();
+      await api.auth.login({ email, password: DEMO_PASSWORD });
+      setActiveOrganization(ORG);
+    };
+
+    it('une vente crée un mouvement de sortie rattaché au ticket', async () => {
+      const before = await stockNow();
+      await api.sales.create({
+        sale: { ...SALE, id: 'sale-j1', amount: first().price, remainingAmount: undefined, status: 'completed' },
+        lines: [line(2)],
+      });
+
+      const [movement] = await api.stock.movements({ productId: first().id });
+      expect(movement).toMatchObject({
+        type: 'sale',
+        quantity: -2,
+        quantityAfter: before - 2,
+        saleId: 'sale-j1',
+        saleNumber: SALE.saleNumber,
+      });
+      expect(movement?.userName).toBeTruthy();
+    });
+
+    it('l’annulation d’une vente crée un mouvement de retour', async () => {
+      const before = await stockNow();
+      await api.sales.create({
+        sale: { ...SALE, id: 'sale-j2', amount: first().price, remainingAmount: undefined, status: 'completed' },
+        lines: [line(3)],
+      });
+      await api.sales.cancel('sale-j2', 'erreur de produit');
+
+      const [latest] = await api.stock.movements({ productId: first().id });
+      expect(latest).toMatchObject({ type: 'return', quantity: 3, quantityAfter: before, saleId: 'sale-j2' });
+      expect(latest?.reason).toBe('Annulation : erreur de produit');
+    });
+
+    it('une réception crée un mouvement avec son motif et refuse une quantité invalide', async () => {
+      const before = await stockNow();
+      await api.products.restock(first().id, 12, 'Livraison Adjamé');
+
+      const [movement] = await api.stock.movements({ productId: first().id });
+      expect(movement).toMatchObject({ type: 'purchase', quantity: 12, quantityAfter: before + 12, reason: 'Livraison Adjamé' });
+      await expect(api.products.restock(first().id, 0)).rejects.toMatchObject({ status: 422 });
+      expect(await stockNow()).toBe(before + 12);
+    });
+
+    it('un nouveau produit avec du stock enregistre son stock initial', async () => {
+      await api.products.create({ ...first(), id: 'product-neuf', name: 'Produit neuf', stock: 6 });
+      const [movement] = await api.stock.movements({ productId: 'product-neuf' });
+      expect(movement).toMatchObject({ type: 'purchase', quantity: 6, quantityAfter: 6, reason: 'Stock initial' });
+    });
+
+    it('refuse de modifier le stock par PATCH /products/:id (422), mais accepte les autres champs', async () => {
+      const before = await stockNow();
+      await expect(api.products.update(first().id, { stock: before + 50 })).rejects.toMatchObject({
+        status: 422,
+        code: 'VALIDATION_ERROR',
+      });
+      expect(await stockNow()).toBe(before);
+
+      const updated = await api.products.update(first().id, { price: 1234 });
+      expect(updated.price).toBe(1234);
+      expect(updated.stock).toBe(before);
+    });
+
+    it('corrige un écart d’inventaire et une casse, tracés avec leur motif', async () => {
+      const before = await stockNow();
+      const count = await api.stock.adjust(first().id, { kind: 'count', quantity: before - 2, reason: 'Erreur de comptage' });
+      expect(count.product.stock).toBe(before - 2);
+      expect(count.movement).toMatchObject({ type: 'adjustment', quantity: -2, reason: 'Erreur de comptage' });
+
+      const loss = await api.stock.adjust(first().id, { kind: 'loss', quantity: 1, reason: 'Casse' });
+      expect(loss.movement).toMatchObject({ type: 'loss', quantity: -1, quantityAfter: before - 3 });
+      expect(await stockNow()).toBe(before - 3);
+    });
+
+    it.each([
+      ['sans motif', { kind: 'count' as const, quantity: 1, reason: ' ' }],
+      ['sans écart', { kind: 'count' as const, quantity: -1, reason: 'identique' }], // remplacé ci-dessous
+      ['casse au-delà du stock', { kind: 'loss' as const, quantity: 999999, reason: 'Casse' }],
+      ['quantité décimale', { kind: 'count' as const, quantity: 1.5, reason: 'abc' }],
+    ])('refuse une correction %s avec un 422, sans modifier le stock', async (label, input) => {
+      const before = await stockNow();
+      const body = label === 'sans écart' ? { ...input, quantity: before } : input;
+      await expect(api.stock.adjust(first().id, body)).rejects.toMatchObject({ status: 422, code: 'VALIDATION_ERROR' });
+      expect(await stockNow()).toBe(before);
+      expect(await api.stock.movements({ productId: first().id, type: 'adjustment' })).toEqual([]);
+    });
+
+    it('répond 404 pour un produit inconnu', async () => {
+      await expect(api.stock.adjust('inconnu', { kind: 'count', quantity: 1, reason: 'abc' })).rejects.toMatchObject({ status: 404 });
+    });
+
+    it('inventaire : un mouvement par écart, tout ou rien', async () => {
+      const [a, b] = SEED_PRODUCTS as [Product, Product];
+      const stockA = (await api.products.list()).find((p) => p.id === a.id)?.stock ?? 0;
+      const stockB = (await api.products.list()).find((p) => p.id === b.id)?.stock ?? 0;
+
+      const movements = await api.stock.inventory({
+        counts: [
+          { productId: a.id, counted: stockA + 4 },
+          { productId: b.id, counted: stockB },
+        ],
+        note: 'Fin de mois',
+      });
+
+      expect(movements).toHaveLength(1);
+      expect(movements[0]).toMatchObject({ type: 'adjustment', productId: a.id, quantity: 4 });
+      expect(movements[0]?.reason).toMatch(/^Inventaire du .* — Fin de mois$/);
+    });
+
+    it('inventaire : un produit inconnu (404) ou une quantité invalide (422) annule tout', async () => {
+      const a = first();
+      const before = await stockNow();
+
+      await expect(
+        api.stock.inventory({ counts: [{ productId: a.id, counted: before + 9 }, { productId: 'inconnu', counted: 1 }] })
+      ).rejects.toMatchObject({ status: 404 });
+      await expect(
+        api.stock.inventory({ counts: [{ productId: a.id, counted: before + 9 }, { productId: (SEED_PRODUCTS[1] as Product).id, counted: -2 }] })
+      ).rejects.toMatchObject({ status: 422 });
+
+      expect(await stockNow()).toBe(before);
+      expect(await api.stock.movements({ type: 'adjustment' })).toEqual([]);
+    });
+
+    it('liste du plus récent au plus ancien, avec filtre par type et limite', async () => {
+      await api.products.restock(first().id, 1, 'un');
+      await api.stock.adjust(first().id, { kind: 'loss', quantity: 1, reason: 'Casse' });
+      await api.products.restock(first().id, 1, 'deux');
+
+      const all = await api.stock.movements({ productId: first().id });
+      expect(all.map((m) => m.type)).toEqual(['purchase', 'loss', 'purchase']);
+      expect((await api.stock.movements({ productId: first().id, type: 'loss' })).map((m) => m.type)).toEqual(['loss']);
+      expect(await api.stock.movements({ productId: first().id, limit: 2 })).toHaveLength(2);
+    });
+
+    it('réserve corrections et inventaires au gérant et au propriétaire (403 pour le caissier)', async () => {
+      await loginAs('awa@boutique-etoile.sn');
+      const before = await stockNow();
+
+      await expect(api.stock.adjust(first().id, { kind: 'count', quantity: 1, reason: 'abc' })).rejects.toMatchObject({
+        status: 403,
+        code: 'INSUFFICIENT_ROLE',
+      });
+      await expect(api.stock.inventory({ counts: [{ productId: first().id, counted: 1 }] })).rejects.toMatchObject({ status: 403 });
+      expect(await stockNow()).toBe(before);
     });
   });
 

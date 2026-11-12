@@ -56,7 +56,7 @@ export function RevenueChart({ data }: RevenueChartProps) {
               { label: `${t.bilan.revenueChart.peak}${peak?.label ? ` (${peak.label})` : ''}`, value: formatFCFA(peak?.value ?? 0) },
             ].map((item) => (
               <div key={item.label} className="rounded-xl bg-slate-50 px-3 py-2.5 min-w-0">
-                <dt className="text-[11px] text-slate-500 truncate">{item.label}</dt>
+                <dt className="text-xs text-slate-500 truncate">{item.label}</dt>
                 <dd className="font-num font-bold text-sm text-ink-900 truncate">{item.value}</dd>
               </div>
             ))}
@@ -65,10 +65,10 @@ export function RevenueChart({ data }: RevenueChartProps) {
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} vertical={false} />
-                <XAxis dataKey="label" stroke={chartColors.axis} fontSize={11} tickLine={false} axisLine={false} interval="preserveStartEnd" minTickGap={8} />
+                <XAxis dataKey="label" stroke={chartColors.axis} fontSize={12} tickLine={false} axisLine={false} interval="preserveStartEnd" minTickGap={8} />
                 <YAxis
                   stroke={chartColors.axis}
-                  fontSize={11}
+                  fontSize={12}
                   tickLine={false}
                   axisLine={false}
                   width={40}

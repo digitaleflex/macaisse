@@ -31,7 +31,7 @@ export function ExpenseBreakdown({ data, onOpenDetails }: ExpenseBreakdownProps)
             const share = total > 0 ? slice.amount / total : 0;
             return (
               <li key={slice.key} className="flex items-center gap-3">
-                <span className="size-9 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
+                <span className="size-9 rounded-xl bg-rose-50 text-rose-700 flex items-center justify-center shrink-0">
                   <Icon name={EXPENSE_CATEGORY_ICON[slice.label] ?? 'payments'} size={18} />
                 </span>
                 <div className="flex-1 min-w-0 space-y-1.5">

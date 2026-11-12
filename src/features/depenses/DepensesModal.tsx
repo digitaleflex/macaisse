@@ -51,9 +51,9 @@ export function DepensesModal() {
     <Modal open={open} onClose={closeModal} title={t.expenses.title} subtitle={t.expenses.subtitle} icon="receipt_long" size="lg">
       <div className="flex items-center justify-between gap-4 rounded-2xl bg-rose-50 border border-rose-100 p-4">
         <div>
-          <div className="text-xs text-rose-700/80">{t.expenses.monthTotal}</div>
+          <div className="text-xs text-rose-700">{t.expenses.monthTotal}</div>
           <div className="font-num font-extrabold text-2xl text-rose-700">−{formatFCFA(monthlyTotal)}</div>
-          <div className="text-xs text-rose-700/70">{t.expenses.monthCount(monthly.length)}</div>
+          <div className="text-xs text-rose-700">{t.expenses.monthCount(monthly.length)}</div>
         </div>
         {!showAddForm && (
           <Button variant="primary" icon="add" onClick={() => setShowAddForm(true)}>

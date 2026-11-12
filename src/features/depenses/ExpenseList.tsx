@@ -24,7 +24,7 @@ export function ExpenseList({ expenses, onDelete }: ExpenseListProps) {
     <ul className="divide-y divide-line rounded-2xl border border-line overflow-hidden">
       {expenses.map((expense) => (
         <li key={expense.id} className="flex items-center gap-3 px-4 py-3 bg-white hover:bg-slate-50/70 transition-colors">
-          <span className="size-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
+          <span className="size-10 rounded-xl bg-rose-50 text-rose-700 flex items-center justify-center shrink-0">
             <Icon name={EXPENSE_CATEGORY_ICON[expense.category] ?? 'payments'} size={20} />
           </span>
           <div className="flex-1 min-w-0">
@@ -34,7 +34,7 @@ export function ExpenseList({ expenses, onDelete }: ExpenseListProps) {
             </div>
           </div>
           <div className="text-right shrink-0">
-            <div className="font-num font-bold text-sm text-rose-600">−{formatFCFA(expense.amount)}</div>
+            <div className="font-num font-bold text-sm text-rose-700">−{formatFCFA(expense.amount)}</div>
             {expense.hasReceipt === true && <Badge tone="success">{t.expenses.receiptOk}</Badge>}
           </div>
           <IconButton icon="delete" label={t.expenses.remove(expense.title)} variant="danger-soft" size="sm" onClick={() => onDelete(expense.id)} />

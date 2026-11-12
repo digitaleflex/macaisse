@@ -55,13 +55,15 @@ describe('useProductsStore — CRUD', () => {
     expect(product.name).toBe('Lait demi-écrémé');
   });
 
-  it('met à jour un produit existant', () => {
+  it('met à jour une fiche produit sans jamais toucher au stock (RG-05)', () => {
     useProductsStore.getState().addProduct(makeInput());
-    const id = useProductsStore.getState().products[0].id;
-    useProductsStore.getState().updateProduct(id, { price: 1200, stock: 3 });
+    const { id, stock } = useProductsStore.getState().products[0];
+    // Le type interdit `stock` dans une fiche ; on le force pour prouver que le store l'ignore aussi.
+    const forged = { price: 1200, ...{ stock: 3 } };
+    useProductsStore.getState().updateProduct(id, forged);
     const updated = useProductsStore.getState().products[0];
     expect(updated.price).toBe(1200);
-    expect(updated.stock).toBe(3);
+    expect(updated.stock).toBe(stock);
   });
 
   it('supprime un produit', () => {

@@ -34,7 +34,7 @@ export function BottomNav() {
                 >
                   <Icon name={tab.icon} size={26} filled />
                   {cartCount > 0 && (
-                    <span className="absolute -top-1.5 -right-1.5 min-w-5 h-5 px-1 rounded-full bg-rose-500 text-white text-[11px] font-bold flex items-center justify-center ring-2 ring-white font-num">
+                    <span className="absolute -top-1.5 -right-1.5 min-w-5 h-5 px-1 rounded-full bg-rose-500 text-white text-xs font-bold flex items-center justify-center ring-2 ring-white font-num">
                       {cartCount}
                     </span>
                   )}
@@ -54,7 +54,7 @@ export function BottomNav() {
               )}
             >
               <Icon name={tab.icon} size={23} filled={active} />
-              <span className={cn('text-[11px] leading-none', active ? 'font-bold' : 'font-medium')}>{tab.label}</span>
+              <span className={cn('text-xs leading-none', active ? 'font-bold' : 'font-medium')}>{tab.label}</span>
             </button>
           );
         })}

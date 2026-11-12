@@ -6,8 +6,11 @@ import { persist } from 'zustand/middleware';
 import type { Product, ProductInput } from '@/types';
 import { createId } from '@/domain/ids';
 import { computeStockStatus, isLowStock, retailValue, stockValue } from '@/domain/stock';
+import { createMovement, receiveStock } from '@/domain/stockMovements';
 import { SEED_PRODUCTS } from '@/mocks';
 import { syncRemote } from '@/services';
+import { currentActor } from './actor';
+import { useStockStore } from './useStockStore';
 import {
   coerceId,
   coerceNumber,
@@ -20,13 +23,17 @@ import {
   seedFallback,
 } from './storeUtils';
 
+/** Champs modifiables d'une fiche produit. Le stock en est exclu : il ne change que par un mouvement tracé (RG-05). */
+export type ProductPatch = Partial<Omit<ProductInput, 'stock'>>;
+
 export interface ProductsState {
   products: Product[];
+  /** Le stock initial, s'il est positif, est enregistré comme une réception. */
   addProduct: (input: ProductInput) => void;
-  updateProduct: (id: string, patch: Partial<ProductInput>) => void;
+  updateProduct: (id: string, patch: ProductPatch) => void;
   removeProduct: (id: string) => void;
-  /** Exception française si l'id est inconnu ou la quantité ≤ 0. */
-  restock: (id: string, quantity: number) => void;
+  /** Réception de marchandise, tracée. Exception française si l'id est inconnu ou la quantité ≤ 0. */
+  restock: (id: string, quantity: number, reason?: string) => void;
   setProducts: (products: Product[]) => void;
 }
 
@@ -55,16 +62,32 @@ export const useProductsStore = create<ProductsState>()(
       addProduct: (input) => {
         const product = sanitizeProduct({ ...input, id: createId('product') });
         set((state) => ({ products: [product, ...state.products] }));
+        if (product.stock > 0) {
+          // Stock initial : une réception comme une autre, pas un stock « tombé du ciel ».
+          useStockStore.getState().record([
+            createMovement({
+              type: 'purchase',
+              product: { id: product.id, name: product.name, stock: 0 },
+              delta: product.stock,
+              reason: 'Stock initial',
+              by: currentActor(),
+            }),
+          ]);
+        }
         syncRemote((api) => api.products.create(product), 'Produit non synchronisé.');
       },
 
       updateProduct: (id, patch) => {
+        // Défense en profondeur : même si un appelant glisse `stock` dans le patch (le type l'interdit),
+        // une fiche ne modifie jamais le stock (RG-05).
+        const safe: ProductPatch & { stock?: number } = { ...patch };
+        delete safe.stock;
         set((state) => ({
           products: state.products.map((product) =>
-            product.id === id ? sanitizeProduct({ ...product, ...patch, id }) : product
+            product.id === id ? sanitizeProduct({ ...product, ...safe, id }) : product
           ),
         }));
-        syncRemote((api) => api.products.update(id, patch), 'Modification non synchronisée.');
+        syncRemote((api) => api.products.update(id, safe), 'Modification non synchronisée.');
       },
 
       removeProduct: (id) => {
@@ -74,19 +97,18 @@ export const useProductsStore = create<ProductsState>()(
         syncRemote((api) => api.products.remove(id), 'Suppression non synchronisée.');
       },
 
-      restock: (id, quantity) => {
+      restock: (id, quantity, reason) => {
         if (!Number.isFinite(quantity) || quantity <= 0) {
           throw new Error('La quantité à réapprovisionner doit être supérieure à zéro.');
         }
-        if (!get().products.some((product) => product.id === id)) {
-          throw new Error(`Produit introuvable (${id}).`);
-        }
+        const target = get().products.find((product) => product.id === id);
+        if (!target) throw new Error(`Produit introuvable (${id}).`);
+        const { product: received, movement } = receiveStock(target, quantity, currentActor(), reason);
         set((state) => ({
-          products: state.products.map((product) =>
-            product.id === id ? sanitizeProduct({ ...product, stock: product.stock + quantity }) : product
-          ),
+          products: state.products.map((product) => (product.id === id ? sanitizeProduct(received) : product)),
         }));
-        syncRemote((api) => api.products.restock(id, quantity), 'Réapprovisionnement non synchronisé.');
+        useStockStore.getState().record([movement]);
+        syncRemote((api) => api.products.restock(id, quantity, reason), 'Réapprovisionnement non synchronisé.');
       },
 
       setProducts: (products) => set({ products: products.map(sanitizeProduct) }),

@@ -124,7 +124,7 @@ export function PageHeader({ title, description, eyebrow, actions, className }: 
         <h1 className="font-display font-extrabold text-2xl sm:text-[28px] text-ink-900 leading-tight tracking-tight">
           {title}
         </h1>
-        {description && <p className="text-sm text-slate-500 mt-1">{description}</p>}
+        {description && <p className="text-sm text-muted mt-1">{description}</p>}
       </div>
       {actions && <div className="flex items-center gap-2 flex-wrap">{actions}</div>}
     </div>
@@ -151,7 +151,7 @@ export interface FormErrorProps {
 export function FormError({ message, className }: FormErrorProps) {
   if (message === null) return null;
   return (
-    <p role="alert" className={cn('text-xs font-medium text-rose-600', className)}>
+    <p role="alert" className={cn('text-xs font-medium text-rose-700', className)}>
       {message}
     </p>
   );

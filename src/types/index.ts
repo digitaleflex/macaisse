@@ -65,6 +65,54 @@ export interface Product {
   unit: string;
 }
 
+/**
+ * Cause d'un mouvement de stock (identifiants d'API stables). Le stock ne change que
+ * par un de ces mouvements (RG-05) :
+ * - `purchase` : réception de marchandise (réapprovisionnement, stock initial) ;
+ * - `sale` : sortie par vente ; `return` : retour en stock (annulation d'une vente) ;
+ * - `adjustment` : écart d'inventaire ; `loss` : casse, péremption, perte.
+ */
+export type StockMovementType = 'purchase' | 'sale' | 'adjustment' | 'loss' | 'return';
+
+/** Une ligne du journal de stock : qui a changé quoi, quand, pourquoi, et le stock obtenu. */
+export interface StockMovement {
+  id: string;
+  type: StockMovementType;
+  productId: string;
+  /** Nom du produit au moment du mouvement (l'historique survit à un renommage). */
+  productName: string;
+  /** Quantité signée : positive = entrée, négative = sortie. Jamais nulle. */
+  quantity: number;
+  /** Stock du produit juste après le mouvement. */
+  quantityAfter: number;
+  /** Motif ; obligatoire pour `adjustment` et `loss`. */
+  reason?: string;
+  /** Vente à l'origine du mouvement (`sale`, `return`). */
+  saleId?: string;
+  saleNumber?: string;
+  userId?: string;
+  userName: string;
+  /** ISO 8601. */
+  createdAt: string;
+}
+
+/**
+ * Correction manuelle du stock d'un produit :
+ * - `count` : écart d'inventaire — `quantity` est la quantité **comptée** (nouveau stock) ;
+ * - `loss` : casse ou perte — `quantity` est la quantité **retirée** du stock.
+ */
+export interface StockAdjustmentInput {
+  kind: 'count' | 'loss';
+  quantity: number;
+  reason: string;
+}
+
+/** Quantité comptée d'un produit lors d'un inventaire. */
+export interface InventoryCount {
+  productId: string;
+  counted: number;
+}
+
 export interface CartItem {
   product: Product;
   quantity: number;

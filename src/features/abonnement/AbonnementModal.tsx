@@ -72,7 +72,13 @@ export function AbonnementModal() {
                 </div>
               </div>
               <Badge tone={invoice.status === 'paid' ? 'success' : 'warning'}>{t.labels.invoiceStatus[invoice.status]}</Badge>
-              <Button variant="ghost" size="sm" icon="download" onClick={() => showToast(t.common.unavailable, 'info')}>
+              <Button
+                variant="ghost"
+                size="sm"
+                icon="download"
+                aria-label={t.subscription.download}
+                onClick={() => showToast(t.common.unavailable, 'info')}
+              >
                 <span className="hidden sm:inline">{t.subscription.download}</span>
               </Button>
             </li>

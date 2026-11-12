@@ -9,6 +9,7 @@ export type Permission =
   | 'sales.cancelAnyDay'
   | 'stock.edit'
   | 'stock.restock'
+  | 'stock.adjust'
   | 'stock.viewCost'
   | 'credits.create'
   | 'credits.collect'
@@ -25,6 +26,7 @@ const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     'sales.cancelAnyDay',
     'stock.edit',
     'stock.restock',
+    'stock.adjust',
     'stock.viewCost',
     'credits.create',
     'credits.collect',
@@ -39,6 +41,7 @@ const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     'sales.cancel',
     'stock.edit',
     'stock.restock',
+    'stock.adjust',
     'stock.viewCost',
     'credits.create',
     'credits.collect',
