@@ -36,7 +36,7 @@ Il complète le document `01-ecarts-backend-schema` (écarts du schéma de donn�
 | 4.11 Journal d'audit | EF-36 | ❌ |
 | 4.12 Abonnements | EF-37 ◐ | ◐ |
 
-**6 exigences absentes, 11 partielles, 20 conformes** (sur 37) — *mis à jour après les lots L1 (annulation),
+**5 exigences absentes, 11 partielles, 21 conformes** (sur 37) — *mis à jour après les lots L1 (annulation),
 L2 (historique) et L3 (journal de stock). Le détail ci-dessous décrit l'état d'origine pour les
 exigences non encore traitées ; les lignes passées à ✅ portent la mention « Livré ».*
 
@@ -99,7 +99,7 @@ exigences non encore traitées ; les lignes passées à ✅ portent la mention �
 | EF-21 | Un crédit = somme due par un client | ✅ | |
 | EF-22 | Créé depuis une vente ou saisi directement | ✅ | |
 | EF-23 | Remboursements partiels, reste recalculé | ✅ | |
-| EF-24 | Échéances, repérage des retards | ◐ | Échéance saisie à la création (30 jours par défaut), retard calculé. **Pas de modification de l'échéance** après coup ; **aucune notification** quand un crédit devient échu (backlog #14). |
+| EF-24 | Échéances, repérage des retards | ◐ | Échéance saisie à la création (30 jours par défaut), retard calculé. **Pas de modification de l'échéance** après coup ; la notification « crédit en retard » n'est émise qu'à l'ouverture de l'application (`alertOverdueCredits`), pas au moment où l'échéance passe ni par un canal externe (backlog #14). |
 | EF-25 | Crédit soldé quand le reste atteint 0 | ✅ | |
 
 ## 4.8 Clients
@@ -121,7 +121,7 @@ exigences non encore traitées ; les lignes passées à ✅ portent la mention �
 
 | Réf. | Exigence | État | Constat |
 |---|---|---|---|
-| EF-31 | Résumé du jour : ventes, dépenses, solde, répartition par mode de paiement | ◐ | Les données existent (accueil + bilan par période) mais il n'y a pas de vue « résumé du jour » dédiée avec répartition par mode. Critère d'acceptation : « totaux identiques à la somme des ventes et dépenses du jour ». |
+| EF-31 | Résumé du jour : ventes, dépenses, solde, répartition par mode de paiement | ◐ | Les données existent (accueil + bilan par période, dont la répartition par mode de paiement dans le Bilan) mais il n'y a pas de vue « résumé du jour » dédiée réunissant ventes, dépenses, solde et modes de paiement. La « clôture de caisse » de l'accueil n'est qu'un bouton local sans calcul. Critère d'acceptation : « totaux identiques à la somme des ventes et dépenses du jour ». |
 | EF-32 | Ventes par période, **par produit et par vendeur** | ❌ | Seul le chiffre d'affaires par jour existe. |
 | EF-33 | Crédits en cours, échéances proches, retards | ◐ | Retards ✅ ; pas de vue « échéances proches ». |
 | EF-34 | Produits en stock bas ou en rupture | ◐ | Alertes sur l'accueil ; pas de liste « à racheter » consultable comme rapport. |
@@ -137,7 +137,7 @@ exigences non encore traitées ; les lignes passées à ✅ portent la mention �
 
 | Réf. | Exigence | État | Constat |
 |---|---|---|---|
-| EF-37 | L'accès à une boutique dépend d'un abonnement | ◐ | Écran avec 2 formules (Starter, Pro) **sans paiement réel** ; aucun blocage d'accès à l'expiration ; l'essai de 14 jours n'est pas géré. Les offres sont encore « à définir » (CDC §11). |
+| EF-37 | L'accès à une boutique dépend d'un abonnement | ◐ | Écran avec 2 formules (Starter, Pro) et paiement par FedaPay/KKiaPay **simulé** (mobile money prioritaire ; pas d'appel réel aux agrégateurs) ; aucun blocage d'accès à l'expiration ; l'essai de 14 jours n'est pas géré. Les offres sont encore « à définir » (CDC §11). |
 
 # 4. Règles de gestion
 
