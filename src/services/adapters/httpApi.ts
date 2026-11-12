@@ -15,10 +15,11 @@ import type {
   Product,
   SaleTransaction,
   Session,
+  StockMovement,
   SubscriptionPlan,
   TeamMember,
 } from '@/types';
-import type { Api } from '../contracts';
+import type { Api, StockAdjustmentResult } from '../contracts';
 import { ENDPOINTS } from '../endpoints';
 import { ApiError } from '../http/ApiError';
 import type { HttpClient } from '../http/httpClient';
@@ -96,7 +97,21 @@ export function createHttpApi(http: HttpClient): Api {
       create: (product) => http.post<Product>(ENDPOINTS.products(org()), product),
       update: (id, patch) => http.patch<Product>(ENDPOINTS.product(org(), id), patch),
       remove: (id) => http.delete<void>(ENDPOINTS.product(org(), id)),
-      restock: (id, quantity) => http.post<Product>(ENDPOINTS.productRestock(org(), id), { quantity }),
+      restock: (id, quantity, reason) =>
+        http.post<Product>(ENDPOINTS.productRestock(org(), id), reason === undefined ? { quantity } : { quantity, reason }),
+    },
+    stock: {
+      movements: (query = {}) => {
+        const params = new URLSearchParams();
+        if (query.productId) params.set('productId', query.productId);
+        if (query.type) params.set('type', query.type);
+        if (query.limit !== undefined) params.set('limit', String(query.limit));
+        const suffix = params.size > 0 ? `?${params.toString()}` : '';
+        return http.get<StockMovement[]>(`${ENDPOINTS.stockMovements(org())}${suffix}`);
+      },
+      adjust: (productId, input) =>
+        http.post<StockAdjustmentResult>(ENDPOINTS.productStockAdjustments(org(), productId), input),
+      inventory: (input) => http.post<StockMovement[]>(ENDPOINTS.stockInventory(org()), input),
     },
     sales: {
       list: () => http.get<SaleTransaction[]>(ENDPOINTS.sales(org())),

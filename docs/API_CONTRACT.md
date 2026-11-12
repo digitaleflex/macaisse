@@ -30,6 +30,7 @@ VITE_API_TIMEOUT_MS=15000
 | Annuler une vente (le jour même) | ✓ | ✓ | |
 | Annuler une vente d'un autre jour | ✓ | | |
 | Créer / modifier / supprimer des articles, réapprovisionner, voir les prix d'achat | ✓ | ✓ | |
+| Corriger le stock (écart, casse), faire un inventaire, consulter le journal de stock | ✓ | ✓ | |
 | Créer un crédit, gérer les dépenses, voir le bilan, exporter | ✓ | ✓ | |
 | Gérer l'équipe, l'abonnement | ✓ | | |
 
@@ -390,9 +391,12 @@ structurantes pour le backend :
 |---|---|---|---|---|
 | GET | `/products` | — | `Product[]` | cashier |
 | POST | `/products` | `Product` | `Product` | manager |
-| PATCH | `/products/:id` | `Partial<Product>` | `Product` | manager |
+| PATCH | `/products/:id` | `Partial<Product>` **sans `stock`** | `Product` · `422 VALIDATION_ERROR` si le corps modifie `stock` (RG-05) | manager |
 | DELETE | `/products/:id` | — | `204` | manager |
-| POST | `/products/:id/restock` | `{ quantity }` | `Product` | manager |
+| POST | `/products/:id/restock` | `{ quantity, reason? }` | `Product` — crée un mouvement `purchase` · `422` si `quantity` n'est pas un entier > 0 | manager |
+| POST | `/products/:id/stock-adjustments` | `{ kind: "count" \| "loss", quantity, reason }` | `{ product, movement }` · `422 VALIDATION_ERROR` · `403 INSUFFICIENT_ROLE` — voir [Journal de stock](#journal-de-stock) | manager |
+| POST | `/stock/inventory` | `{ counts: [{ productId, counted }], note? }` | `StockMovement[]` (un par écart) · tout ou rien · `404` produit inconnu · `422` | manager |
+| GET | `/stock/movements` | `?productId&type&limit` | `StockMovement[]`, du plus récent au plus ancien | manager |
 | GET | `/sales` | — | `SaleTransaction[]` | cashier |
 | POST | `/sales` | `{ sale, lines: CartLine[], credit?: ClientCredit }` | `SaleTransaction` (le serveur décrémente le stock et crée la créance) · `422 CONTACT_PHONE_REQUIRED` si le commerce n'a aucun téléphone (RG-A03) | cashier |
 | POST | `/sales/:id/cancel` | `{ reason }` | `SaleTransaction` au statut `Annulée` — voir [Annulation d'une vente](#annulation-dune-vente) | manager (le jour même), owner (tout jour) |
@@ -426,6 +430,56 @@ recherche par numéro de ticket ou nom du client. Il trie de la plus récente à
   (`YYYY-MM-DD`, dans le fuseau du commerce, bornes incluses), `sellerId`, `status`, `q`, `limit` et
   `cursor`, et renvoyer les ventes de la plus récente à la plus ancienne. Un paramètre absent
   n'applique aucun filtre ; les résultats doivent être identiques à ceux du filtrage client.
+
+## Journal de stock
+
+**RG-05 : le stock d'un produit ne change que par un mouvement tracé.** Cinq causes, et
+seulement elles (`StockMovement.type`) :
+
+| Identifiant | Cause | Signe | Déclencheur |
+|---|---|---|---|
+| `purchase` | Réception de marchandise (réapprovisionnement, **stock initial** à la création) | + | `POST /products/:id/restock`, `POST /products` avec `stock > 0` |
+| `sale` | Sortie par vente | − | `POST /sales` |
+| `return` | Retour en stock | + | `POST /sales/:id/cancel` |
+| `adjustment` | Écart d'inventaire | ± | `stock-adjustments` (`kind: "count"`), `POST /stock/inventory` |
+| `loss` | Casse, péremption, perte | − | `stock-adjustments` (`kind: "loss"`) |
+
+Le serveur DOIT :
+
+1. **créer le mouvement dans la même transaction que le changement de stock** : aucun stock ne bouge sans sa ligne de journal, aucune ligne sans changement ;
+2. calculer `quantityAfter` lui-même (stock du produit juste après le mouvement) et ne **jamais** accepter de stock saisi par le client ;
+3. refuser un stock qui deviendrait négatif (`409 INSUFFICIENT_STOCK` à la vente, `422` pour une casse supérieure au stock) ;
+4. exiger un **motif d'au moins 3 caractères** pour `adjustment` et `loss` (`422 VALIDATION_ERROR`) ; pour `return`, le motif est `Annulation : <motif de l'annulation>` ;
+5. refuser un écart nul (`kind: "count"` avec la quantité déjà en stock → `422`, « aucun écart ») ;
+6. **refuser** (pas ignorer silencieusement) tout `PATCH /products/:id` dont le corps modifie `stock` : `422 VALIDATION_ERROR` ;
+7. déduire l'auteur (`userId`, `userName`) de la **session**, jamais du corps de la requête ;
+8. réserver `stock-adjustments`, `inventory` et `GET /stock/movements` aux rôles ayant `stock.adjust` (gérant, propriétaire) : `403 INSUFFICIENT_ROLE` ;
+9. rendre le journal **non modifiable** : aucune route de modification ni de suppression de mouvement ; une erreur se corrige par un mouvement inverse tracé.
+
+```jsonc
+// POST /orgs/org-etoile/products/p1/stock-adjustments
+{ "kind": "count", "quantity": 7, "reason": "Erreur de comptage" }   // quantity = quantité COMPTÉE
+{ "kind": "loss",  "quantity": 4, "reason": "Casse au rayon" }       // quantity = quantité RETIRÉE
+
+// 200 { product, movement }
+{ "movement": { "id": "movement-8f2a", "type": "adjustment", "productId": "p1", "productName": "Lait",
+                "quantity": -3, "quantityAfter": 7, "reason": "Erreur de comptage",
+                "userId": "u-awa", "userName": "Awa Fall", "createdAt": "2026-11-12T11:20:00Z" } }
+```
+
+`quantity` d'un mouvement est **signée** (positive = entrée, négative = sortie) et jamais nulle ;
+`saleId` et `saleNumber` renseignent les mouvements `sale` et `return`. `productName` est le nom au
+moment du mouvement : l'historique survit à un renommage.
+
+**Inventaire** : `POST /stock/inventory` reçoit les quantités comptées. Les produits dont le
+comptage égale le stock ne génèrent **aucun** mouvement ; chaque écart devient un mouvement
+`adjustment` dont le motif est `Inventaire du JJ/MM/AAAA` (suivi de ` — <note>` si elle est fournie).
+L'opération est **atomique** : un produit inconnu (`404`) ou un comptage invalide (entier ≥ 0, sinon
+`422`) annule tout l'inventaire.
+
+**Lecture** : `GET /stock/movements?productId=&type=&limit=` — tri du plus récent au plus ancien.
+Le client relit le journal à chaque ouverture en mode `http` (200 mouvements au plus) ; une
+pagination par curseur sera nécessaire quand le volume le justifiera.
 
 ## Annulation d'une vente
 

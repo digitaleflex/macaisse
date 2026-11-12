@@ -21,6 +21,7 @@ const BUSINESS_KEYS: readonly string[] = [
   PERSIST_NAMES.expenses,
   PERSIST_NAMES.credits,
   PERSIST_NAMES.notifications,
+  PERSIST_NAMES.stockMovements,
 ];
 
 /** Collections métier persistées sous `ma-caisse/<orgId>/<collection>`. */
@@ -31,6 +32,7 @@ const SCOPED_COLLECTIONS: readonly string[] = [
   'expenses',
   'credits',
   'notifications',
+  'stock-movements',
 ];
 
 const PREFIX = 'ma-caisse/';

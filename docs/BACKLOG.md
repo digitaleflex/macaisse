@@ -57,6 +57,13 @@ avec réintégration du stock et trace d'audit.
 ✅ **#7 livré** — `domain/validation.ts` + `min`/`step` sur les champs : aucun
 montant décimal ou négatif ne peut être persisté (12 tests). #3 reste ouvert.
 
+✅ **Journal de stock livré** (EF-19, RG-05) — tout changement de stock est un mouvement tracé (vente,
+annulation, réception, écart d'inventaire, casse) avec auteur, date, motif et stock obtenu ;
+correction manuelle avec motif obligatoire ; inventaire réel (comptage, écarts valorisés, tout ou
+rien) ; historique par produit et journal complet. La fiche produit ne modifie plus le stock.
+Reste côté serveur : transaction mouvement + stock, filtrage et pagination du journal (voir
+`API_CONTRACT.md` §Journal de stock).
+
 **Fini quand** aucun stock négatif n'est possible et qu'aucun montant décimal ou
 négatif n'entre en état.
 

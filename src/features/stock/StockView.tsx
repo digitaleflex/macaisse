@@ -10,8 +10,10 @@ import {
   retailValueOf,
   stockValueOf,
   useProductsStore,
+  type ProductPatch,
 } from '@/store/useProductsStore';
 import { usePermission } from '@/store/useSessionStore';
+import { useStockStore } from '@/store/useStockStore';
 import { useUiStore } from '@/store/useUiStore';
 import {
   Badge,
@@ -27,7 +29,10 @@ import {
 } from '@/ui';
 import { ProductThumb } from '@/features/shared/ProductThumb';
 import { ProductFormModal } from './ProductFormModal';
+import { InventoryModal } from './InventoryModal';
 import { RestockModal } from './RestockModal';
+import { StockAdjustModal } from './StockAdjustModal';
+import { StockMovementsModal } from './StockMovementsModal';
 import {
   StockFilters,
   type StockCategoryFilter,
@@ -51,7 +56,10 @@ const SORT_LABEL: Record<StockSortKey, string> = {
 interface RowActionsProps {
   product: Product;
   canRestock: boolean;
+  canAdjust: boolean;
   canEdit: boolean;
+  onAdjust: (product: Product) => void;
+  onHistory: (product: Product) => void;
   onQuickRestock: (product: Product, quantity: number) => void;
   onRestock: (product: Product) => void;
   onEdit: (product: Product) => void;
@@ -61,13 +69,16 @@ interface RowActionsProps {
 function RowActions({
   product,
   canRestock,
+  canAdjust,
   canEdit,
+  onAdjust,
+  onHistory,
   onQuickRestock,
   onRestock,
   onEdit,
   onDelete,
 }: RowActionsProps) {
-  if (!canRestock && !canEdit) return null;
+  if (!canRestock && !canEdit && !canAdjust) return null;
   const quick = product.status === 'rupture' ? 20 : 5;
   return (
     <div className="flex items-center gap-1 justify-end">
@@ -87,6 +98,22 @@ function RowActions({
             label={t.stock.restock}
             size="sm"
             onClick={() => onRestock(product)}
+          />
+        </>
+      )}
+      {canAdjust && (
+        <>
+          <IconButton
+            icon="fact_check"
+            label={t.stock.adjust.action(product.name)}
+            size="sm"
+            onClick={() => onAdjust(product)}
+          />
+          <IconButton
+            icon="history"
+            label={t.stock.movements.history(product.name)}
+            size="sm"
+            onClick={() => onHistory(product)}
           />
         </>
       )}
@@ -138,6 +165,21 @@ function StockLevel({ product }: { product: Product }) {
   );
 }
 
+/** Champs d'une fiche produit modifiables : le stock n'en fait pas partie (RG-05). */
+function toPatch(input: ProductInput): ProductPatch {
+  return {
+    name: input.name,
+    sku: input.sku,
+    category: input.category,
+    price: input.price,
+    costPrice: input.costPrice,
+    minStockAlert: input.minStockAlert,
+    imageUrl: input.imageUrl,
+    imageAlt: input.imageAlt,
+    unit: input.unit,
+  };
+}
+
 export function StockView() {
   // Un seul rendu monté : tableau sur grand écran, cartes sur mobile.
   const isDesktop = useMediaQuery('(min-width: 768px)');
@@ -149,6 +191,8 @@ export function StockView() {
   const showToast = useUiStore((state) => state.showToast);
   const canEdit = usePermission('stock.edit');
   const canRestock = usePermission('stock.restock');
+  const canAdjust = usePermission('stock.adjust');
+  const lastInventory = useStockStore((state) => state.lastInventory);
   const canViewCost = usePermission('stock.viewCost');
 
   const products = useMemo(() => productsWithStatus(rawProducts), [rawProducts]);
@@ -163,6 +207,10 @@ export function StockView() {
   const [restockProduct, setRestockProduct] = useState<Product | null>(null);
   const [restockInstance, setRestockInstance] = useState(0);
   const [pendingDelete, setPendingDelete] = useState<Product | null>(null);
+  const [adjusting, setAdjusting] = useState<Product | null>(null);
+  const [historyProduct, setHistoryProduct] = useState<Product | null>(null);
+  const [journalOpen, setJournalOpen] = useState(false);
+  const [inventoryOpen, setInventoryOpen] = useState(false);
 
   const lowStockCount = filterProducts(products, { status: 'faible' }).length;
   const outOfStockCount = filterProducts(products, { status: 'rupture' }).length;
@@ -199,9 +247,9 @@ export function StockView() {
     showToast(t.stock.sort.applied(SORT_LABEL[next]));
   };
 
-  const handleRestock = (product: Product, quantity: number) => {
+  const handleRestock = (product: Product, quantity: number, reason?: string) => {
     try {
-      restock(product.id, quantity);
+      restock(product.id, quantity, reason);
       showToast(
         t.stock.toasts.restocked(quantity, product.name, product.stock + quantity),
         'success',
@@ -211,9 +259,9 @@ export function StockView() {
     }
   };
 
-  const handleRestockSubmit = (quantity: number) => {
+  const handleRestockSubmit = (quantity: number, reason?: string) => {
     if (!restockProduct) return;
-    handleRestock(restockProduct, quantity);
+    handleRestock(restockProduct, quantity, reason);
     setRestockProduct(null);
   };
 
@@ -248,7 +296,7 @@ export function StockView() {
   const handleSubmitProduct = (input: ProductInput) => {
     try {
       if (editingProduct) {
-        updateProduct(editingProduct.id, input);
+        updateProduct(editingProduct.id, toPatch(input));
         showToast(t.stock.toasts.updated(input.name), 'success');
       } else {
         addProduct(input);
@@ -263,6 +311,9 @@ export function StockView() {
   const actionProps = {
     canEdit,
     canRestock,
+    canAdjust,
+    onAdjust: setAdjusting,
+    onHistory: setHistoryProduct,
     onQuickRestock: handleRestock,
     onRestock: openRestockForm,
     onEdit: (product: Product) => openForm(product),
@@ -364,7 +415,7 @@ export function StockView() {
                     </>
                   )}
                   <th className="px-3 py-3 font-semibold">{t.stock.table.status}</th>
-                  {(canEdit || canRestock) && (
+                  {(canEdit || canRestock || canAdjust) && (
                     <th className="px-5 py-3 font-semibold text-right">{t.stock.table.actions}</th>
                   )}
                 </tr>
@@ -409,7 +460,7 @@ export function StockView() {
                         {t.labels.stockStatus[product.status ?? 'disponible']}
                       </Badge>
                     </td>
-                    {(canEdit || canRestock) && (
+                    {(canEdit || canRestock || canAdjust) && (
                       <td className="px-5 py-3">
                         <RowActions product={product} {...actionProps} />
                       </td>
@@ -475,22 +526,36 @@ export function StockView() {
         )}
       </Card>
 
-      {canRestock && (
-        <section className="rounded-card border border-dashed border-line-strong p-4 flex items-center gap-3.5">
+      {canAdjust && (
+        <section className="rounded-card border border-dashed border-line-strong p-4 flex flex-wrap items-center gap-3.5">
           <span className="size-11 rounded-2xl bg-brand-50 text-brand-600 flex items-center justify-center shrink-0">
             <Icon name="fact_check" size={22} />
           </span>
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-48">
             <div className="text-sm font-semibold text-ink-900">{t.stock.audit.title}</div>
-            <div className="text-xs text-slate-500">{t.stock.audit.text}</div>
+            <div className="text-xs text-slate-500">
+              {lastInventory
+                ? t.stock.audit.last(
+                    new Date(lastInventory.at).toLocaleDateString('fr-FR', {
+                      day: 'numeric',
+                      month: 'long',
+                      year: 'numeric',
+                    }),
+                    lastInventory.by,
+                    lastInventory.counted,
+                    lastInventory.variances,
+                  )
+                : t.stock.audit.text}
+            </div>
           </div>
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => showToast(t.stock.audit.done(products.length), 'success')}
-          >
-            {t.stock.audit.action}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" icon="history" onClick={() => setJournalOpen(true)}>
+              {t.stock.audit.journal}
+            </Button>
+            <Button variant="secondary" size="sm" onClick={() => setInventoryOpen(true)}>
+              {t.stock.audit.action}
+            </Button>
+          </div>
         </section>
       )}
 
@@ -508,6 +573,18 @@ export function StockView() {
         product={restockProduct}
         onSubmit={handleRestockSubmit}
       />
+      {adjusting && <StockAdjustModal product={adjusting} onClose={() => setAdjusting(null)} />}
+      {(historyProduct !== null || journalOpen) && (
+        <StockMovementsModal
+          open
+          onClose={() => {
+            setHistoryProduct(null);
+            setJournalOpen(false);
+          }}
+          product={historyProduct ?? undefined}
+        />
+      )}
+      {inventoryOpen && <InventoryModal open onClose={() => setInventoryOpen(false)} />}
       <ConfirmDialog
         open={pendingDelete !== null}
         title={t.stock.remove(pendingDelete?.name ?? '')}

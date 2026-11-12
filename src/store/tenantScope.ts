@@ -11,6 +11,7 @@ import { useExpensesStore } from './useExpensesStore';
 import { useNotificationsStore } from './useNotificationsStore';
 import { useProductsStore } from './useProductsStore';
 import { useSalesStore } from './useSalesStore';
+import { useStockStore } from './useStockStore';
 
 interface ScopableStore<S> {
   persist: {
@@ -57,5 +58,6 @@ export async function scopeStoresToOrganization(organizationId: string): Promise
     scope(useCreditsStore, key('credits'), { credits: seed.credits }),
     scope(useNotificationsStore, key('notifications'), { notifications: seed.notifications }),
     scope(useCartStore, key('cart'), { lines: [] }),
+    scope(useStockStore, key('stock-movements'), { movements: [], lastInventory: null }),
   ]);
 }

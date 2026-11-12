@@ -46,6 +46,7 @@ export const PERSIST_NAMES = {
   expenses: 'ma-caisse/expenses',
   credits: 'ma-caisse/credits',
   notifications: 'ma-caisse/notifications',
+  stockMovements: 'ma-caisse/stock-movements',
   ui: 'ma-caisse/ui',
   auth: 'ma-caisse/auth',
 } as const;

@@ -9,6 +9,7 @@ import type {
   PaymentMethod,
   PaymentProvider,
   SaleStatus,
+  StockMovementType,
   StockStatus,
   TabType,
   TenderMethod,
@@ -236,6 +237,30 @@ export const DAILY_REVENUE_TARGET = 60000;
 
 /** Quantités proposées en réapprovisionnement rapide. */
 export const QUICK_RESTOCK_STEPS = [5, 10, 20] as const;
+
+/** Types de mouvement de stock, dans l'ordre d'affichage des filtres. */
+export const STOCK_MOVEMENT_TYPES = [
+  'purchase',
+  'sale',
+  'return',
+  'adjustment',
+  'loss',
+] as const satisfies readonly StockMovementType[];
+
+/** Icône et teinte de chaque type de mouvement. */
+export const STOCK_MOVEMENT_STYLE: Record<StockMovementType, { icon: string; tone: 'success' | 'info' | 'warning' | 'danger' | 'neutral' }> = {
+  purchase: { icon: 'local_shipping', tone: 'success' },
+  sale: { icon: 'shopping_cart', tone: 'neutral' },
+  return: { icon: 'undo', tone: 'info' },
+  adjustment: { icon: 'fact_check', tone: 'warning' },
+  loss: { icon: 'broken_image', tone: 'danger' },
+};
+
+/** Motifs proposés d'un clic pour un écart ou une casse (le texte reste libre). */
+export const STOCK_REASON_SUGGESTIONS = {
+  count: ['Erreur de comptage', 'Inventaire', 'Vente non enregistrée', 'Retour fournisseur'],
+  loss: ['Casse', 'Produit périmé', 'Vol', 'Don'],
+} as const;
 
 /** Montants rapides proposés pour un règlement de crédit (FCFA). */
 export const QUICK_CREDIT_PAYMENTS = [5000, 10000, 20000] as const;

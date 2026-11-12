@@ -141,6 +141,9 @@ export function ProductFormModal({ open, onClose, product, onSubmit }: ProductFo
             min={0}
             step={1}
             value={stock}
+            // RG-05 : le stock d'un produit existant ne se modifie que par un mouvement tracé.
+            disabled={isEdit}
+            hint={isEdit ? t.stock.form.stockLocked : undefined}
             onChange={(event) => {
               setStock(Number(event.target.value));
               setError(null);

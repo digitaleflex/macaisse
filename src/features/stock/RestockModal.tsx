@@ -11,7 +11,8 @@ export interface RestockModalProps {
   open: boolean;
   onClose: () => void;
   product: Product | null;
-  onSubmit: (quantity: number) => void;
+  /** `reason` : fournisseur ou note libre, facultatif. */
+  onSubmit: (quantity: number, reason?: string) => void;
 }
 
 const DEFAULT_QUANTITY = 20;
@@ -19,6 +20,7 @@ const DEFAULT_QUANTITY = 20;
 export function RestockModal({ open, onClose, product, onSubmit }: RestockModalProps) {
   const [quantity, setQuantity] = useState(DEFAULT_QUANTITY);
   const [error, setError] = useState<ValidationCode | null>(null);
+  const [reason, setReason] = useState('');
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -28,7 +30,7 @@ export function RestockModal({ open, onClose, product, onSubmit }: RestockModalP
       return;
     }
     setError(null);
-    onSubmit(quantity);
+    onSubmit(quantity, reason.trim() === '' ? undefined : reason.trim());
   };
 
   return (
@@ -72,6 +74,15 @@ export function RestockModal({ open, onClose, product, onSubmit }: RestockModalP
           }
         />
         <FormError message={error !== null ? t.validation[error] : null} />
+        <Input
+          label={t.stock.restockModal.reasonLabel}
+          name="restock-reason"
+          value={reason}
+          maxLength={200}
+          placeholder={t.stock.restockModal.reasonPlaceholder}
+          hint={t.common.optional}
+          onChange={(event) => setReason(event.target.value)}
+        />
         <div className="grid grid-cols-3 gap-2">
           {QUICK_RESTOCK_STEPS.map((step) => (
             <button
