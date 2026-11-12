@@ -5,7 +5,7 @@ import { PRODUCT_CATEGORIES } from '@/config/reference';
 import { Chip, SearchField, SegmentedControl, Select } from '@/ui';
 
 /** Contrôles de l'inventaire (composant contrôlé : l'état vit dans `StockView`). */
-export type StockStatusFilter = 'all' | StockStatus;
+export type StockStatusFilter = 'all' | StockStatus | 'inactive';
 export type StockCategoryFilter = 'all' | Category;
 export type StockSortKey = Extract<SortKey, 'name' | 'stock' | 'price'>;
 
@@ -22,6 +22,8 @@ export interface StockFiltersProps {
   lowStockCount: number;
   outOfStockCount: number;
   inStockCount: number;
+  /** Produits désactivés : le filtre n'apparaît que s'il y en a (ou s'il est déjà actif). */
+  inactiveCount: number;
 }
 
 const CATEGORY_OPTIONS = [
@@ -55,6 +57,9 @@ export function StockFilters(props: StockFiltersProps) {
     },
     { value: 'faible', label: t.stock.statusLow, count: props.lowStockCount, dot: 'warning' },
     { value: 'rupture', label: t.stock.statusOut, count: props.outOfStockCount, dot: 'danger' },
+    ...(props.inactiveCount > 0 || props.statusFilter === 'inactive'
+      ? [{ value: 'inactive' as const, label: t.stock.deactivate.filter, count: props.inactiveCount }]
+      : []),
   ];
 
   return (

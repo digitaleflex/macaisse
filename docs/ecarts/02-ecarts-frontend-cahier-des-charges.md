@@ -25,7 +25,7 @@ Il complète le document `01-ecarts-backend-schema` (écarts du schéma de donn�
 |---|---|---|
 | 4.1 Comptes et boutiques | EF-01 à 03 | ✅ |
 | 4.2 Équipe, rôles, permissions | EF-04 ✅ — EF-05 ❌ — EF-06 ◐ | ◐ |
-| 4.3 Catalogue | EF-07 ◐ — EF-08 ❌ | ◐ |
+| 4.3 Catalogue | EF-07 ◐ — EF-08 ✅ | ◐ |
 | 4.4 Ventes et paiements | EF-09 à 11 ✅ — EF-12 ◐ — EF-13 ✅ | ◐ |
 | 4.5 Annulation des ventes | EF-14 à 17 ✅ | ✅ |
 | 4.6 Stock | EF-18 à 20 ✅ | ✅ |
@@ -63,7 +63,7 @@ exigences non encore traitées ; les lignes passées à ✅ portent la mention �
 | Réf. | Exigence | État | Constat |
 |---|---|---|---|
 | EF-07 | Gérer les produits (nom, prix de vente, prix d'achat, quantité, seuil) | ◐ | Tout est présent. La **catégorie est limitée à 4 valeurs fixes** (Frais, Épicerie, Boissons, Hygiène). |
-| EF-08 | Désactiver un produit sans le supprimer | ❌ | Le bouton supprime réellement le produit (`removeProduct` → `DELETE`). Contredit RG-07 : l'historique des ventes perd son lien. |
+| EF-08 | Désactiver un produit sans le supprimer | ✅ | Lot L4 : « Désactiver » (confirmation), badge « Désactivé », filtre « Désactivés », « Réactiver ». Plus aucune suppression ; le produit sort de la caisse, des alertes et des indicateurs, l'historique est conservé. |
 
 ## 4.4 Ventes et paiements
 
@@ -149,7 +149,7 @@ exigences non encore traitées ; les lignes passées à ✅ portent la mention �
 | RG-04 | Aucune vente supprimée ni modifiée | ✅ | Aucune route de suppression ni de modification côté front ; annulation avec motif (L1). |
 | RG-05 | Stock modifié par vente, annulation ou ajustement tracé | ✅ | **Livré (L3)** côté front : vente, annulation, réception, écart d'inventaire et casse créent chacun un mouvement ; le stock initial est une réception ; la fiche ne change plus le stock. Le serveur doit refuser un `PATCH` qui modifie `stock`. |
 | RG-06 | Reste = montant − remboursements | ✅ | Calculé par le domaine (`credits.ts`). Le serveur doit refuser un surpaiement (`CREDIT_OVERPAYMENT`). |
-| RG-07 | Produit ou client vendu : désactivé, pas supprimé | ❌ | Suppression réelle des produits et des crédits. |
+| RG-07 | Produit ou client vendu : désactivé, pas supprimé | ◐ | Produits : ✅ (L4, plus de suppression). Clients : en attente du fichier clients (L5) ; les crédits restent supprimables. |
 | RG-08 | Le propriétaire ne perd jamais ses droits | ✅ | Propriétaire non modifiable côté front ; à doubler côté serveur. |
 | RG-09 | Une annulation exige un motif | ✅ | **Livré (L1).** |
 
@@ -191,7 +191,7 @@ lorsque l'API correspondante existe ; en attendant, le front est développé con
 | L1 ✅ | **Annulation de vente** : bouton, motif obligatoire, statut « annulée », retour de stock, traitement du crédit lié, vente conservée dans l'historique | EF-14 à 18, RG-09 | contrat d'API |
 | L2 ✅ | **Historique des ventes** filtrable (période, vendeur, statut) ; accès à l'annulation et au reçu | EF-13 | L1 |
 | L3 ✅ | **Mouvements de stock** : historique par produit, ajustement avec motif, vrai inventaire | EF-19, RG-05 | contrat d'API |
-| L4 | **Désactivation** des produits au lieu de la suppression ; produits désactivés masqués de la caisse mais visibles dans l'historique | EF-08, RG-07 | — |
+| L4 ✅ | **Désactivation** des produits au lieu de la suppression ; produits désactivés masqués de la caisse mais visibles dans l'historique | EF-08, RG-07 | — |
 | L5 | **Fichier clients** : liste, création, recherche, réutilisation dans crédit et vente | EF-26 à 28 | schéma `Customer` |
 | L6 | **Dépenses** : date saisissable, catégorie facultative, catégories modifiables | EF-29, 30 | — |
 | L7 | **Crédits** : modification de l'échéance, notification d'échéance, vue « échéances proches » | EF-24, EF-33 | — |

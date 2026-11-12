@@ -153,6 +153,9 @@ export function receiveStock(
   if (!Number.isInteger(quantity)) {
     throw new Error('La quantité à réapprovisionner doit être un nombre entier.');
   }
+  if (product.deactivatedAt !== undefined) {
+    throw new Error(`« ${product.name} » est désactivé : réactivez-le avant de le réapprovisionner.`);
+  }
   const movement = createMovement({ type: 'purchase', product, delta: quantity, reason, by, date });
   return { product: withStock(product, movement.quantityAfter), movement };
 }

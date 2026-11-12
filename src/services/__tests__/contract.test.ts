@@ -120,6 +120,19 @@ describe('contrat http — contexte et payload', () => {
     expect(captured[0]?.body).toEqual({ sale: SALE, lines, credit: CREDIT });
   });
 
+  it('désactive et réactive un produit par POST, sans corps ni DELETE (RG-07)', async () => {
+    const { api, captured } = httpApiWith({ status: 200, body: { id: 'p1' } });
+    await api.products.deactivate('p1');
+    await api.products.reactivate('p1');
+
+    expect(captured.map((c) => [c.method, c.url])).toEqual([
+      ['POST', `${BASE_URL}${ENDPOINTS.productDeactivate(ORG, 'p1')}`],
+      ['POST', `${BASE_URL}${ENDPOINTS.productReactivate(ORG, 'p1')}`],
+    ]);
+    expect(ENDPOINTS.productDeactivate(ORG, 'p1')).toMatch(/\/products\/p1\/deactivate$/);
+    expect('remove' in api.products).toBe(false);
+  });
+
   it('annule une vente par POST /sales/:id/cancel avec le seul motif', async () => {
     const { api, captured } = httpApiWith({ status: 200, body: { ...SALE, status: 'cancelled' } });
 
@@ -494,6 +507,83 @@ describe('contrat mock — même sémantique que le serveur', () => {
       });
       await expect(api.stock.inventory({ counts: [{ productId: first().id, counted: 1 }] })).rejects.toMatchObject({ status: 403 });
       expect(await stockNow()).toBe(before);
+    });
+  });
+
+  describe('désactivation des produits (EF-08, RG-07)', () => {
+    const first = () => SEED_PRODUCTS[0] as Product;
+    const find = async (id = first().id) => (await api.products.list()).find((p) => p.id === id);
+    const loginAs = async (email: string) => {
+      await api.auth.logout();
+      await api.auth.login({ email, password: DEMO_PASSWORD });
+      setActiveOrganization(ORG);
+    };
+
+    it('conserve le produit, date la désactivation et signe avec l’utilisateur', async () => {
+      const before = await find();
+      const result = await api.products.deactivate(first().id);
+
+      expect(result.deactivatedAt).toBeTruthy();
+      expect(result.deactivatedBy).toBeTruthy();
+      const after = await find();
+      expect(after?.stock).toBe(before?.stock);
+      expect(after?.deactivatedAt).toBe(result.deactivatedAt);
+    });
+
+    it('est idempotent : un second appel garde la date d’origine', async () => {
+      const a = await api.products.deactivate(first().id);
+      const b = await api.products.deactivate(first().id);
+      expect(b.deactivatedAt).toBe(a.deactivatedAt);
+      const c = await api.products.reactivate(first().id);
+      expect((await api.products.reactivate(first().id)).deactivatedAt).toBeUndefined();
+      expect(c.deactivatedAt).toBeUndefined();
+    });
+
+    it('refuse de vendre un produit désactivé (409 PRODUCT_INACTIVE) sans toucher au stock', async () => {
+      const before = (await find())?.stock;
+      await api.products.deactivate(first().id);
+
+      await expect(
+        api.sales.create({
+          sale: { ...SALE, id: 'sale-off', amount: first().price, remainingAmount: undefined, status: 'completed' },
+          lines: [line(1)],
+        })
+      ).rejects.toMatchObject({ status: 409, code: 'PRODUCT_INACTIVE' });
+      expect((await find())?.stock).toBe(before);
+    });
+
+    it('refuse un réapprovisionnement tant que le produit est désactivé', async () => {
+      await api.products.deactivate(first().id);
+      await expect(api.products.restock(first().id, 5)).rejects.toMatchObject({ status: 409, code: 'PRODUCT_INACTIVE' });
+      await api.products.reactivate(first().id);
+      await expect(api.products.restock(first().id, 5)).resolves.toBeTruthy();
+    });
+
+    it('refuse la réactivation si un produit actif porte déjà ce nom (409 CONFLICT)', async () => {
+      await api.products.deactivate(first().id);
+      await api.products.create({ ...first(), id: 'product-doublon', sku: '#DBL' });
+
+      await expect(api.products.reactivate(first().id)).rejects.toMatchObject({ status: 409, code: 'CONFLICT' });
+      expect((await find())?.deactivatedAt).toBeTruthy();
+    });
+
+    it('interdit de désactiver par une simple modification de fiche (422)', async () => {
+      await expect(
+        api.products.update(first().id, { deactivatedAt: '2026-01-01T00:00:00Z' })
+      ).rejects.toMatchObject({ status: 422, code: 'VALIDATION_ERROR' });
+    });
+
+    it('réserve la désactivation aux rôles autorisés à modifier le stock (403 caissier)', async () => {
+      await loginAs('awa@boutique-etoile.sn');
+      await expect(api.products.deactivate(first().id)).rejects.toMatchObject({ status: 403, code: 'INSUFFICIENT_ROLE' });
+      expect((await find())?.deactivatedAt).toBeUndefined();
+    });
+
+    it('garde le journal de stock du produit désactivé', async () => {
+      await api.products.restock(first().id, 3, 'Livraison');
+      await api.products.deactivate(first().id);
+      const movements = await api.stock.movements({ productId: first().id });
+      expect(movements.map((m) => m.type)).toContain('purchase');
     });
   });
 

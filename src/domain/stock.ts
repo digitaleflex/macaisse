@@ -12,9 +12,19 @@ export function computeStockStatus(stock: number, minStockAlert: number): StockS
   return 'disponible';
 }
 
+/** Vrai si le produit est actif (vendable, compté dans les alertes et les indicateurs). */
+export function isActiveProduct(product: Pick<Product, 'deactivatedAt'>): boolean {
+  return product.deactivatedAt === undefined;
+}
+
+/** Produits actifs : seuls ceux-là se vendent et entrent dans les alertes et indicateurs. */
+export function activeProducts<T extends Pick<Product, 'deactivatedAt'>>(products: readonly T[]): T[] {
+  return products.filter(isActiveProduct);
+}
+
 /** Vrai si le produit est en stock faible (seuil atteint mais non nul). */
 export function isLowStock(product: Product): boolean {
-  return computeStockStatus(product.stock, product.minStockAlert) === 'faible';
+  return isActiveProduct(product) && computeStockStatus(product.stock, product.minStockAlert) === 'faible';
 }
 
 /**
@@ -31,21 +41,25 @@ export function marginRatePercent(margin: number, retail: number): number {
   return retail > 0 ? (margin / retail) * 100 : 0;
 }
 
-/** Valeur du stock au prix d'achat (somme stock × costPrice). */
+/** Valeur du stock au prix d'achat (somme stock × costPrice), produits actifs seulement. */
 export function stockValue(products: Product[]): number {
-  return products.reduce((sum, p) => sum + p.stock * p.costPrice, 0);
+  return activeProducts(products).reduce((sum, p) => sum + p.stock * p.costPrice, 0);
 }
 
-/** Valeur du stock au prix de vente (somme stock × price). */
+/** Valeur du stock au prix de vente (somme stock × price), produits actifs seulement. */
 export function retailValue(products: Product[]): number {
-  return products.reduce((sum, p) => sum + p.stock * p.price, 0);
+  return activeProducts(products).reduce((sum, p) => sum + p.stock * p.price, 0);
 }
 
 export interface ProductFilter {
   /** Recherche insensible à la casse sur nom, SKU et catégorie. */
   query?: string;
   category?: Category;
-  status?: StockStatus;
+  /**
+   * Statut de stock, ou `'inactive'` pour ne lister QUE les produits désactivés. Sans filtre
+   * `'inactive'`, les produits désactivés sont exclus : un produit désactivé ne se vend pas.
+   */
+  status?: StockStatus | 'inactive';
 }
 
 /**
@@ -57,8 +71,13 @@ export function filterProducts(products: Product[], filter: ProductFilter = {}):
   const term = filter.query?.trim().toLowerCase() ?? '';
 
   return products.filter((product) => {
+    if (status === 'inactive') {
+      if (isActiveProduct(product)) return false;
+    } else {
+      if (!isActiveProduct(product)) return false;
+      if (status && computeStockStatus(product.stock, product.minStockAlert) !== status) return false;
+    }
     if (category && product.category !== category) return false;
-    if (status && computeStockStatus(product.stock, product.minStockAlert) !== status) return false;
     if (!term) return true;
     return (
       product.name.toLowerCase().includes(term) ||

@@ -38,6 +38,8 @@ export const ENDPOINTS = {
 
   products: (orgId: string) => `${org(orgId)}/products`,
   product: (orgId: string, id: string) => `${org(orgId)}/products/${enc(id)}`,
+  productDeactivate: (orgId: string, id: string) => `${org(orgId)}/products/${enc(id)}/deactivate`,
+  productReactivate: (orgId: string, id: string) => `${org(orgId)}/products/${enc(id)}/reactivate`,
   stockMovements: (orgId: string) => `${org(orgId)}/stock/movements`,
   stockInventory: (orgId: string) => `${org(orgId)}/stock/inventory`,
   productStockAdjustments: (orgId: string, id: string) => `${org(orgId)}/products/${enc(id)}/stock-adjustments`,

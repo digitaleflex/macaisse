@@ -12,7 +12,7 @@ import type {
 } from '../types';
 import { addDays, isSameDay, isSameMonth, parseDate, startOfDay, toIsoDate } from './dates';
 import { activeSales } from './sales';
-import { computeStockStatus } from './stock';
+import { activeProducts, computeStockStatus } from './stock';
 
 export interface KpisInput {
   sales: SaleTransaction[];
@@ -59,9 +59,10 @@ export function computeKpis(input: KpisInput, now: Date = new Date()): Kpis {
 
   const outstandingCredits = credits.reduce((sum, c) => sum + Math.max(0, c.remainingAmount), 0);
 
-  const margin = products.reduce((sum, p) => sum + (p.price - p.costPrice) * p.stock, 0);
+  const sellable = activeProducts(products);
+  const margin = sellable.reduce((sum, p) => sum + (p.price - p.costPrice) * p.stock, 0);
 
-  const stockAlerts = products.filter(
+  const stockAlerts = sellable.filter(
     (p) => computeStockStatus(p.stock, p.minStockAlert) !== 'disponible'
   ).length;
 

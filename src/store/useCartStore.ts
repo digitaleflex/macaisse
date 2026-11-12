@@ -32,6 +32,9 @@ export const useCartStore = create<CartState>()(
       lines: [],
 
       addItem: (product, qty = 1) => {
+        if (product.deactivatedAt !== undefined) {
+          throw new Error(`« ${product.name} » est désactivé : il ne peut plus être vendu.`);
+        }
         if (computeStockStatus(product.stock, product.minStockAlert) === 'rupture') {
           throw new Error(`« ${product.name} » est en rupture de stock.`);
         }

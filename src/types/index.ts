@@ -63,6 +63,14 @@ export interface Product {
   /** Statut dérivé du stock par le domaine ; conservé optionnel pour compatibilité UI. */
   status?: StockStatus;
   unit: string;
+  /**
+   * Date (ISO 8601) de désactivation ; absent = produit actif (EF-08, RG-07). Un produit n'est
+   * jamais supprimé : désactivé, il quitte la caisse, les alertes et les indicateurs, mais ses
+   * ventes et son journal de stock restent lisibles.
+   */
+  deactivatedAt?: string;
+  /** Nom de l'auteur de la désactivation. */
+  deactivatedBy?: string;
 }
 
 /**

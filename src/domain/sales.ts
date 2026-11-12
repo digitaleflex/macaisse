@@ -123,6 +123,9 @@ export function completeSale(input: CompleteSaleInput): CompleteSaleResult {
     if (!product) {
       throw new Error(`Produit introuvable pour la vente (${productId}).`);
     }
+    if (product.deactivatedAt !== undefined) {
+      throw new Error(`« ${product.name} » est désactivé : il ne peut plus être vendu.`);
+    }
     if (quantity > product.stock) {
       throw new Error(
         `Stock insuffisant pour « ${product.name} » : ${product.stock} disponible(s), ${quantity} demandé(s).`

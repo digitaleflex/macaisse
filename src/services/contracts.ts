@@ -123,7 +123,14 @@ export interface ProductsRepository {
   list(): Promise<Product[]>;
   create(product: Product): Promise<Product>;
   update(id: string, patch: Partial<Product>): Promise<Product>;
-  remove(id: string): Promise<void>;
+  /**
+   * Désactive un produit (EF-08, RG-07) : il n'est plus vendable ni compté dans les alertes et
+   * indicateurs, son historique est conservé. Il n'existe **aucune suppression** de produit.
+   * Idempotent. Réservé à `stock.edit`.
+   */
+  deactivate(id: string): Promise<Product>;
+  /** Réactive un produit ; `409 CONFLICT` si un produit actif porte déjà le même nom. */
+  reactivate(id: string): Promise<Product>;
   /** Réception de marchandise : crée un mouvement `purchase`. `reason` (fournisseur, bon de livraison) est facultatif. */
   restock(id: string, quantity: number, reason?: string): Promise<Product>;
 }

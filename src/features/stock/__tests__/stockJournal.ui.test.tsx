@@ -275,6 +275,70 @@ describe('StockView — droits', () => {
   });
 });
 
+describe('StockView — désactivation des produits (EF-08, RG-07)', () => {
+  const inactiveRiz = () =>
+    useProductsStore.setState({
+      products: [
+        product(),
+        product({ id: 'p2', name: 'Riz', sku: '#RIZ', stock: 4, deactivatedAt: '2026-11-10T09:00:00Z', deactivatedBy: 'Awa Fall' }),
+      ],
+    });
+
+  it('propose « Désactiver » et jamais « Supprimer »', () => {
+    render(<StockView />);
+    expect(screen.getAllByRole('button', { name: 'Désactiver Lait' }).length).toBeGreaterThan(0);
+    expect(screen.queryByRole('button', { name: /Supprimer/ })).toBeNull();
+  });
+
+  it('demande confirmation puis désactive sans supprimer le produit', async () => {
+    render(<StockView />);
+    fireEvent.click(screen.getAllByRole('button', { name: 'Désactiver Lait' })[0] as HTMLElement);
+
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).getByText(/L’historique de ses ventes et son journal de stock sont conservés/)).toBeTruthy();
+    expect(useProductsStore.getState().products[0]?.deactivatedAt).toBeUndefined();
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Désactiver' }));
+
+    await waitFor(() => expect(useProductsStore.getState().products[0]?.deactivatedAt).toBeTruthy());
+    expect(useProductsStore.getState().products).toHaveLength(2);
+  });
+
+  it('masque les désactivés par défaut et les montre avec le filtre « Désactivés »', () => {
+    inactiveRiz();
+    render(<StockView />);
+    expect(screen.queryByText('Riz')).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: /Désactivés/ }));
+    expect(screen.getAllByText('Riz').length).toBeGreaterThan(0);
+    expect(screen.queryByText('Lait')).toBeNull();
+    expect(screen.getAllByText('Désactivé').length).toBeGreaterThan(0);
+  });
+
+  it('réactive un produit depuis le filtre « Désactivés »', async () => {
+    inactiveRiz();
+    render(<StockView />);
+    fireEvent.click(screen.getByRole('button', { name: /Désactivés/ }));
+    fireEvent.click(screen.getAllByRole('button', { name: /Réactiver/ })[0] as HTMLElement);
+
+    await waitFor(() => expect(useProductsStore.getState().products[1]?.deactivatedAt).toBeUndefined());
+  });
+
+  it('n’affiche pas le filtre « Désactivés » quand aucun produit n’est désactivé', () => {
+    render(<StockView />);
+    expect(screen.queryByRole('button', { name: /Désactivés/ })).toBeNull();
+  });
+
+  it('le caissier ne peut ni désactiver ni réactiver', () => {
+    signIn('cashier');
+    inactiveRiz();
+    render(<StockView />);
+    expect(screen.queryByRole('button', { name: /^Désactiver / })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: /Désactivés/ }));
+    expect(screen.queryByRole('button', { name: /Réactiver/ })).toBeNull();
+  });
+});
+
 describe('textes de confirmation', () => {
   it('accorde les pluriels de l’inventaire', async () => {
     const { t } = await import('@/content');

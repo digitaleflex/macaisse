@@ -435,6 +435,11 @@ export function createMockApi({ latencyMs = 0, persist = false }: MockApiOptions
     const membership = requireMembership(requireOrganization());
     if (!can(membership.role, 'stock.adjust')) fail(t.errors.insufficientRole, 403, 'INSUFFICIENT_ROLE');
   };
+  /** Désactiver / réactiver un produit : gérant et propriétaire seulement (`stock.edit`). */
+  const requireStockEdit = (): void => {
+    const membership = requireMembership(requireOrganization());
+    if (!can(membership.role, 'stock.edit')) fail(t.errors.insufficientRole, 403, 'INSUFFICIENT_ROLE');
+  };
   /** Une règle de stock violée est un refus 422, jamais une correction silencieuse. */
   const refuseStock = (error: unknown): never => {
     if (error instanceof StockAdjustmentError) fail(error.message, 422, 'VALIDATION_ERROR');
@@ -1071,19 +1076,57 @@ export function createMockApi({ latencyMs = 0, persist = false }: MockApiOptions
           if ('stock' in patch && (patch as { stock?: number }).stock !== current.stock) {
             fail(t.stock.noDirectEdit, 422, 'VALIDATION_ERROR');
           }
+          // La désactivation a ses propres routes (tracées, réservées à stock.edit) : jamais via PATCH.
+          if (
+            'deactivatedAt' in patch &&
+            (patch as { deactivatedAt?: string }).deactivatedAt !== current.deactivatedAt
+          ) {
+            fail(t.stock.deactivate.noPatch, 422, 'VALIDATION_ERROR');
+          }
           const updated = { ...current, ...patch, id };
           data.products = data.products.map((p) => (p.id === id ? updated : p));
           return updated;
         }),
-      remove: (id) =>
+      deactivate: (id) =>
         respond(() => {
           const data = db();
-          data.products = data.products.filter((p) => p.id !== id);
+          requireStockEdit();
+          const product = findProduct(id);
+          if (product.deactivatedAt !== undefined) return product; // idempotent
+          const updated: Product = {
+            ...product,
+            deactivatedAt: new Date().toISOString(),
+            deactivatedBy: actorOf().name,
+          };
+          data.products = data.products.map((p) => (p.id === id ? updated : p));
+          return updated;
+        }),
+      reactivate: (id) =>
+        respond(() => {
+          const data = db();
+          requireStockEdit();
+          const product = findProduct(id);
+          if (product.deactivatedAt === undefined) return product; // idempotent
+          const taken = data.products.some(
+            (p) =>
+              p.id !== id &&
+              p.deactivatedAt === undefined &&
+              p.name.trim().toLowerCase() === product.name.trim().toLowerCase()
+          );
+          if (taken) fail(t.stock.deactivate.nameTaken(product.name), 409, 'CONFLICT');
+          const updated: Product = { ...product };
+          delete updated.deactivatedAt;
+          delete updated.deactivatedBy;
+          data.products = data.products.map((p) => (p.id === id ? updated : p));
+          return updated;
         }),
       restock: (id, quantity, reason) =>
         respond(() => {
           const data = db();
           const product = findProduct(id);
+          if (product.deactivatedAt !== undefined) {
+            fail(t.stock.deactivate.inactiveRestock(product.name), 409, 'PRODUCT_INACTIVE');
+          }
           let change;
           try {
             change = receiveStock(product, quantity, actorOf(), reason);
@@ -1149,6 +1192,9 @@ export function createMockApi({ latencyMs = 0, persist = false }: MockApiOptions
             const product =
               data.products.find((item) => item.id === line.productId) ??
               fail(t.auth.errors.notFound, 404, 'NOT_FOUND');
+            if (product.deactivatedAt !== undefined) {
+              fail(t.stock.deactivate.inactiveSale(product.name), 409, 'PRODUCT_INACTIVE');
+            }
             if (line.quantity > product.stock) {
               fail(
                 `Stock insuffisant pour « ${product.name} » : ${product.stock} disponible(s).`,

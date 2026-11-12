@@ -96,7 +96,8 @@ export function createHttpApi(http: HttpClient): Api {
       list: () => http.get<Product[]>(ENDPOINTS.products(org())),
       create: (product) => http.post<Product>(ENDPOINTS.products(org()), product),
       update: (id, patch) => http.patch<Product>(ENDPOINTS.product(org(), id), patch),
-      remove: (id) => http.delete<void>(ENDPOINTS.product(org(), id)),
+      deactivate: (id) => http.post<Product>(ENDPOINTS.productDeactivate(org(), id)),
+      reactivate: (id) => http.post<Product>(ENDPOINTS.productReactivate(org(), id)),
       restock: (id, quantity, reason) =>
         http.post<Product>(ENDPOINTS.productRestock(org(), id), reason === undefined ? { quantity } : { quantity, reason }),
     },

@@ -66,11 +66,8 @@ describe('useProductsStore — CRUD', () => {
     expect(updated.stock).toBe(stock);
   });
 
-  it('supprime un produit', () => {
-    useProductsStore.getState().addProduct(makeInput());
-    const id = useProductsStore.getState().products[0].id;
-    useProductsStore.getState().removeProduct(id);
-    expect(useProductsStore.getState().products).toHaveLength(0);
+  it('n’offre aucune suppression : un produit se désactive (RG-07)', () => {
+    expect('removeProduct' in useProductsStore.getState()).toBe(false);
   });
 
   it('réapprovisionne un produit existant', () => {

@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import type { Product } from '@/types';
 import { t } from '@/content';
 import { formatFCFA } from '@/domain/money';
+import { activeProducts } from '@/domain/stock';
 import {
   countedProducts,
   inventoryImpact,
@@ -30,7 +31,9 @@ function parseCount(text: string | undefined): number | undefined | null {
  * validation crée un mouvement `adjustment` par écart, en une seule opération (tout ou rien).
  */
 export function InventoryModal({ open, onClose }: InventoryModalProps) {
-  const products = useProductsStore((state) => state.products);
+  const allProducts = useProductsStore((state) => state.products);
+  // Un produit désactivé n'est pas compté : il n'est plus vendu ni suivi.
+  const products = useMemo(() => activeProducts(allProducts), [allProducts]);
   const showToast = useUiStore((state) => state.showToast);
   const [texts, setTexts] = useState<Record<string, string>>({});
   const [query, setQuery] = useState('');

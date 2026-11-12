@@ -392,7 +392,8 @@ structurantes pour le backend :
 | GET | `/products` | — | `Product[]` | cashier |
 | POST | `/products` | `Product` | `Product` | manager |
 | PATCH | `/products/:id` | `Partial<Product>` **sans `stock`** | `Product` · `422 VALIDATION_ERROR` si le corps modifie `stock` (RG-05) | manager |
-| DELETE | `/products/:id` | — | `204` | manager |
+| POST | `/products/:id/deactivate` | — | `Product` avec `deactivatedAt`, `deactivatedBy` (idempotent : une seconde demande garde la date d'origine) · `403 INSUFFICIENT_ROLE` — voir [Désactivation des produits](#désactivation-des-produits) | manager |
+| POST | `/products/:id/reactivate` | — | `Product` sans `deactivatedAt` (idempotent) · `409 CONFLICT` si un produit actif porte déjà ce nom | manager |
 | POST | `/products/:id/restock` | `{ quantity, reason? }` | `Product` — crée un mouvement `purchase` · `422` si `quantity` n'est pas un entier > 0 | manager |
 | POST | `/products/:id/stock-adjustments` | `{ kind: "count" \| "loss", quantity, reason }` | `{ product, movement }` · `422 VALIDATION_ERROR` · `403 INSUFFICIENT_ROLE` — voir [Journal de stock](#journal-de-stock) | manager |
 | POST | `/stock/inventory` | `{ counts: [{ productId, counted }], note? }` | `StockMovement[]` (un par écart) · tout ou rien · `404` produit inconnu · `422` | manager |
@@ -481,6 +482,24 @@ L'opération est **atomique** : un produit inconnu (`404`) ou un comptage invali
 Le client relit le journal à chaque ouverture en mode `http` (200 mouvements au plus) ; une
 pagination par curseur sera nécessaire quand le volume le justifiera.
 
+## Désactivation des produits
+
+Un produit n'est **jamais supprimé** (RG-07, EF-08) : il n'existe donc aucune route `DELETE /products/:id`. Il est
+désactivé, ce qui le retire de la caisse tout en gardant son historique (ventes, mouvements de stock).
+
+Le champ `deactivatedAt` (ISO 8601) est **absent** tant que le produit est actif ; `deactivatedBy` porte le nom de l'auteur.
+
+Le serveur DOIT :
+
+1. refuser `DELETE /products/:id` (route inexistante, `404`/`405`) ; en base, `Product.deactivatedAt` nullable remplace toute suppression physique ;
+2. refuser `POST /sales` contenant un produit désactivé : `409 PRODUCT_INACTIVE`, aucune vente, aucun mouvement de stock ;
+3. refuser `POST /products/:id/restock` sur un produit désactivé : `409 PRODUCT_INACTIVE` ;
+4. **autoriser** les corrections de stock (`stock-adjustments`, inventaire) sur un produit désactivé, pour écouler le stock restant (casse, fin de série) ; l'annulation d'une vente qui contenait le produit remet bien son stock en place ;
+5. refuser un `PATCH /products/:id` qui change `deactivatedAt` ou `deactivatedBy` : `422 VALIDATION_ERROR` (la désactivation est une action tracée) ;
+6. refuser la réactivation si un produit **actif** porte déjà le même nom (insensible à la casse et aux espaces) : `409 CONFLICT`. Cela suppose un index d'unicité **partiel** sur `(organizationId, lower(name)) WHERE deactivatedAt IS NULL` ;
+7. déduire l'auteur de la **session** ; réserver les deux routes aux rôles ayant `stock.edit` (gérant, propriétaire) : `403 INSUFFICIENT_ROLE` ;
+8. exclure les produits désactivés des indicateurs de l'accueil (alertes de stock, marge, valeur du stock) — le client le fait aussi, mais les agrégats serveur doivent suivre.
+
 ## Annulation d'une vente
 
 Une vente **ne se supprime ni ne se modifie jamais** (RG-04, EF-14) : il n'existe aucune
@@ -530,7 +549,7 @@ l'interface ne peut pas réagir correctement (rejouer, annuler, déconnecter).
 | 403 | FORBIDDEN | repli generique : ne pas l'utiliser pour des cas couverts par les codes ci-dessus | toast + retour a la caisse, **pas** de deconnexion |
 | `403` | `INVITATION_PENDING` | appartenance non acceptée | écran d'acceptation d'invitation |
 | `404` | `NOT_FOUND` | ressource inexistante dans cette organisation | toast, rafraîchissement de la collection |
-| `409` | `INSUFFICIENT_STOCK`, `DUPLICATE`, `CONFLICT` | état serveur incompatible avec la mutation (dont annulation d'une vente déjà annulée ou dont le crédit est remboursé) | toast + rechargement de la ressource |
+| `409` | `INSUFFICIENT_STOCK`, `PRODUCT_INACTIVE`, `DUPLICATE`, `CONFLICT` | état serveur incompatible avec la mutation (dont annulation d'une vente déjà annulée ou dont le crédit est remboursé, vente ou réapprovisionnement d'un produit désactivé) | toast + rechargement de la ressource |
 | `410` | `OTP_EXPIRED`, `EMAIL_CODE_EXPIRED` | code expiré (5 min téléphone / 10 min e-mail, RG-A07, RG-A27) | proposer un renvoi |
 | `422` | `VALIDATION_ERROR`, `OWNER_LOCKED`, `CREDIT_OVERPAYMENT`, `DEVICE_LIMIT`, `WEAK_PIN` | règle métier violée, requête bien formée | toast, aucune reprise automatique |
 | `423` | `PIN_LOCKED` | 5 échecs PIN, verrouillage 15 min (RG-A16) | message + déblocage par le propriétaire |

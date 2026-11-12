@@ -5,10 +5,11 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { Product, ProductInput } from '@/types';
 import { createId } from '@/domain/ids';
-import { computeStockStatus, isLowStock, retailValue, stockValue } from '@/domain/stock';
+import { computeStockStatus, isActiveProduct, isLowStock, retailValue, stockValue } from '@/domain/stock';
 import { createMovement, receiveStock } from '@/domain/stockMovements';
 import { SEED_PRODUCTS } from '@/mocks';
 import { syncRemote } from '@/services';
+import { t } from '@/content';
 import { currentActor } from './actor';
 import { useStockStore } from './useStockStore';
 import {
@@ -31,7 +32,13 @@ export interface ProductsState {
   /** Le stock initial, s'il est positif, est enregistré comme une réception. */
   addProduct: (input: ProductInput) => void;
   updateProduct: (id: string, patch: ProductPatch) => void;
-  removeProduct: (id: string) => void;
+  /**
+   * Désactive un produit (EF-08, RG-07) : il quitte la caisse, les alertes et les indicateurs, mais
+   * son historique reste lisible. Un produit n'est jamais supprimé. Idempotent.
+   */
+  deactivateProduct: (id: string) => void;
+  /** Réactive un produit. Exception française si un produit actif porte déjà le même nom. */
+  reactivateProduct: (id: string) => void;
   /** Réception de marchandise, tracée. Exception française si l'id est inconnu ou la quantité ≤ 0. */
   restock: (id: string, quantity: number, reason?: string) => void;
   setProducts: (products: Product[]) => void;
@@ -51,7 +58,14 @@ function sanitizeProduct(product: Product): Product {
     imageUrl: product.imageUrl,
     unit: product.unit,
   };
-  return product.imageAlt === undefined ? base : { ...base, imageAlt: product.imageAlt };
+  const withAlt = product.imageAlt === undefined ? base : { ...base, imageAlt: product.imageAlt };
+  return product.deactivatedAt === undefined
+    ? withAlt
+    : {
+        ...withAlt,
+        deactivatedAt: product.deactivatedAt,
+        ...(product.deactivatedBy === undefined ? {} : { deactivatedBy: product.deactivatedBy }),
+      };
 }
 
 export const useProductsStore = create<ProductsState>()(
@@ -90,11 +104,39 @@ export const useProductsStore = create<ProductsState>()(
         syncRemote((api) => api.products.update(id, safe), 'Modification non synchronisée.');
       },
 
-      removeProduct: (id) => {
+      deactivateProduct: (id) => {
+        const target = get().products.find((product) => product.id === id);
+        if (!target) throw new Error(`Produit introuvable (${id}).`);
+        if (target.deactivatedAt !== undefined) return;
+        const stamped: Product = {
+          ...target,
+          deactivatedAt: new Date().toISOString(),
+          deactivatedBy: currentActor().name,
+        };
         set((state) => ({
-          products: state.products.filter((product) => product.id !== id),
+          products: state.products.map((product) => (product.id === id ? sanitizeProduct(stamped) : product)),
         }));
-        syncRemote((api) => api.products.remove(id), 'Suppression non synchronisée.');
+        syncRemote((api) => api.products.deactivate(id), 'Désactivation non synchronisée.');
+      },
+
+      reactivateProduct: (id) => {
+        const target = get().products.find((product) => product.id === id);
+        if (!target) throw new Error(`Produit introuvable (${id}).`);
+        if (target.deactivatedAt === undefined) return;
+        const taken = get().products.some(
+          (product) =>
+            product.id !== id &&
+            product.deactivatedAt === undefined &&
+            product.name.trim().toLowerCase() === target.name.trim().toLowerCase()
+        );
+        if (taken) throw new Error(t.stock.deactivate.nameTaken(target.name));
+        const restored: Product = { ...target };
+        delete restored.deactivatedAt;
+        delete restored.deactivatedBy;
+        set((state) => ({
+          products: state.products.map((product) => (product.id === id ? sanitizeProduct(restored) : product)),
+        }));
+        syncRemote((api) => api.products.reactivate(id), 'Réactivation non synchronisée.');
       },
 
       restock: (id, quantity, reason) => {
@@ -133,7 +175,10 @@ export const selectLowStockProducts = (products: Product[]): Product[] =>
 
 /** Produits en rupture de stock. */
 export const selectOutOfStockProducts = (products: Product[]): Product[] =>
-  products.filter((product) => computeStockStatus(product.stock, product.minStockAlert) === 'rupture');
+  products.filter(
+    (product) =>
+      isActiveProduct(product) && computeStockStatus(product.stock, product.minStockAlert) === 'rupture'
+  );
 
 export const selectLowStock = (state: ProductsState): Product[] =>
   selectLowStockProducts(state.products);
@@ -183,5 +228,12 @@ function toProduct(value: unknown): Product | null {
     imageUrl: coerceString(value.imageUrl),
     unit: coerceString(value.unit),
   };
-  return typeof value.imageAlt === 'string' ? { ...product, imageAlt: value.imageAlt } : product;
+  if (typeof value.imageAlt === 'string') product.imageAlt = value.imageAlt;
+  const deactivatedAt = coerceString(value.deactivatedAt).trim();
+  if (deactivatedAt.length > 0) {
+    product.deactivatedAt = deactivatedAt;
+    const by = coerceString(value.deactivatedBy).trim();
+    if (by.length > 0) product.deactivatedBy = by;
+  }
+  return product;
 }

@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import type { Product, ProductInput } from '@/types';
 import { t } from '@/content';
 import { STOCK_STATUS_TONE } from '@/config/reference';
-import { filterProducts, marginPercent, sortProducts } from '@/domain/stock';
+import { activeProducts, filterProducts, marginPercent, sortProducts } from '@/domain/stock';
 import { formatFCFA } from '@/domain/money';
 import { useMediaQuery } from '@/ui';
 import {
@@ -65,7 +65,8 @@ interface RowActionsProps {
   onQuickRestock: (product: Product, quantity: number) => void;
   onRestock: (product: Product) => void;
   onEdit: (product: Product) => void;
-  onDelete: (product: Product) => void;
+  onDeactivate: (product: Product) => void;
+  onReactivate: (product: Product) => void;
 }
 
 function RowActions({
@@ -79,13 +80,15 @@ function RowActions({
   onQuickRestock,
   onRestock,
   onEdit,
-  onDelete,
+  onDeactivate,
+  onReactivate,
 }: RowActionsProps) {
   if (!canRestock && !canEdit && !canAdjust) return null;
+  const inactive = product.deactivatedAt !== undefined;
   const quick = product.status === 'rupture' ? 20 : 5;
   return (
     <div className="flex flex-wrap items-center gap-1 justify-end">
-      {canRestock && (
+      {canRestock && !inactive && (
         <>
           <Button
             variant={product.status === 'rupture' ? 'brand' : 'secondary'}
@@ -128,20 +131,46 @@ function RowActions({
             size={large ? 'md' : 'sm'}
             onClick={() => onEdit(product)}
           />
-          <IconButton
-            icon="delete"
-            label={t.stock.remove(product.name)}
-            size={large ? 'md' : 'sm'}
-            variant="danger-soft"
-            onClick={() => onDelete(product)}
-          />
+          {inactive ? (
+            <Button
+              variant="secondary"
+              size={large ? 'md' : 'sm'}
+              icon="visibility"
+              aria-label={t.stock.reactivate.action(product.name)}
+              onClick={() => onReactivate(product)}
+            >
+              {t.stock.reactivate.label}
+            </Button>
+          ) : (
+            <IconButton
+              icon="visibility_off"
+              label={t.stock.deactivate.action(product.name)}
+              size={large ? 'md' : 'sm'}
+              onClick={() => onDeactivate(product)}
+            />
+          )}
         </>
       )}
     </div>
   );
 }
 
+/** Badge de statut : « Désactivé » prime sur le niveau de stock. */
+function ProductStatusBadge({ product }: { product: Product }) {
+  if (product.deactivatedAt !== undefined) return <Badge tone="neutral">{t.stock.deactivate.badge}</Badge>;
+  const status = product.status ?? 'disponible';
+  return (
+    <Badge tone={STOCK_STATUS_TONE[status]} dot>
+      {t.labels.stockStatus[status]}
+    </Badge>
+  );
+}
+
 function StockLevel({ product }: { product: Product }) {
+  // Un produit désactivé n'a plus de seuil ni de jauge : seul le stock restant compte.
+  if (product.deactivatedAt !== undefined) {
+    return <span className="font-num font-bold text-sm text-muted">{t.stock.units(product.stock, product.unit)}</span>;
+  }
   const status = product.status ?? 'disponible';
   const ratio = product.minStockAlert > 0 ? product.stock / (product.minStockAlert * 3) : 1;
   return (
@@ -189,7 +218,8 @@ export function StockView() {
   const rawProducts = useProductsStore((state) => state.products);
   const addProduct = useProductsStore((state) => state.addProduct);
   const updateProduct = useProductsStore((state) => state.updateProduct);
-  const removeProduct = useProductsStore((state) => state.removeProduct);
+  const deactivateProduct = useProductsStore((state) => state.deactivateProduct);
+  const reactivateProduct = useProductsStore((state) => state.reactivateProduct);
   const restock = useProductsStore((state) => state.restock);
   const showToast = useUiStore((state) => state.showToast);
   const canEdit = usePermission('stock.edit');
@@ -209,12 +239,14 @@ export function StockView() {
   const [formInstance, setFormInstance] = useState(0);
   const [restockProduct, setRestockProduct] = useState<Product | null>(null);
   const [restockInstance, setRestockInstance] = useState(0);
-  const [pendingDelete, setPendingDelete] = useState<Product | null>(null);
+  const [pendingDeactivate, setPendingDeactivate] = useState<Product | null>(null);
   const [adjusting, setAdjusting] = useState<Product | null>(null);
   const [historyProduct, setHistoryProduct] = useState<Product | null>(null);
   const [journalOpen, setJournalOpen] = useState(false);
   const [inventoryOpen, setInventoryOpen] = useState(false);
 
+  const activeCount = activeProducts(products).length;
+  const inactiveCount = filterProducts(products, { status: 'inactive' }).length;
   const lowStockCount = filterProducts(products, { status: 'faible' }).length;
   const outOfStockCount = filterProducts(products, { status: 'rupture' }).length;
   const inStockCount = filterProducts(products, { status: 'disponible' }).length;
@@ -268,16 +300,25 @@ export function StockView() {
     setRestockProduct(null);
   };
 
-  const handleDeleteProduct = (product: Product) => {
-    setPendingDelete(product);
+  const confirmDeactivateProduct = () => {
+    if (!pendingDeactivate) return;
+    const product = pendingDeactivate;
+    setPendingDeactivate(null);
+    try {
+      deactivateProduct(product.id);
+      showToast(t.stock.deactivate.done(product.name), 'success');
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : t.stock.toasts.saveFailed, 'error');
+    }
   };
 
-  const confirmDeleteProduct = () => {
-    if (!pendingDelete) return;
-    const product = pendingDelete;
-    setPendingDelete(null);
-    removeProduct(product.id);
-    showToast(t.stock.toasts.removed(product.name));
+  const handleReactivateProduct = (product: Product) => {
+    try {
+      reactivateProduct(product.id);
+      showToast(t.stock.reactivate.done(product.name), 'success');
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : t.stock.toasts.saveFailed, 'error');
+    }
   };
 
   const openForm = (product: Product | null) => {
@@ -320,7 +361,8 @@ export function StockView() {
     onQuickRestock: handleRestock,
     onRestock: openRestockForm,
     onEdit: (product: Product) => openForm(product),
-    onDelete: handleDeleteProduct,
+    onDeactivate: setPendingDeactivate,
+    onReactivate: handleReactivateProduct,
   };
 
   return (
@@ -343,7 +385,7 @@ export function StockView() {
       />
 
       <StockMetrics
-        productCount={products.length}
+        productCount={activeCount}
         lowStockCount={lowStockCount}
         outOfStockCount={outOfStockCount}
         totalStockValue={totalStockValue}
@@ -362,7 +404,8 @@ export function StockView() {
         onStatusFilterChange={setStatusFilter}
         sortBy={sortBy}
         onSortChange={handleSortChange}
-        totalCount={products.length}
+        totalCount={activeCount}
+        inactiveCount={inactiveCount}
         lowStockCount={lowStockCount}
         outOfStockCount={outOfStockCount}
         inStockCount={inStockCount}
@@ -459,9 +502,7 @@ export function StockView() {
                       </>
                     )}
                     <td className="px-3 py-3">
-                      <Badge tone={STOCK_STATUS_TONE[product.status ?? 'disponible']} dot>
-                        {t.labels.stockStatus[product.status ?? 'disponible']}
-                      </Badge>
+                      <ProductStatusBadge product={product} />
                     </td>
                     {(canEdit || canRestock || canAdjust) && (
                       <td className="px-5 py-3">
@@ -486,9 +527,7 @@ export function StockView() {
                         <div className="font-semibold text-sm text-ink-900 leading-snug">
                           {product.name}
                         </div>
-                        <Badge tone={STOCK_STATUS_TONE[product.status ?? 'disponible']} dot>
-                          {t.labels.stockStatus[product.status ?? 'disponible']}
-                        </Badge>
+                        <ProductStatusBadge product={product} />
                       </div>
                       <div className="text-xs text-slate-500 mt-0.5">
                         {product.sku} · {product.category}
@@ -589,11 +628,13 @@ export function StockView() {
       )}
       {inventoryOpen && <InventoryModal open onClose={() => setInventoryOpen(false)} />}
       <ConfirmDialog
-        open={pendingDelete !== null}
-        title={t.stock.remove(pendingDelete?.name ?? '')}
-        confirmLabel={t.common.delete}
-        onConfirm={confirmDeleteProduct}
-        onClose={() => setPendingDelete(null)}
+        open={pendingDeactivate !== null}
+        title={t.stock.deactivate.title(pendingDeactivate?.name ?? '')}
+        description={t.stock.deactivate.text}
+        confirmLabel={t.stock.deactivate.confirm}
+        danger={false}
+        onConfirm={confirmDeactivateProduct}
+        onClose={() => setPendingDeactivate(null)}
       />
     </div>
   );
