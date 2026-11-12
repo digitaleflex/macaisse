@@ -31,12 +31,15 @@ export function Sidebar() {
   const visibleShortcuts = shortcuts.filter((item) => !item.permission || can(role, item.permission));
 
   return (
-    <aside className="hidden lg:flex fixed inset-y-0 left-0 z-40 w-[264px] flex-col bg-ink-900 text-slate-300 bg-grid-ink">
+    <aside
+      aria-label={t.app.mainNavigation}
+      className="hidden lg:flex fixed inset-y-0 left-0 z-40 w-[264px] flex-col bg-ink-900 text-slate-300 bg-grid-ink"
+    >
       <div className="px-5 pt-6 pb-4 flex items-center gap-2.5">
         <BrandMark className="size-8" />
         <span className="font-display font-extrabold text-white text-[17px] tracking-tight">{t.app.name}</span>
         {isDemoMode && (
-          <span className="ml-auto text-[10px] font-bold uppercase tracking-wider text-zest-400/80">{t.app.demoBadge}</span>
+          <span className="ml-auto text-xs font-bold uppercase tracking-wider text-zest-400/80">{t.app.demoBadge}</span>
         )}
       </div>
       <div className="px-3 pb-5">
@@ -71,7 +74,7 @@ export function Sidebar() {
         })}
       </nav>
 
-      <div className="px-6 mt-7 mb-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+      <div className="px-6 mt-7 mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
         {t.navSecondary.title}
       </div>
       <div className="px-3 flex flex-col gap-1">
@@ -85,7 +88,7 @@ export function Sidebar() {
             <Icon name={item.icon} size={19} />
             <span className="flex-1 text-left">{item.label}</span>
             {item.count !== undefined && item.count > 0 && (
-              <span className="min-w-5 h-5 px-1.5 rounded-full bg-rose-500 text-white text-[11px] font-bold flex items-center justify-center">
+              <span className="min-w-5 h-5 px-1.5 rounded-full bg-rose-500 text-white text-xs font-bold flex items-center justify-center">
                 {item.count}
               </span>
             )}

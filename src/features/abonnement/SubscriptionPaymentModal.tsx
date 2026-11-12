@@ -331,7 +331,7 @@ export function SubscriptionPaymentModal({ open, onClose, initialCycle }: Subscr
           <div
             className={cn(
               'mx-auto size-14 rounded-2xl flex items-center justify-center',
-              succeeded ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'
+              succeeded ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-700'
             )}
           >
             <Icon name={succeeded ? 'check_circle' : 'error'} size={30} />

@@ -33,7 +33,7 @@ export function ChannelSplit({ data }: ChannelSplitProps) {
             </ResponsiveContainer>
             <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
               <span className="font-num font-bold text-sm text-ink-900">{formatFCFA(total, { withSuffix: false })}</span>
-              <span className="text-[11px] text-muted">{t.common.currency}</span>
+              <span className="text-xs text-muted">{t.common.currency}</span>
             </div>
           </div>
           <ul className="w-full flex flex-col gap-2.5">

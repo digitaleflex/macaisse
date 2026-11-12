@@ -40,7 +40,7 @@ export function Chip({ active, onClick, children, count, dot, icon }: ChipProps)
       {count !== undefined && (
         <span
           className={cn(
-            'min-w-5 h-5 px-1.5 rounded-full text-[11px] font-bold flex items-center justify-center font-num',
+            'min-w-5 h-5 px-1.5 rounded-full text-xs font-bold flex items-center justify-center font-num',
             active ? 'bg-white/15 text-white' : 'bg-slate-100 text-slate-600'
           )}
         >

@@ -34,7 +34,7 @@ export function Topbar() {
           <BrandMark className="size-9" />
           <span className="min-w-0">
             <span className="block font-display font-bold text-[15px] text-ink-900 leading-tight truncate">{page.title}</span>
-            <span className="flex items-center gap-0.5 text-[11px] text-slate-500">
+            <span className="flex items-center gap-0.5 text-xs text-muted">
               <span className="truncate">
                 {business.name} · {t.roles[role]}
               </span>

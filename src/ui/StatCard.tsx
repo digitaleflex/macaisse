@@ -12,6 +12,8 @@ export interface StatCardProps {
   tone?: StatTone;
   trend?: { value: string; positive: boolean } | null;
   hint?: ReactNode;
+  /** Masque l'indication sous 640 px pour gagner de la hauteur (listes denses). */
+  hideHintOnMobile?: boolean;
   footer?: ReactNode;
   onClick?: () => void;
   className?: string;
@@ -20,12 +22,23 @@ export interface StatCardProps {
 const ICON_TONE: Record<StatTone, string> = {
   neutral: 'bg-slate-100 text-slate-600',
   brand: 'bg-brand-50 text-brand-700',
-  danger: 'bg-rose-50 text-rose-600',
+  danger: 'bg-rose-50 text-rose-700',
   warning: 'bg-amber-50 text-amber-600',
   info: 'bg-sky-50 text-sky-600',
 };
 
-export function StatCard({ label, value, icon, tone = 'neutral', trend, hint, footer, onClick, className }: StatCardProps) {
+export function StatCard({
+  label,
+  value,
+  icon,
+  tone = 'neutral',
+  trend,
+  hint,
+  hideHintOnMobile = false,
+  footer,
+  onClick,
+  className,
+}: StatCardProps) {
   const interactive = onClick !== undefined;
   const Tag = interactive ? 'button' : 'div';
   return (
@@ -39,26 +52,26 @@ export function StatCard({ label, value, icon, tone = 'neutral', trend, hint, fo
       )}
     >
       <div className="flex items-center justify-between gap-2">
-        <span className="text-[13px] font-medium text-slate-500 truncate">{label}</span>
+        <span className="text-[13px] font-medium text-muted leading-tight min-w-0">{label}</span>
         <span className={cn('size-9 rounded-xl flex items-center justify-center shrink-0', ICON_TONE[tone])}>
           <Icon name={icon} size={19} />
         </span>
       </div>
       <div className="font-num font-bold text-lg min-[400px]:text-xl sm:text-2xl text-ink-900 leading-none whitespace-nowrap">{value}</div>
       {(trend || hint) && (
-        <div className="flex items-center gap-1.5 text-xs min-w-0">
+        <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs min-w-0">
           {trend && (
             <span
               className={cn(
                 'inline-flex items-center gap-0.5 font-semibold shrink-0',
-                trend.positive ? 'text-brand-700' : 'text-rose-600'
+                trend.positive ? 'text-brand-700' : 'text-rose-700'
               )}
             >
               <Icon name={trend.positive ? 'arrow_upward' : 'arrow_downward'} size={14} />
               {trend.value}
             </span>
           )}
-          {hint && <span className="text-slate-500 truncate">{hint}</span>}
+          {hint && <span className={cn('text-muted', hideHintOnMobile && 'hidden sm:inline')}>{hint}</span>}
         </div>
       )}
       {footer}

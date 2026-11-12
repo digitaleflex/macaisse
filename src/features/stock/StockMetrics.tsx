@@ -37,7 +37,7 @@ export function StockMetrics({
             value: t.stock.metrics.margin(averageMarginPercent),
             positive: averageMarginPercent >= 0,
           }}
-          className="col-span-2 xl:col-span-1"
+          hideHintOnMobile
         />
       )}
       <StatCard
@@ -45,6 +45,7 @@ export function StockMetrics({
         value={productCount}
         icon="inventory_2"
         hint={t.stock.metrics.referencesHint}
+        hideHintOnMobile
       />
       <StatCard
         label={t.stock.metrics.low}
@@ -52,6 +53,7 @@ export function StockMetrics({
         icon="trending_down"
         tone="warning"
         hint={t.stock.metrics.lowHint}
+        hideHintOnMobile
         onClick={onShowLowStock}
       />
       <StatCard
@@ -60,8 +62,8 @@ export function StockMetrics({
         icon="production_quantity_limits"
         tone="danger"
         hint={t.stock.metrics.outHint}
+        hideHintOnMobile
         onClick={onShowOutOfStock}
-        className="col-span-2 sm:col-span-1"
       />
     </div>
   );

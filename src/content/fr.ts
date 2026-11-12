@@ -23,7 +23,7 @@ const nav: Record<TabType, { label: string; title: string; description: string }
   },
   stock: {
     label: 'Stock',
-    title: 'Inventaire',
+    title: 'Stock',
     description: 'Catalogue, niveaux de stock et réapprovisionnement',
   },
   credits: {
@@ -99,6 +99,7 @@ export const fr = {
     name: 'Ma Caisse',
     tagline: 'Caisse & gestion de commerce',
     demoBadge: 'Démo',
+    mainNavigation: 'Navigation principale',
     demoHint: 'Données de démonstration — aucun backend connecté',
     liveHint: 'Connecté au serveur',
     loading: 'Chargement de votre espace…',
@@ -252,6 +253,7 @@ export const fr = {
     lowStock: (n: number) => `Plus que ${n}`,
     soldOut: 'Épuisé',
     cart: {
+      panelLabel: 'Panier en cours',
       title: 'Panier',
       items: (n: number) => plural(n, 'article'),
       emptyTitle: 'Panier vide',
@@ -394,6 +396,7 @@ export const fr = {
       outHint: 'À commander en priorité',
     },
     searchPlaceholder: 'Rechercher par nom, référence ou rayon…',
+    categoryFilterLabel: 'Filtrer par rayon',
     allCategories: 'Tous les rayons',
     statusAll: 'Tous',
     statusInStock: 'Disponibles',

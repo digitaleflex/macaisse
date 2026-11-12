@@ -186,6 +186,7 @@ export function TeamModal() {
                     <>
                       <Select
                         name={`role-${member.userId}`}
+                        ariaLabel={t.team.changeRole(fullName)}
                         value={member.role}
                         onChange={(e) => {
                           if (isAssignable(e.target.value)) void handleRole(member, e.target.value);

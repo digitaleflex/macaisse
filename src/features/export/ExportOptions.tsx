@@ -77,20 +77,20 @@ export function ExportOptions(props: ExportOptionsProps) {
         <div className="grid grid-cols-3 gap-3 pt-3 border-t border-line">
           {showSales && (
             <div>
-              <div className="text-[11px] text-slate-500">{t.exportModal.income}</div>
+              <div className="text-xs text-slate-500">{t.exportModal.income}</div>
               <div className="font-num font-bold text-sm text-brand-700">+{formatFCFA(props.totalSales)}</div>
             </div>
           )}
           {showExpenses && (
             <div>
-              <div className="text-[11px] text-slate-500">{t.exportModal.charges}</div>
-              <div className="font-num font-bold text-sm text-rose-600">−{formatFCFA(props.totalExpenses)}</div>
+              <div className="text-xs text-slate-500">{t.exportModal.charges}</div>
+              <div className="font-num font-bold text-sm text-rose-700">−{formatFCFA(props.totalExpenses)}</div>
             </div>
           )}
           {filterType === 'all' && (
             <div className="text-right">
-              <div className="text-[11px] text-slate-500">{t.exportModal.balance}</div>
-              <div className={cn('font-num font-bold text-sm', net >= 0 ? 'text-ink-900' : 'text-rose-600')}>
+              <div className="text-xs text-slate-500">{t.exportModal.balance}</div>
+              <div className={cn('font-num font-bold text-sm', net >= 0 ? 'text-ink-900' : 'text-rose-700')}>
                 {net >= 0 ? '+' : ''}
                 {formatFCFA(net)}
               </div>

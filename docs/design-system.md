@@ -92,3 +92,25 @@ Détail des ratios et décisions : `docs/design-system-contrast.md` (§2–§5).
 4. Documenter ici son rôle et son usage (famille, fonds autorisés, ratio visé).
 
 Règles dures : **aucun composant ne contient de hex** (hors `GoogleMark`/`GoogleButton`, `BrandMark` et pastels `pdfTheme`) ; pas de seconde palette ; pas d'autre fichier de tokens (`palette`/`chartColors` réutilisent les tokens, les gris Tailwind d'appoint n'en font pas partie).
+
+## 11. Lisibilité et accessibilité — règles appliquées
+
+Issues de l'audit axe-core du 12/11/2026 (20 états : écrans et fenêtres ouvertes, bureau et téléphone ;
+**0 violation** après correction). Chaque règle est verrouillée par `src/design/__tests__/accessibilityGuards.test.ts`.
+
+| Règle | Pourquoi |
+|---|---|
+| **Aucun texte sous 12 px** (`text-xs` minimum ; graphiques `fontSize={12}`). Seule exception : la légende décorative du code-barres du ticket. | Lisibilité sur téléphone et pour des yeux fatigués. |
+| Texte rouge : **`text-rose-700`** (jamais `rose-600`, 4,4:1 sur blanc). Texte orange : **`text-amber-700`**. Texte vert : `brand-700` / `emerald-700`. Les icônes tolèrent 3:1 (`*-600`). | AA = 4,5:1 pour le texte normal. |
+| Texte secondaire sur **fond gris ou canvas** : **`text-muted`**. `text-slate-500` n'est valable que sur fond blanc (4,76:1) ; il tombe à 4,05–4,36:1 sur `canvas` et sur les puces grises. | Page, en-têtes, onglets inactifs (`SegmentedControl`) en dépendent. |
+| **Pas d'opacité sur un texte** (`text-rose-700/70`) ni sur un conteneur qui porte un badge (`opacity-60` d'une carte épuisée). | La couleur réelle devient imprévisible et le contraste s'effondre. |
+| `Modal` et `Drawer` n'emploient ni `<header>` ni `<footer>` ; leur zone défilante est focalisable (`tabIndex=0`). | Sinon : zones de page en double (lecteurs d'écran) et contenu non défilable au clavier. |
+| Toute `Select` sans libellé visible reçoit **`ariaLabel`**. Tout bouton dont le texte disparaît sur téléphone (`hidden sm:inline`) reçoit **`aria-label`**. | Un champ ou un bouton sans nom est inutilisable au lecteur d'écran. |
+| Chaque `<aside>` a un `aria-label` ; la Caisse porte un `<h1 class="sr-only">`. | Plusieurs zones latérales coexistent ; une page sans titre est mal annoncée. |
+| Un `id` est **unique** dans la page : le panier du bureau et la feuille mobile coexistent (`checkoutId`). | HTML valide, cibles de tests stables. |
+| Nommage : l'onglet s'appelle **Stock** ; « Inventaire » désigne uniquement l'opération de comptage. | Éviter deux sens pour un même mot. |
+| Zones tactiles : `IconButton` `md` (40 px) sur les cartes mobiles, `sm` (32 px) réservé aux tableaux du bureau. Minimum WCAG 2.2 AA : 24 px. | Une caisse se tient d'une main, parfois sous la lumière directe. |
+
+**Ce que l'audit automatique ne couvre pas** : parcours au lecteur d'écran, ordre de tabulation réel,
+zoom à 200 %, mode contraste élevé, test avec de vrais commerçants. Ils restent à faire.
+

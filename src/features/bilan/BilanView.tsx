@@ -163,14 +163,20 @@ export function BilanView() {
         description={t.bilan.exports.subtitle}
         icon="cloud_download"
         action={
-          <Button variant="ghost" size="sm" icon="tune" onClick={() => openModal('export')}>
+          <Button
+            variant="ghost"
+            size="sm"
+            icon="tune"
+            aria-label={t.bilan.exports.customize}
+            onClick={() => openModal('export')}
+          >
             <span className="hidden sm:inline">{t.bilan.exports.customize}</span>
           </Button>
         }
       >
         <div className="grid sm:grid-cols-2 gap-3">
           {[
-            { title: t.bilan.exports.pdfTitle, text: t.bilan.exports.pdfText, badge: t.bilan.exports.pdfBadge, icon: 'picture_as_pdf', tone: 'bg-rose-50 text-rose-600', onClick: handleExportPDF },
+            { title: t.bilan.exports.pdfTitle, text: t.bilan.exports.pdfText, badge: t.bilan.exports.pdfBadge, icon: 'picture_as_pdf', tone: 'bg-rose-50 text-rose-700', onClick: handleExportPDF },
             { title: t.bilan.exports.csvTitle, text: t.bilan.exports.csvText, badge: t.bilan.exports.csvBadge, icon: 'table_view', tone: 'bg-brand-50 text-brand-700', onClick: handleExportCSV },
           ].map((item) => (
             <button

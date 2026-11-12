@@ -81,7 +81,7 @@ export function Modal({
           <span className={cn('h-1 w-10 rounded-full', dark ? 'bg-white/25' : 'bg-slate-200')} />
         </div>
         {title !== undefined && (
-          <header
+          <div
             className={cn(
               'flex items-center justify-between gap-3 px-5 sm:px-6 py-4',
               dark ? 'bg-ink-900 text-white bg-grid-ink' : 'border-b border-line'
@@ -118,15 +118,25 @@ export function Modal({
             >
               <Icon name="close" size={20} />
             </button>
-          </header>
+          </div>
         )}
 
-        <div className={cn(flush ? 'flex flex-col min-h-0' : 'px-5 sm:px-6 py-5 space-y-5', 'overflow-y-auto flex-1', bodyClassName)}>{children}</div>
+        {/* Zone défilante focalisable : sans cela, un clavier ne peut pas faire défiler un contenu sans bouton (ticket). */}
+        <div
+          tabIndex={0}
+          className={cn(
+            flush ? 'flex flex-col min-h-0' : 'px-5 sm:px-6 py-5 space-y-5',
+            'overflow-y-auto flex-1 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ink-900/30',
+            bodyClassName
+          )}
+        >
+          {children}
+        </div>
 
         {footer !== undefined && footer !== null && (
-          <footer className="px-5 sm:px-6 py-4 border-t border-line bg-slate-50/70 flex gap-2 pb-[max(1rem,env(safe-area-inset-bottom))]">
+          <div className="px-5 sm:px-6 py-4 border-t border-line bg-slate-50/70 flex gap-2 pb-[max(1rem,env(safe-area-inset-bottom))]">
             {footer}
-          </footer>
+          </div>
         )}
       </div>
     </div>,

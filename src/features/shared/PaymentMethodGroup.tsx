@@ -16,7 +16,7 @@ export function PaymentMethodGroup<M extends string>({ label, options, value, on
   if (options.length === 0) return null;
   return (
     <div>
-      <div className="text-[11px] font-semibold uppercase tracking-wider text-muted mb-1.5">{label}</div>
+      <div className="text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">{label}</div>
       <div className="grid grid-cols-3 gap-2">
         {options.map((option) => {
           const active = value === option.method;

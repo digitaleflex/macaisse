@@ -49,14 +49,14 @@ export function CreditDetailCard({ credit, status, daysLateCount, progress, onPa
       <div className="flex items-end justify-between gap-3">
         <div>
           <div className="text-xs text-slate-500">{t.credits.card.remaining}</div>
-          <div className={cn('font-num font-extrabold text-2xl leading-tight', overdue ? 'text-rose-600' : 'text-ink-900')}>
+          <div className={cn('font-num font-extrabold text-2xl leading-tight', overdue ? 'text-rose-700' : 'text-ink-900')}>
             {formatFCFA(credit.remainingAmount)}
           </div>
         </div>
         <div className="text-right">
           <div className="text-xs text-slate-500">{t.credits.card.due}</div>
           <div className="text-sm font-semibold text-ink-900">{formatDue(credit.dueDate)}</div>
-          <div className={cn('text-[11px] font-semibold', overdue ? 'text-rose-600' : 'text-slate-500')}>
+          <div className={cn('text-xs font-semibold', overdue ? 'text-rose-700' : 'text-slate-500')}>
             {overdue
               ? t.credits.card.overdueSince(daysLateCount)
               : daysLeft !== null && daysLeft >= 0
@@ -68,7 +68,7 @@ export function CreditDetailCard({ credit, status, daysLateCount, progress, onPa
 
       <div className="space-y-1.5">
         <ProgressBar value={progress} tone={overdue ? 'danger' : 'brand'} label={t.credits.card.paid(formatFCFA(paid))} />
-        <div className="flex justify-between text-[11px] text-slate-500">
+        <div className="flex justify-between text-xs text-slate-500">
           <span>{t.credits.card.paid(formatFCFA(paid))}</span>
           <span>{t.credits.card.of(formatFCFA(credit.totalInitial))}</span>
         </div>

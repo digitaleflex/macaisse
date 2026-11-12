@@ -67,7 +67,7 @@ export function DashboardHero({ todayCount, averageTicket }: DashboardHeroProps)
           { label: t.dashboard.heroCart, value: String(cartCount) },
         ].map((item) => (
           <div key={item.label} className="min-w-0">
-            <dt className="text-[11px] text-slate-400 truncate">{item.label}</dt>
+            <dt className="text-xs text-slate-400 truncate">{item.label}</dt>
             <dd className="font-num font-bold text-lg text-white truncate">{item.value}</dd>
           </div>
         ))}

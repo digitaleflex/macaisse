@@ -58,6 +58,8 @@ interface RowActionsProps {
   canRestock: boolean;
   canAdjust: boolean;
   canEdit: boolean;
+  /** Zones tactiles agrandies (cartes sur téléphone) ; le tableau du bureau reste compact. */
+  large?: boolean;
   onAdjust: (product: Product) => void;
   onHistory: (product: Product) => void;
   onQuickRestock: (product: Product, quantity: number) => void;
@@ -71,6 +73,7 @@ function RowActions({
   canRestock,
   canAdjust,
   canEdit,
+  large = false,
   onAdjust,
   onHistory,
   onQuickRestock,
@@ -81,12 +84,12 @@ function RowActions({
   if (!canRestock && !canEdit && !canAdjust) return null;
   const quick = product.status === 'rupture' ? 20 : 5;
   return (
-    <div className="flex items-center gap-1 justify-end">
+    <div className="flex flex-wrap items-center gap-1 justify-end">
       {canRestock && (
         <>
           <Button
             variant={product.status === 'rupture' ? 'brand' : 'secondary'}
-            size="sm"
+            size={large ? 'md' : 'sm'}
             icon="add"
             aria-label={t.stock.quickRestockLabel(quick, product.name)}
             onClick={() => onQuickRestock(product, quick)}
@@ -96,7 +99,7 @@ function RowActions({
           <IconButton
             icon="local_shipping"
             label={t.stock.restock}
-            size="sm"
+            size={large ? 'md' : 'sm'}
             onClick={() => onRestock(product)}
           />
         </>
@@ -106,13 +109,13 @@ function RowActions({
           <IconButton
             icon="fact_check"
             label={t.stock.adjust.action(product.name)}
-            size="sm"
+            size={large ? 'md' : 'sm'}
             onClick={() => onAdjust(product)}
           />
           <IconButton
             icon="history"
             label={t.stock.movements.history(product.name)}
-            size="sm"
+            size={large ? 'md' : 'sm'}
             onClick={() => onHistory(product)}
           />
         </>
@@ -122,13 +125,13 @@ function RowActions({
           <IconButton
             icon="edit"
             label={t.stock.edit(product.name)}
-            size="sm"
+            size={large ? 'md' : 'sm'}
             onClick={() => onEdit(product)}
           />
           <IconButton
             icon="delete"
             label={t.stock.remove(product.name)}
-            size="sm"
+            size={large ? 'md' : 'sm'}
             variant="danger-soft"
             onClick={() => onDelete(product)}
           />
@@ -147,12 +150,12 @@ function StockLevel({ product }: { product: Product }) {
         <span
           className={cn(
             'font-num font-bold text-sm',
-            status === 'rupture' ? 'text-rose-600' : 'text-ink-900',
+            status === 'rupture' ? 'text-rose-700' : 'text-ink-900',
           )}
         >
           {t.stock.units(product.stock, product.unit)}
         </span>
-        <span className="text-[11px] text-muted font-num">
+        <span className="text-xs text-muted font-num">
           {t.stock.minShort(product.minStockAlert)}
         </span>
       </div>
@@ -517,7 +520,7 @@ export function StockView() {
                       </>
                     )}
                   </div>
-                  <RowActions product={product} {...actionProps} />
+                  <RowActions product={product} large {...actionProps} />
                 </li>
               ))}
             </ul>
@@ -533,7 +536,7 @@ export function StockView() {
           </span>
           <div className="flex-1 min-w-48">
             <div className="text-sm font-semibold text-ink-900">{t.stock.audit.title}</div>
-            <div className="text-xs text-slate-500">
+            <div className="text-xs text-muted">
               {lastInventory
                 ? t.stock.audit.last(
                     new Date(lastInventory.at).toLocaleDateString('fr-FR', {

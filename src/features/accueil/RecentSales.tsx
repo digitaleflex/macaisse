@@ -61,7 +61,7 @@ export function RecentSales({ sales, todayCount, onSelect, onViewAll }: RecentSa
                   </span>
                   <span className="text-right shrink-0">
                     <span className={cancelled ? 'block font-num font-bold text-sm text-slate-400 line-through' : 'block font-num font-bold text-sm text-ink-900'}>{formatFCFA(sale.amount)}</span>
-                    <span className={partial ? 'text-[11px] font-semibold text-amber-600' : 'text-[11px] text-muted'}>
+                    <span className={partial ? 'text-xs font-semibold text-amber-700' : 'text-xs text-muted'}>
                       {cancelled
                         ? t.dashboard.recent.cancelled
                         : partial

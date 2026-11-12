@@ -45,7 +45,7 @@ export function SegmentedControl<T extends string>({
               'rounded-lg font-semibold transition-all cursor-pointer whitespace-nowrap inline-flex items-center justify-center gap-1.5',
               size === 'sm' ? 'px-3 h-7 text-xs' : 'px-4 h-8 text-[13px]',
               fullWidth && 'flex-1',
-              active ? 'bg-white text-ink-900 shadow-card' : 'text-slate-500 hover:text-ink-900'
+              active ? 'bg-white text-ink-900 shadow-card' : 'text-muted hover:text-ink-900'
             )}
           >
             {option.label}

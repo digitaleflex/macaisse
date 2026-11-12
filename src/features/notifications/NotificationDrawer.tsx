@@ -29,7 +29,7 @@ export function NotificationDrawer() {
       subtitle={unread > 0 ? t.notifications.unread(unread) : undefined}
       actions={
         unread > 0 ? (
-          <Button variant="ghost" size="sm" icon="done_all" onClick={markAllRead}>
+          <Button variant="ghost" size="sm" icon="done_all" aria-label={t.notifications.markAll} onClick={markAllRead}>
             <span className="hidden sm:inline">{t.notifications.markAll}</span>
           </Button>
         ) : undefined

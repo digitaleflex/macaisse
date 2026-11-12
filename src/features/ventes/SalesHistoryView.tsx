@@ -283,7 +283,7 @@ function SaleRow({ sale, dayHeader, onOpen }: SaleRowProps) {
             </span>
             <span className="block text-xs text-slate-500 mt-0.5 truncate">{details.join(' · ')}</span>
             {cancelled && sale.cancelledBy && (
-              <span className="block text-xs text-rose-600 mt-0.5 truncate">
+              <span className="block text-xs text-rose-700 mt-0.5 truncate">
                 {t.sales.history.cancelledBy(sale.cancelledBy)}
                 {sale.cancelReason ? ` — ${sale.cancelReason}` : ''}
               </span>
@@ -300,7 +300,7 @@ function SaleRow({ sale, dayHeader, onOpen }: SaleRowProps) {
               {formatFCFA(sale.amount)}
             </span>
             {partial && (
-              <span className="text-[11px] font-semibold text-amber-600">
+              <span className="text-xs font-semibold text-amber-700">
                 {t.dashboard.recent.remaining(formatFCFA(sale.remainingAmount ?? 0))}
               </span>
             )}

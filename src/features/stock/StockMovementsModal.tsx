@@ -109,11 +109,11 @@ function MovementRow({ movement, showProduct }: { movement: StockMovement; showP
         </div>
       </div>
       <div className="text-right shrink-0">
-        <div className={cn('font-num font-bold text-sm', entry ? 'text-emerald-600' : 'text-rose-600')}>
+        <div className={cn('font-num font-bold text-sm', entry ? 'text-emerald-700' : 'text-rose-700')}>
           {entry ? '+' : '−'}
           {Math.abs(movement.quantity)}
         </div>
-        <div className="text-[11px] text-muted font-num">{t.stock.movements.after(movement.quantityAfter)}</div>
+        <div className="text-xs text-muted font-num">{t.stock.movements.after(movement.quantityAfter)}</div>
       </div>
     </li>
   );

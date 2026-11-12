@@ -35,7 +35,7 @@ export function StockAlerts() {
     stockTotal > 0 && {
       key: 'stock',
       icon: 'inventory',
-      tone: 'bg-rose-50 text-rose-600',
+      tone: 'bg-rose-50 text-rose-700',
       title: t.dashboard.alerts.stockTitle(stockTotal),
       text: details,
       onClick: () => setTab('stock'),

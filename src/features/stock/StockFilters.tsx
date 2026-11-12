@@ -70,6 +70,7 @@ export function StockFilters(props: StockFiltersProps) {
         <div className="flex gap-2">
           <Select
             name="stock-category"
+            ariaLabel={t.stock.categoryFilterLabel}
             value={props.categoryFilter}
             onChange={(event) => {
               if (isCategoryFilter(event.target.value))
@@ -95,7 +96,7 @@ export function StockFilters(props: StockFiltersProps) {
           ))}
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          <span className="text-xs text-slate-500">{t.stock.sort.label}</span>
+          <span className="text-xs text-muted">{t.stock.sort.label}</span>
           <SegmentedControl
             label={t.stock.sort.label}
             size="sm"

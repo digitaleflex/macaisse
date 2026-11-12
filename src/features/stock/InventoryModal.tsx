@@ -100,7 +100,7 @@ export function InventoryModal({ open, onClose }: InventoryModalProps) {
         <span className="font-semibold text-ink-900 font-num">{t.stock.inventory.progress(counted, products.length)}</span>
         <span>{t.stock.inventory.variances(variances.length)}</span>
         {variances.length > 0 && (
-          <span className={cn('font-num font-semibold', impact < 0 ? 'text-rose-600' : 'text-emerald-600')}>
+          <span className={cn('font-num font-semibold', impact < 0 ? 'text-rose-700' : 'text-emerald-700')}>
             {t.stock.inventory.impact(`${impact > 0 ? '+' : ''}${formatFCFA(impact)}`)}
           </span>
         )}
@@ -178,7 +178,7 @@ function InventoryRow({ product, text, delta, invalid, onChange }: InventoryRowP
             invalid ? 'border-rose-300' : 'border-line hover:border-line-strong'
           )}
         />
-        {invalid && <span className="block text-[11px] text-rose-600 mt-1">{t.stock.inventory.invalid}</span>}
+        {invalid && <span className="block text-xs text-rose-700 mt-1">{t.stock.inventory.invalid}</span>}
       </div>
     </li>
   );

@@ -153,7 +153,7 @@ export function CreditsView() {
               <Icon name="warning" size={20} />
             </div>
             <div className="font-num font-bold text-xl sm:text-2xl text-rose-700 mt-2 whitespace-nowrap">{formatFCFA(summary.overdue)}</div>
-            <div className="text-xs text-rose-600">{t.credits.summary.overdueHint(counts.overdue)}</div>
+            <div className="text-xs text-rose-700">{t.credits.summary.overdueHint(counts.overdue)}</div>
           </div>
         </div>
       </section>
@@ -170,7 +170,7 @@ export function CreditsView() {
       />
 
       <div className="flex flex-col gap-3">
-        <SectionTitle action={<span className="text-xs text-slate-500">{t.credits.listHint}</span>}>
+        <SectionTitle action={<span className="text-xs text-muted">{t.credits.listHint}</span>}>
           {t.credits.listTitle}
         </SectionTitle>
 

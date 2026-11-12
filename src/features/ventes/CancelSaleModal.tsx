@@ -120,7 +120,7 @@ export function CancelSaleModal({ sale, credit, onClose, onCancelled }: CancelSa
         </div>
 
         {failure !== null && (
-          <p role="alert" className="text-sm text-rose-600">
+          <p role="alert" className="text-sm text-rose-700">
             {failure}
           </p>
         )}

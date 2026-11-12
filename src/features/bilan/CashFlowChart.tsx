@@ -35,7 +35,7 @@ export function CashFlowChart({ data }: CashFlowChartProps) {
         <div className="h-52 -mx-2">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={data} margin={{ top: 8, right: 8, left: 8, bottom: 0 }}>
-              <XAxis dataKey="label" stroke={chartColors.axis} fontSize={11} tickLine={false} axisLine={false} interval="preserveStartEnd" minTickGap={8} />
+              <XAxis dataKey="label" stroke={chartColors.axis} fontSize={12} tickLine={false} axisLine={false} interval="preserveStartEnd" minTickGap={8} />
               <ReferenceLine y={0} stroke={palette.slate300} />
               <Tooltip
                 cursor={{ fill: chartColors.cursor }}
