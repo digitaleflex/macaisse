@@ -12,6 +12,7 @@ import { useProductsStore } from '@/store/useProductsStore';
 import { useSalesStore } from '@/store/useSalesStore';
 import { useCurrentSession } from '@/store/useSessionStore';
 import { useUiStore } from '@/store/useUiStore';
+import { useToday } from '@/lib/useToday';
 import { Badge, Button, Card, Icon, PageHeader, SegmentedControl, cn } from '@/ui';
 import { CashFlowChart } from './CashFlowChart';
 import { ChannelSplit } from './ChannelSplit';
@@ -45,7 +46,7 @@ function withDayLabels(points: SeriesPoint[], days: number): SeriesPoint[] {
 
 export function BilanView() {
   const [period, setPeriod] = useState<Period>('14d');
-  const now = useMemo(() => new Date(), []);
+  const now = useToday();
   const { business } = useCurrentSession();
 
   const sales = useSalesStore((state) => state.sales);
@@ -61,7 +62,8 @@ export function BilanView() {
   const revenueSeries = useMemo(() => withDayLabels(dailyRevenueSeries(sales, days, now), days), [sales, days, now]);
   const cashFlow = useMemo(() => withDayLabels(cashFlowSeries(sales, expenses, days, now), days), [sales, expenses, days, now]);
   const expenseSlices = useMemo(() => expenseBreakdown(expenses, from, now), [expenses, from, now]);
-  const channels = useMemo(() => channelSplit(sales), [sales]);
+  // La répartition suit la période choisie, comme les courbes et les dépenses.
+  const channels = useMemo(() => channelSplit(sales, from, now), [sales, from, now]);
 
   const stats = useMemo(() => {
     const series = dailyRevenueSeries(sales, days * 2, now);

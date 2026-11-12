@@ -6,6 +6,8 @@ import {
   computeKpis,
   dailyRevenueSeries,
   expenseBreakdown,
+  monthToDateComparison,
+  revenueBetween,
 } from '../finances';
 
 function makeProduct(overrides: Partial<Product>): Product {
@@ -200,5 +202,55 @@ describe('ventes annulées', () => {
     expect(dailyRevenueSeries(sales, 1, NOW)).toEqual([{ date: '2024-10-18', value: 1000 }]);
     expect(cashFlowSeries(sales, [], 1, NOW)).toEqual([{ date: '2024-10-18', value: 1000 }]);
     expect(channelSplit(sales)).toEqual([{ key: 'cash', label: 'cash', amount: 1000 }]);
+  });
+});
+
+describe('chiffre d’affaires par période', () => {
+  const sales = [
+    makeSale({ id: 'a', date: '2026-11-20', amount: 1000 }),
+    makeSale({ id: 'b', date: '2026-11-03', amount: 4000 }),
+    makeSale({ id: 'c', date: '2026-10-03', amount: 3000 }),
+    makeSale({ id: 'd', date: '2026-10-25', amount: 9000 }),
+    makeSale({ id: 'x', date: '2026-11-20', amount: 8000, status: 'cancelled' }),
+  ];
+
+  it('additionne les ventes non annulées entre deux jours, bornes incluses', () => {
+    expect(revenueBetween(sales, new Date(2026, 10, 3), new Date(2026, 10, 20))).toBe(5000);
+    expect(revenueBetween(sales, new Date(2026, 10, 20), new Date(2026, 10, 20))).toBe(1000);
+    expect(revenueBetween(sales, new Date(2026, 0, 1), new Date(2026, 0, 31))).toBe(0);
+  });
+
+  it('compare le mois en cours aux MÊMES jours du mois précédent, pas à un mois complet', () => {
+    const { current, previous } = monthToDateComparison(sales, new Date(2026, 10, 20));
+    expect(current).toBe(5000);
+    // Du 1er au 20 octobre : la vente du 3 (3 000), pas celle du 25 (9 000).
+    expect(previous).toBe(3000);
+  });
+
+  it('ramène la comparaison à la fin d’un mois plus court (31 mars → 28 février)', () => {
+    const march = [
+      makeSale({ id: 'f', date: '2026-02-28', amount: 700 }),
+      makeSale({ id: 'g', date: '2026-03-31', amount: 100 }),
+    ];
+    expect(monthToDateComparison(march, new Date(2026, 2, 31))).toEqual({ current: 100, previous: 700 });
+  });
+
+  it('gère janvier (mois précédent = décembre de l’année d’avant)', () => {
+    const january = [
+      makeSale({ id: 'h', date: '2025-12-10', amount: 500 }),
+      makeSale({ id: 'i', date: '2026-01-10', amount: 800 }),
+    ];
+    expect(monthToDateComparison(january, new Date(2026, 0, 15))).toEqual({ current: 800, previous: 500 });
+  });
+
+  it('répartit par moyen de paiement sur la période choisie seulement', () => {
+    const mixed = [
+      makeSale({ id: 'j', date: '2026-11-20', amount: 1000, paymentMethod: 'cash' }),
+      makeSale({ id: 'k', date: '2026-11-01', amount: 5000, paymentMethod: 'wave' }),
+      makeSale({ id: 'l', date: '2026-11-19', amount: 2000, paymentMethod: 'wave', status: 'cancelled' }),
+    ];
+    const keys = (slices: ReturnType<typeof channelSplit>) => slices.map((slice) => [slice.key, slice.amount]);
+    expect(keys(channelSplit(mixed))).toEqual([['wave', 5000], ['cash', 1000]]);
+    expect(keys(channelSplit(mixed, new Date(2026, 10, 14), new Date(2026, 10, 20)))).toEqual([['cash', 1000]]);
   });
 });

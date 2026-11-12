@@ -3,7 +3,7 @@ import type { SeriesPoint } from '@/types';
 import { t } from '@/content';
 import { addDays, isSameDay, parseDate, toIsoDate } from '@/domain/dates';
 import { activeCredits } from '@/domain/credits';
-import { computeKpis, dailyRevenueSeries } from '@/domain/finances';
+import { computeKpis, dailyRevenueSeries, monthToDateComparison } from '@/domain/finances';
 import { formatFCFA } from '@/domain/money';
 import { activeSales } from '@/domain/sales';
 import { marginRatePercent, retailValue } from '@/domain/stock';
@@ -13,6 +13,7 @@ import { useProductsStore } from '@/store/useProductsStore';
 import { useSalesStore } from '@/store/useSalesStore';
 import { useCurrentSession, usePermission } from '@/store/useSessionStore';
 import { useUiStore } from '@/store/useUiStore';
+import { useToday } from '@/lib/useToday';
 import { Badge, PageHeader, SegmentedControl, StatCard } from '@/ui';
 import { personDisplayName } from '@/domain/users';
 import { ClosingCard } from './ClosingCard';
@@ -34,7 +35,12 @@ const PERIOD_OPTIONS: { value: Period; label: string }[] = [
   { value: '7d', label: t.periods['7d'] },
   { value: 'month', label: t.periods.month },
 ];
-const TREND_DAYS = 14;
+/** Fenêtre du graphique : il suit la période choisie (aujourd'hui garde 14 jours de contexte). */
+function trendDays(period: Period, now: Date): number {
+  if (period === '7d') return 7;
+  if (period === 'month') return Math.max(7, now.getDate());
+  return 14;
+}
 
 function growth(current: number, previous: number): { value: string; positive: boolean } | null {
   if (previous <= 0) return null;
@@ -51,7 +57,7 @@ function withShortLabels(points: SeriesPoint[]): SeriesPoint[] {
 
 export function AccueilView() {
   const [period, setPeriod] = useState<Period>('today');
-  const now = useMemo(() => new Date(), []);
+  const now = useToday();
   const { user } = useCurrentSession();
   const canSeeFinance = usePermission('finance.view');
 
@@ -73,10 +79,10 @@ export function AccueilView() {
   const stats = useMemo(() => {
     if (period === 'month') {
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-      const previousMonthNow = new Date(now.getFullYear(), now.getMonth() - 1, 15);
-      const previous = computeKpis({ sales, expenses, credits, products }, previousMonthNow).monthlyRevenue;
+      // Mois en cours contre la même durée du mois précédent (pas contre un mois complet).
+      const { current, previous } = monthToDateComparison(sales, now);
       const rangeExpenses = expensesInRange(expenses, startOfMonth, now);
-      return { revenue: kpis.monthlyRevenue, previous, expenses: kpis.monthlyExpenses, expensesCount: rangeExpenses.length };
+      return { revenue: current, previous, expenses: kpis.monthlyExpenses, expensesCount: rangeExpenses.length };
     }
     const days = PERIOD_DAYS[period];
     const series = dailyRevenueSeries(sales, days * 2, now);
@@ -89,7 +95,7 @@ export function AccueilView() {
       expenses: rangeExpenses.reduce((sum, expense) => sum + expense.amount, 0),
       expensesCount: rangeExpenses.length,
     };
-  }, [period, sales, expenses, credits, products, kpis, now]);
+  }, [period, sales, expenses, kpis, now]);
 
   const marginRate = useMemo(
     () => marginRatePercent(kpis.margin, retailValue(products)),
@@ -108,7 +114,7 @@ export function AccueilView() {
   const todayCount = todaySales.length;
   const averageTicket = todayCount > 0 ? todaySales.reduce((sum, sale) => sum + sale.amount, 0) / todayCount : 0;
   const recentSales = useMemo(() => sales.slice(0, 5), [sales]);
-  const trend = useMemo(() => withShortLabels(dailyRevenueSeries(sales, TREND_DAYS, now)), [sales, now]);
+  const trend = useMemo(() => withShortLabels(dailyRevenueSeries(sales, trendDays(period, now), now)), [sales, period, now]);
 
   const todayLabel = useMemo(() => {
     const label = now.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });

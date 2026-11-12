@@ -7,6 +7,7 @@ import { useExpensesStore } from '@/store/useExpensesStore';
 import { useSalesStore } from '@/store/useSalesStore';
 import { useCurrentSession, usePermission } from '@/store/useSessionStore';
 import { useUiStore } from '@/store/useUiStore';
+import { useToday } from '@/lib/useToday';
 import { Button, EmptyState, Icon, Modal, SegmentedControl } from '@/ui';
 import { ExportOptions, type ExportFormat } from './ExportOptions';
 
@@ -30,7 +31,7 @@ export function ExportModal() {
   const [period, setPeriod] = useState<ExportPeriod>('all');
   const [isExporting, setIsExporting] = useState(false);
 
-  const now = useMemo(() => new Date(), []);
+  const now = useToday();
   // La période est appliquée aux compteurs ET au fichier : ce que l'on voit est
   // ce qui est exporté (issue #9).
   const range = useMemo(() => {
